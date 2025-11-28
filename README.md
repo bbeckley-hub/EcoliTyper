@@ -1,221 +1,281 @@
-# EcoliTyper 🧬
+# 🧬 EcoliTyper
 
-**Unified MLST + Serotyping + Clermont Phylotyping for *Escherichia coli***
+**A species-optimized computational pipeline for comprehensive genotyping and surveillance of *Escherichia coli***
 
-[![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17226894.svg)](https://doi.org/10.5281/zenodo.17226894)
+[![Python 3.8-3.11](https://img.shields.io/badge/Python-3.8--3.11-blue.svg)](https://www.python.org/)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/bbeckley-hub/EcoliTyper)
 
-## 📖 Overview
+## 🌟 Overview
 
-**EcoliTyper** is a comprehensive, high-performance genotyping tool for *Escherichia coli* that unifies three essential typing methods into a single, streamlined workflow:
+**EcoliTyper** is a revolutionary bioinformatics pipeline that transforms fragmented *E. coli* genomic analysis into a unified, intelligent workflow. Say goodbye to juggling multiple disconnected tools! 🎯
 
-- 🔬 **MLST (Multi-Locus Sequence Typing)** - For precise strain classification
-- 🦠 **Serotyping** - For O and H antigen identification using CGE's highly curated database
-- 🧬 **Clermont Phylotyping** - For rapid phylogenetic group determination
+> *"We shall not cease from exploration, and the end of all our exploring will be to arrive where we started and know the place for the first time."* - T.S. Eliot
 
-### 🚀 Key Features
+### 🚀 Why EcoliTyper?
 
-- **⚡ Blazing Fast**: Parallel processing with configurable threads for high-throughput analysis
-- **🎯 Unified Workflow**: Single command for all three typing methods
-- **📁 Wildcard Support**: Process multiple genomes with glob patterns (`*.fna`, `*.fasta`)
-- **🔧 Self-Contained**: Bundled with CGE's highly curated SerotypeFinder database
-- **📊 Comprehensive Output**: Multiple formats (TSV, JSON) for easy downstream analysis
-- **🎨 User-Friendly**: Beautiful ASCII art interface with science quotes
+| Before EcoliTyper 😫 | With EcoliTyper 🎉 |
+|---------------------|-------------------|
+| 7+ different tools to run manually | **Single command** does it all |
+| Manual data synthesis & cross-referencing | **Automated pattern discovery** & risk assessment |
+| Installation conflicts & dependency hell | **Self-contained Conda package** |
+| Hours of manual analysis | **Intelligent insights** in minutes |
+| Fragmented, disconnected results | **Coherent biological narratives** |
 
-## 🛠️ Installation (RECOMMENDED)
+## ✨ Key Features
 
+### 🧩 Comprehensive Integration
+- **🧬 MLST Typing** - Multi-Locus Sequence Typing
+- **🔍 Serotyping** - O and H antigen determination
+- **🎯 CH Typing** - High-resolution *fumC/fimH* typing
+- **🌳 Phylogrouping** - Clermont 2013 scheme
+- **💊 AMR Profiling** - Comprehensive resistance gene detection
+- **🦠 Virulence Analysis** - Pathogenicity assessment
+- **📊 Lineage Context** - Curated database of high-risk clones
+
+### 🧠 Intelligent Analytics
+- **🔬 Cross-genome pattern discovery**
+- **⚠️ Automated clinical risk assessment**
+- **📈 Gene frequency analysis**
+- **🎚️ Tiered alert system** (CRITICAL, WARNING)
+- **🌍 Epidemiological contextualization**
+
+### ⚡ Performance Optimized
+- **🚀 Parallel execution architecture**
+- **🎛️ Dynamic resource allocation**
+- **📦 Self-contained dependency management**
+- **⚖️ Memory-aware processing**
+
+## 🛠️ Installation
+
+### Prerequisites
+- **Conda** (Miniconda or Anaconda)
+
+### Quick Install (Recommended)
 ```bash
-conda create -n ecolityper -c bbeckley-hub -c conda-forge ecolityper python=3.9 -y
+conda create -n ecolityper -c bbeckley-hub -c conda-forge ecolityper -y
 conda activate ecolityper
 ```
 
-### Prerequisites
-
-- Python 3.6 or higher
-- BLAST+ tools (`blastn`, `makeblastdb`)
-- Perl (for MLST)
-
-### Quick Install
-
+### Development Install
 ```bash
-# Clone the repository
-git clone https://github.com/bbeckley-hub/ecoliTyper.git
-cd ecoliTyper
-
-# Install the package
+git clone https://github.com/bbeckley-hub/EcoliTyper.git
+cd EcoliTyper
 pip install -e .
-
-# Install EzClermont (required for phylotyping)
-pip install ezclermont
-
-# Environment Check
-ecolityper --check
 ```
 
-## 🚀 Usage
-
+### Database Setup
 ```bash
-# Basic Usage
-# Single genome analysis
-ecolityper -i genome.fna -o results
+# Update AMRfinderPlus databases
+amrfinder -u
 
-# Multiple genomes with wildcards
-ecolityper -i "*.fna" -o results --threads 8
-
-# Multiple specific files
-ecolityper -i genome1.fna genome2.fna genome3.fna -o results
-
-# Advanced Options
-# High-performance with 16 threads
-ecolityper -i "data/*.fasta" -o analysis_results --threads 16
-
-# Check environment and exit
-ecolityper --check
-
-# Show version information
-ecolityper --version
+# Setup ABRicate databases
+abricate --setupdb
 ```
 
-### Command Line Options
+## 🎯 Usage
 
-- `-i, --inputs`      Input genome FASTA files (supports globs, e.g. '*.fasta')
-- `-o, --outdir`      Output directory (default: ecolityper_results)
-- `--threads`         Number of parallel workers (default: CPU count)
-- `--check`           Check environment and exit
-- `--version`         Print version banner and exit
+### Basic Single Genome Analysis
+```bash
+ecolityper -i genome.fna -o results/
+```
 
-## 📊 Output Files
+### High-Throughput Batch Processing
+```bash
+ecolityper -i "*.fna" -o batch_results --threads 8
+```
 
-EcoliTyper generates comprehensive output in multiple formats:
+### Customized Analysis (Skip Specific Modules)
+```bash
+ecolityper -i "*.fasta" -o analysis --threads 16 --skip-lineage
+```
 
-### Main Output Files
+### Complete Command Reference
+```bash
+usage: ecolityper [-h] -i INPUT -o OUTPUT [-t THREADS] [--skip-amrfinder]
+                  [--skip-abricate] [--skip-mlst] [--skip-serotyping]
+                  [--skip-chtyper] [--skip-phylogrouping] [--skip-lineage]
 
-- `ecolityper_summary.tsv` - Combined results for all samples
-- `mlst_results.tsv` - Detailed MLST results
-- `serotype_results.tsv` - O and H antigen typing results
-- `clermont_results.tsv` - Phylotyping results with method
-- `ecolityper_run_meta.json` - Run metadata and tool versions
+EcoliTyper: Complete E. coli Typing Pipeline
 
-### Per-Sample Files
+options:
+  -h, --help            show this help message and exit
+  -i INPUT, --input INPUT
+                        Input FASTA file(s) - can use glob patterns like
+                        "*.fna" or "*.fasta"
+  -o OUTPUT, --output OUTPUT
+                        Output directory for all results
+  -t THREADS, --threads THREADS
+                        Number of threads (default: 2)
+  --skip-amrfinder      Skip AMRfinderPlus analysis
+  --skip-abricate       Skip ABRicate analysis
+  --skip-mlst           Skip MLST analysis
+  --skip-serotyping     Skip serotyping analysis
+  --skip-chtyper        Skip CH typing analysis
+  --skip-phylogrouping  Skip phylogrouping analysis
+  --skip-lineage        Skip lineage reference generation
+```
 
-- `{sample}.ecolityper.json` - Complete results in JSON format
-- `{sample}_serotype.json` - Raw SerotypeFinder JSON output
+## 📊 Output Structure
 
-### Output Columns
+```
+results/
+├── 📄 individual_reports/          # Per-genome HTML reports
+├── 📊 cross_genome_analysis/       # Population-level insights
+├── 🔬 mlst_results/                # Sequence typing results
+├── 🧪 serotype_results/            # O:H antigen typing
+├️── 🎯 chtyper_results/            # fumC/fimH typing
+├️── 🌳 phylogroup_results/         # Clermont phylogrouping
+├️── 💊 amrfinder_results/          # NCBI AMR detection
+├️── 🦠 abricate_results/           # Multi-database screening
+├️── 📈 lineage_context/            # Epidemiological context
+└️── 📋 summary_files/              # Consolidated TSV/JSON files
+```
 
-| Sample    | MLST Scheme     | ST  | O-type | H-type | Clermont Phylotype | Method |
-|-----------|-----------------|-----|--------|--------|-------------------|--------|
-| ecoli.fna | ecoli_achtman_4 | 156 | O173   | H28    | B1                | PCR    |
+## 🎨 Example Reports
 
-## 🏗️ Technical Details
+### 🔍 Cross-Genome Pattern Discovery
+![Cross-genome Analysis](https://via.placeholder.com/800x400/4A90E2/FFFFFF?text=Interactive+Gene+Frequency+Analysis)
 
-### Performance
+### 💊 Antimicrobial Resistance Profiling
+![AMR Profile](https://via.placeholder.com/800x400/50E3C2/FFFFFF?text=Resistance+Gene+Distribution+Map)
 
-- **Parallel Processing**: Utilizes Python's ThreadPoolExecutor for efficient multi-core usage
-- **Memory Efficient**: Processes samples sequentially with minimal memory footprint
-- **Fast Execution**: Typical analysis time: 10-15 seconds per genome
+### 🦠 Virulence Factor Analysis
+![Virulence Profile](https://via.placeholder.com/800x400/B8E986/FFFFFF?text=Virulence+Factor+Prevalence)
 
-### Typing Methods
+## ⚡ Performance Benchmarks
 
-- **MLST**: Uses the standard Achtman 7-gene scheme for E. coli
-- **Serotyping**: Leverages CGE's highly curated SerotypeFinder database with BLAST-based identification
-- **Clermont Typing**: Implements the EzClermont tool for rapid phylogroup determination
+| Scenario | Genomes | Time | Hardware |
+|----------|---------|------|----------|
+| 🐢 Standard Workstation | 30 genomes | ~80-150 min | 2 CPU cores, 8GB RAM |
+| 🚀 High-Performance | 30 genomes | **~41 min** | 16 CPU cores, 16GB RAM |
+| ⚡ Single Genome | 1 genome | 1-6 min | Variable |
 
-### Database Integration
+## 📋 Supported Input Formats
 
-- **MLST**: Bundled MLST tool with comprehensive allele database
-- **Serotyping**: Integrated CGE SerotypeFinder with regularly updated O and H antigen databases
-- **Clermont**: EzClermont Python package for consistent phylogroup calling
+- `.fna` ✅
+- `.fasta` ✅  
+- `.fa` ✅
+- `.fsa` ✅
 
-## 🎯 Use Cases
+## 🆚 Feature Comparison
 
-### 🏥 Clinical Microbiology
+| Feature | EcoliTyper | ECTyper | Bactopia | Mykrobe |
+|---------|------------|---------|----------|---------|
+| **Species Focus** | 🎯 *E. coli* specific | *E. coli* specific | Multi-species | Multi-species |
+| **MLST** | ✅ | ❌ | ✅ | ❌ |
+| **Serotyping** | ✅ | ✅ | ✅ | ❌ |
+| **CH Typing** | ✅ | ❌ | ❌ | ❌ |
+| **Phylogrouping** | ✅ | ❌ | ✅ | ❌ |
+| **Cross-genome Analysis** | ✅ | ❌ | ❌ | ❌ |
+| **Lineage Database** | ✅ | ❌ | ❌ | ❌ |
+| **Installation** | ⚡ Fast (minutes) | Fast | Slow (complex) | Fast |
 
-- Rapid strain characterization for outbreak investigations
-- Surveillance of antimicrobial resistant clones
-- Virulence factor association studies
-
-### 🔬 Research Applications
-
-- Population genetics studies
-- Evolutionary analysis of E. coli lineages
-- Comparative genomics projects
-
-### 🐄 Veterinary and Food Safety
-
-- Source tracking in foodborne outbreaks
-- Zoonotic transmission studies
-- Agricultural surveillance
-
-## 📝 Citation
+## 🎓 Citation
 
 If you use EcoliTyper in your research, please cite:
 
-**Brown, B. (2025). EcoliTyper: Unified MLST + Serotyping + Clermont typing for Escherichia coli. Zenodo. https://doi.org/10.5281/zenodo.17226894**
+```bibtex
+@software{beckley2024ecolityper,
+  title = {EcoliTyper: A species-optimized computational pipeline for comprehensive genotyping and surveillance of Escherichia coli},
+  author = {Beckley, Brown and Amarh, Vincent},
+  year = {2024},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/bbeckley-hub/EcoliTyper}},
+  doi = {10.5281/zenodo.17226894}
+}
+```
+
+### 📚 Integrated Tool Citations
+
+Please also cite these foundational tools:
 
 ```bibtex
-@software{brown2025ecolityper,
-  title = {EcoliTyper: Unified MLST + Serotyping + Clermont typing for Escherichia coli},
-  author = {Brown, Beckley},
-  year = {2025},
-  publisher = {Zenodo},
-  doi = {10.5281/zenodo.17226894},
-  url = {https://doi.org/10.5281/zenodo.17226894}
+% SerotypeFinder
+@article{joensen2015rapid,
+  title={Rapid and easy in silico serotyping of Escherichia coli using whole genome sequencing (WGS) data},
+  author={Joensen, KG and others},
+  journal={Journal of Clinical Microbiology},
+  year={2015}
+}
+
+% MLST
+@article{larsen2012multilocus,
+  title={Multilocus sequence typing of total genome sequenced bacteria},
+  author={Larsen, M and others},
+  journal={Journal of Clinical Microbiology},
+  year={2012}
+}
+
+% KMA
+@article{clausen2018rapid,
+  title={Rapid and precise alignment of raw reads against redundant databases with KMA},
+  author={Clausen, P and others},
+  journal={BMC Bioinformatics},
+  year={2018}
+}
+
+% CH Typing
+@article{roer2018chtyper,
+  title={CHTyper, a web tool for subtyping of extraintestinal pathogenic Escherichia coli},
+  author={Roer, L and others},
+  journal={Journal of Clinical Microbiology},
+  year={2018}
+}
+
+% EzClermont
+@article{waters2020easy,
+  title={Easy phylotyping of Escherichia coli via the EzClermont web app and command-line tool},
+  author={Waters, NR and others},
+  journal={Access Microbiology},
+  year={2020}
 }
 ```
 
 ## 🤝 Contributing
 
-We welcome contributions! Please feel free to submit pull requests, report bugs, or suggest new features.
+We welcome contributions! Please feel free to submit issues, fork the repository, and create pull requests.
 
-### Development Setup
+1. 🍴 Fork the repository
+2. 🌿 Create a feature branch (`git checkout -b amazing-feature`)
+3. 💾 Commit your changes (`git commit -m 'Add amazing feature'`)
+4. 🚀 Push to the branch (`git push origin amazing-feature`)
+5. 🔔 Open a Pull Request
 
-```bash
-git clone https://github.com/bbeckley-hub/ecoliTyper.git
-cd ecoliTyper
-pip install -e .
-```
+## 🐛 Issue Reporting
 
-## 📄 License
+Found a bug? Have a feature request? Please let us know by [creating an issue](https://github.com/bbeckley-hub/EcoliTyper/issues).
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## 📜 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Authors
+
+- **Brown Beckley** - *Creator & Lead Developer* - [GitHub](https://github.com/bbeckley-hub)
+- **Dr. Vincent Amarh** - *Supervisor & Advisor*
 
 ## 🙏 Acknowledgments
 
-- CGE (Center for Genomic Epidemiology) for the excellent SerotypeFinder tool and database
-- EzClermont developers for the reliable phylotyping implementation
-- MLST developers for maintaining the comprehensive typing scheme
-- The open-source bioinformatics community for invaluable tools and resources
+- The open-source bioinformatics community 👐
+- Developers of integrated foundational tools 🔧
+- Center for Genomic Epidemiology & PubMLST 🗄️
+- Colleagues who provided invaluable feedback during testing 🧪
 
 ## 📞 Contact
 
-Beckley Brown  
-📧 brownbeckley94@gmail.com  
-🌐 GitHub Profile  
-🔗 EcoliTyper Repository
+**Beckley Brown**  
+📧 [brownbeckley94@gmail.com](mailto:brownbeckley94@gmail.com)  
+🌐 [GitHub Profile](https://github.com/bbeckley-hub)  
+🔗 [EcoliTyper Repository](https://github.com/bbeckley-hub/EcoliTyper)
 
 ---
-## 📄 **OTHER CITATIONS**
 
-Please cite the following integrated tools:
->Joensen, K. G., A. M. Tetzschner, A. Iguchi, F. M. Aarestrup, and F. Scheutz. 2015. Rapid and easy in silico serotyping of Escherichia coli using whole genome sequencing (WGS) data. J.Clin.Microbiol. 53(8):2410-2426. doi:JCM.00008-15 [pii];10.1128/JCM.00008-15 [doi]
+<div align="center">
 
->Larsen, M., Cosentino, S., Rasmussen, S., Rundsten, C., Hasman, H., Marvig, R., Jelsbak, L., Sicheritz-PontÃ©n, T., Ussery, D., Aarestrup, F., & Lund, O. (2012). Multilocus Sequence Typing of Total Genome Sequenced Bacteria.
-Journal of Clinical Microbiology, 50(4), 1355-1361. doi: 10.12.0/JCM.06094-11
+**⭐ Star us on GitHub if you find this tool useful!**
 
->Clausen, P., Aarestrup, F., & Lund, O. (2018). Rapid and precise alignment of raw reads against redundant databases with KMA.
-Bmc Bioinformatics,19(1), 307
+*Transforming fragmented genomic data into coherent biological narratives* 🧬✨
 
-> Development of a web tool for Escherichia coli subtyping based on fimh alleles.
-Roer L, Tchesnokova V, Allesoe R, Muradova M, Chattopadhyay S, Ahrenfeldt J, Thomsen MCF, Lund O, Hansen F, Hammerum AM, Sokurenko E, and Hasman H.
-J Clin Microbiol. 2017. 55(8): 2538-2543.
-
->CHTyper, a Web Tool for Subtyping of Extraintestinal Pathogenic Escherichia coli Based on the fumC and fimH Alleles.
-Roer L, Johannesen TB, Hansen F, Stegger M, Tchesnokova V, Sokurenko E, et al.
-J. Clin. Microbiol. 2018;56:e00063-18.
-https://doi.org/10.1128/JCM.00063-18
-
-> Easily phylotyping E. coli via the EzClermont web app and command-line tool
-Nicholas R. Waters, Florence Abram, Fiona Brennan, Ashleigh Holmes, Leighton Pritchard
-bioRxiv 317610; doi: https://doi.org/10.1101/317610
+</div>
