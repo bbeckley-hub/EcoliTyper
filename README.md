@@ -179,7 +179,7 @@ If you use EcoliTyper in your research, please cite:
 @software{beckley2024ecolityper,
   title = {EcoliTyper: A species-optimized computational pipeline for comprehensive genotyping and surveillance of Escherichia coli},
   author = {Beckley, Brown and Amarh, Vincent},
-  year = {2024},
+  year = {2025},
   publisher = {GitHub},
   journal = {GitHub repository},
   howpublished = {\url{https://github.com/bbeckley-hub/EcoliTyper}},
