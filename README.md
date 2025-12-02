@@ -186,7 +186,7 @@ results/
 If you use EcoliTyper in your research, please cite:
 
 ```bibtex
-@software{beckley2024ecolityper,
+@software{beckley2025ecolityper,
   title = {EcoliTyper: A species-optimized computational pipeline for comprehensive genotyping and surveillance of Escherichia coli},
   author = {Beckley, Brown and Amarh, Vincent},
   year = {2025},
