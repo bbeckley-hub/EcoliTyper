@@ -1,0 +1,77 @@
+{% set name = "ecolityper" %}
+{% set version = "1.0.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  path: .
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  number: 0
+  entry_points:
+    - ecolityper = ecoliTyper.ecolityper:main
+
+requirements:
+  host:
+    - python >=3.8,<3.12
+    - pip
+    - setuptools
+  run:
+    - python >=3.8,<3.12
+    # Core Python packages
+    - pandas >=1.5.0
+    - biopython >=1.80
+    - psutil >=5.9.0
+    - requests >=2.28.0
+    - tqdm >=4.64.0
+    - click >=8.0.0
+    - tabulate
+    # Bioinformatics tools 
+    - abricate =1.0.1
+    - ncbi-amrfinderplus =3.12.8
+    - ezclermont >=0.7.0
+    - perl
+    - any2fasta
+    - cgecore
+    - blast >=2.13.0  
+    - perl-moo
+    - perl-list-moreutils  
+    - perl-json
+    - perl-lwp-protocol-https
+    - perl-path-tiny
+    - perl-data-dumper
+    - perl-getopt-long
+    - perl-file-which
+
+test:
+  imports:
+    - ecoliTyper
+    - ecoliTyper.core
+  commands:
+    - pip check
+    - ecolityper --help
+    - python -c "import ecoliTyper; print('EcoliTyper imported successfully')"
+  requires:
+    - pip
+
+about:
+  home: https://github.com/bbeckley-hub/EcoliTyper
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  summary: 'Comprehensive E. coli Typing Pipeline: MLST, Serotyping, CH Typing, Phylogrouping, AMR, and Virulence Analysis'
+  description: |
+    EcoliTyper is a comprehensive bioinformatics pipeline for complete Escherichia coli 
+    genomic characterization. It integrates multiple typing schemes including MLST, 
+    serotyping (O and H antigens), CH typing (FumC and FimH), zClermont phylogrouping, 
+    antibiotic resistance gene detection (AMRfinderPlus), and virulence/plasmid screening (ABRicate).
+  doc_url: https://github.com/bbeckley-hub/EcoliTyper
+  dev_url: https://github.com/bbeckley-hub/EcoliTyper
+
+extra:
+  recipe-maintainers:
+    - bbeckley-hub

@@ -1,0 +1,22 @@
+cff-version: 1.2.0o
+
+message: "If you use this software, please cite it as below."
+title: "EcoliTyper: Unified MLST + Serotyping + Clermont typing for Escherichia coli"
+authors:
+  - given-names: Beckley
+    family-names: Brown
+    email: brownbeckley94@gmail.com
+version: 1.0.0
+doi: 10.5281/zenodo.17226894
+date-released: 2024-12-15
+url: "https://github.com/bbeckley-hub/ecoliTyper"
+license: MIT
+repository-code: "https://github.com/bbeckley-hub/ecoliTyper"
+abstract: "A unified high-performance workflow for comprehensive Escherichia coli genotyping integrating MLST, serotyping, and Clermont phylotyping."
+keywords:
+  - "bioinformatics"
+  - "Escherichia coli" 
+  - "genotyping"
+  - "MLST"
+  - "serotyping"
+  - "Clermont typing"

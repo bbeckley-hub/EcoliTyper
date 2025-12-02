@@ -1,0 +1,27 @@
+include LICENSE
+include README.md
+include requirements.txt
+include pyproject.toml
+include CITATION.cff
+include cleanup.sh
+
+# MLST module
+recursive-include ecoliTyper/modules/mlst_module/db *
+recursive-include ecoliTyper/modules/mlst_module/bin *
+recursive-include ecoliTyper/modules/mlst_module/perl5 *
+recursive-include ecoliTyper/modules/mlst_module/scripts *
+
+# Serotyping module
+recursive-include ecoliTyper/modules/serotypefinder_module/serotypefinder_db *
+
+# CH Typing module  
+recursive-include ecoliTyper/modules/CHTyper_module/chtyper_db *
+
+# Python source files
+recursive-include ecoliTyper/modules *.py
+recursive-include ecoliTyper *.py
+recursive-include ecoliTyper/core *.py
+
+include ecoliTyper/*.py
+include ecoliTyper/core/*.py
+include ecoliTyper/modules/*/*.py

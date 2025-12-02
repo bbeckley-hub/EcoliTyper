@@ -1,0 +1,8 @@
+# Core Python dependencies for StaphScope
+pandas
+biopython
+psutil
+requests
+tqdm
+click
+ezclermont
