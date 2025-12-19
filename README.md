@@ -627,5 +627,4 @@ Antimicrobial resistance (AMR) represents one of the most significant global hea
 
 **Together, we can enhance global AMR monitoring and develop more effective treatment strategies.**
 
-```
 
