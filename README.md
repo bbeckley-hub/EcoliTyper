@@ -248,7 +248,7 @@ results_directory/
 - **Coverage**: 6,000+ resistance genes and variants
 - **Update Frequency**: Weekly
 - **Scope**: Both acquired genes and chromosomal mutations
-- **Command for updates**: `amrfinder -u`
+
 
 ## 🌍 EcoliDB Lineage Database
 
