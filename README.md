@@ -614,7 +614,8 @@ This research received no specific grant from funding agencies in the public, co
 **"From sequences to surveillance in one command"**
 
 ---
-
+</div>
+---
 **Join the Fight Against Antimicrobial Resistance**
 
 Antimicrobial resistance (AMR) represents one of the most significant global health threats of our time. We invite researchers, clinicians, and public health professionals to collaborate with us in:
@@ -626,6 +627,5 @@ Antimicrobial resistance (AMR) represents one of the most significant global hea
 
 **Together, we can enhance global AMR monitoring and develop more effective treatment strategies.**
 
-</div>
 ```
 
