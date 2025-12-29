@@ -65,7 +65,7 @@
 ### Quick Install (Recommended)
 ```bash
 # Create and activate environment
-conda create -n ecolityper -c bbeckley-hub -c conda-forge ecolityper -y
+conda create -n ecolityper-c conda-forge -c bioconda  -c bbeckley-hub ecolityper -y
 conda activate ecolityper
 
 ```
