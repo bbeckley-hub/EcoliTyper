@@ -20,6 +20,7 @@ from datetime import datetime
 from typing import List, Dict, Any
 import pandas as pd
 import multiprocessing as mp
+from collections import Counter
 
 class EnhancedCHTyper:
     def __init__(self, db_path: str = "chtyper_db", threads: int = 4):
@@ -42,12 +43,13 @@ class EnhancedCHTyper:
             raise RuntimeError("BLAST not found. Please install BLAST or ensure it's in your PATH")
         
         self.science_quotes = [
-            "“The important thing is not to stop questioning. Curiosity has its own reason for existence.” - Albert Einstein",
-            "“Nothing in life is to be feared, it is only to be understood.” - Marie Curie",
-            "“The microscope opens a new world to the investigator.” - Robert Koch",
-            "“In science, the credit goes to the man who convinces the world, not to the man to whom the idea first occurs.” - Francis Darwin",
             "“The good thing about science is that it's true whether or not you believe in it.” - Neil deGrasse Tyson",
-            "“Science knows no country, because knowledge belongs to humanity.” - Louis Pasteur"
+            "“The important thing is not to stop questioning. Curiosity has its own reason for existence. - Albert Einstein",
+            "“Nothing in life is to be feared, it is only to be understood.“ - Marie Curie",
+            "“The microscope opens a new world to the investigator.“ - Robert Koch",
+            "“In science, the credit goes to the man who convinces the world, not to the man to whom the idea first occurs.“ - Francis Darwin",
+            "“The good thing about science is that it's true whether or not you believe in it.“ - Neil deGrasse Tyson",
+            "“Science knows no country, because knowledge belongs to humanity.“ - Louis Pasteur"
         ]
         
         self.ascii_art = """
@@ -233,6 +235,149 @@ class EnhancedCHTyper:
         
         self.results = results
         return results
+    
+    def generate_json_report(self, output_dir: Path) -> str:
+        """Generate structured JSON summary report"""
+        
+        # Calculate summary statistics
+        total_samples = len(self.results)
+        successful_samples = len([r for r in self.results if r['status'] == 'Completed'])
+        
+        # Extract numerical values from identity and coverage
+        def parse_identity(identity_str):
+            try:
+                return float(identity_str.replace('%', ''))
+            except:
+                return 0.0
+        
+        def parse_coverage(coverage_str):
+            try:
+                if '/' in coverage_str:
+                    num, denom = coverage_str.split('/')
+                    return float(num) / float(denom) * 100
+                return 0.0
+            except:
+                return 0.0
+        
+        # Count type distributions
+        fumc_types = Counter()
+        fimh_types = Counter()
+        for result in self.results:
+            if result['status'] == 'Completed':
+                if result['fumc_type'] != 'Unknown':
+                    fumc_types[result['fumc_type']] += 1
+                if result['fimh_type'] != 'Unknown':
+                    fimh_types[result['fimh_type']] += 1
+        
+        # Sort distributions by frequency
+        fumc_distribution = dict(sorted(fumc_types.items(), key=lambda x: x[1], reverse=True))
+        fimh_distribution = dict(sorted(fimh_types.items(), key=lambda x: x[1], reverse=True))
+        
+        # Calculate average identity and coverage
+        fumc_identities = []
+        fimh_identities = []
+        fumc_coverages = []
+        fimh_coverages = []
+        
+        for result in self.results:
+            if result['status'] == 'Completed' and result['fumc_type'] != 'Unknown':
+                fumc_identities.append(parse_identity(result['fumc_identity']))
+                fumc_coverages.append(parse_coverage(result['fumc_coverage']))
+            if result['status'] == 'Completed' and result['fimh_type'] != 'Unknown':
+                fimh_identities.append(parse_identity(result['fimh_identity']))
+                fimh_coverages.append(parse_coverage(result['fimh_coverage']))
+        
+        avg_fumc_identity = sum(fumc_identities) / len(fumc_identities) if fumc_identities else 0.0
+        avg_fimh_identity = sum(fimh_identities) / len(fimh_identities) if fimh_identities else 0.0
+        avg_fumc_coverage = sum(fumc_coverages) / len(fumc_coverages) if fumc_coverages else 0.0
+        avg_fimh_coverage = sum(fimh_coverages) / len(fimh_coverages) if fimh_coverages else 0.0
+        
+        # Prepare detailed results
+        detailed_results = []
+        for result in self.results:
+            detailed_results.append({
+                "sample_id": result["sample_id"],
+                "fumc_type": result["fumc_type"],
+                "fimh_type": result["fimh_type"],
+                "fumc_identity": result["fumc_identity"],
+                "fimh_identity": result["fimh_identity"],
+                "fumc_coverage": result["fumc_coverage"],
+                "fimh_coverage": result["fimh_coverage"],
+                "status": result["status"],
+                "file_path": result["file_path"],
+                "has_detailed_results": bool(result.get("detailed_results", ""))
+            })
+        
+        # Build comprehensive JSON report
+        json_report = {
+            "metadata": {
+                **self.metadata,
+                "analysis_type": "CHTyper (FumC/FimH Typing)",
+                "blast_path": self.blast_path,
+                "database_path": str(self.db_path),
+                "threads_used": self.threads,
+                "analysis_parameters": {
+                    "minimum_coverage": 0.6,
+                    "identity_threshold": 0.9
+                }
+            },
+            "analysis_summary": {
+                "total_samples": total_samples,
+                "successful_analyses": successful_samples,
+                "failed_analyses": total_samples - successful_samples,
+                "success_rate": round(successful_samples / total_samples * 100, 2) if total_samples > 0 else 0,
+                "unique_fumc_types": len(fumc_distribution),
+                "unique_fimh_types": len(fimh_distribution),
+                "most_common_fumc_type": list(fumc_distribution.items())[0][0] if fumc_distribution else "None",
+                "most_common_fimh_type": list(fimh_distribution.items())[0][0] if fimh_distribution else "None",
+                "quality_metrics": {
+                    "average_fumc_identity": round(avg_fumc_identity, 2),
+                    "average_fimh_identity": round(avg_fimh_identity, 2),
+                    "average_fumc_coverage": round(avg_fumc_coverage, 2),
+                    "average_fimh_coverage": round(avg_fimh_coverage, 2)
+                }
+            },
+            "type_distributions": {
+                "fumc_types": fumc_distribution,
+                "fimh_types": fimh_distribution
+            },
+            "methodology": {
+                "description": "CHTyper analysis for E. coli using FumC and FimH genes",
+                "genes_analyzed": ["fumC", "fimH"],
+                "purpose": "FumC-FimH typing for E. coli subtyping and epidemiological studies",
+                "algorithm": "BLAST-based sequence typing",
+                "database": "CHTyper database containing FumC and FimH allele sequences",
+                "reference": "Roer L, Tchesnokova V, Allesøe R, et al. Development of a Web Tool for Escherichia coli Subtyping Based on FumC and FimH (CH Typing). Front Microbiol. 2017;8:2511."
+            },
+            "detailed_results": detailed_results,
+            "performance_statistics": {
+                "high_confidence_results": len([r for r in self.results if parse_identity(r['fumc_identity']) >= 99.0 
+                                               and parse_identity(r['fimh_identity']) >= 99.0]),
+                "medium_confidence_results": len([r for r in self.results if 90.0 <= parse_identity(r['fumc_identity']) < 99.0
+                                                 and 90.0 <= parse_identity(r['fimh_identity']) < 99.0]),
+                "low_confidence_results": len([r for r in self.results if parse_identity(r['fumc_identity']) < 90.0
+                                              or parse_identity(r['fimh_identity']) < 90.0])
+            },
+            "combined_typing_summary": {
+                "unique_combinations": len(set([(r['fumc_type'], r['fimh_type']) 
+                                              for r in self.results 
+                                              if r['status'] == 'Completed' 
+                                              and r['fumc_type'] != 'Unknown' 
+                                              and r['fimh_type'] != 'Unknown'])),
+                "most_common_combination": max(
+                    [(r['fumc_type'], r['fimh_type']) for r in self.results 
+                     if r['status'] == 'Completed' and r['fumc_type'] != 'Unknown' and r['fimh_type'] != 'Unknown'],
+                    key=lambda x: list((r['fumc_type'], r['fimh_type']) for r in self.results).count(x),
+                    default=("None", "None")
+                )
+            }
+        }
+        
+        json_file = output_dir / "chtyper_summary.json"
+        with open(json_file, 'w') as f:
+            json.dump(json_report, f, indent=4, default=str)
+        
+        return str(json_file)
     
     def generate_html_report(self, output_dir: Path) -> str:
         """Generate comprehensive HTML report with rotating science quotes"""
@@ -552,6 +697,7 @@ def main():
         
         # Generate reports
         print("\n📊 Generating reports...")
+        json_file = finder.generate_json_report(main_output_dir)
         html_file = finder.generate_html_report(main_output_dir)
         tsv_file = finder.generate_tsv_report(main_output_dir)
         
@@ -559,6 +705,7 @@ def main():
         print("\n✅ Analysis Complete!")
         print(f"📊 Samples processed: {len(results)}")
         print(f"📁 Results directory: {main_output_dir}")
+        print(f"📄 JSON Summary: {json_file}")
         print(f"📄 HTML Report: {html_file}")
         print(f"📊 TSV Report: {tsv_file}")
         

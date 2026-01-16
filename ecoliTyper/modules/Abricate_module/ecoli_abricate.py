@@ -23,6 +23,7 @@ import psutil
 import math
 import json
 import pandas as pd
+from collections import defaultdict, Counter
 
 class EcoliAbricateExecutor:
     """ABRicate executor for E. coli with comprehensive HTML reporting - MAXIMUM SPEED"""
@@ -194,11 +195,11 @@ class EcoliAbricateExecutor:
             elif total_physical_cores <= 8:
                 optimal_cpus = total_physical_cores - 1  # Use 7/8, 6/7, etc.
             elif total_physical_cores <= 16:
-                optimal_cpus = max(8, total_physical_cores - 2)  # Use 14/16, 13/15, etc.
+                optimal_cpus = max(8, total_physical_cores - 1)  # Use 15/16, 14/15, etc.
             elif total_physical_cores <= 32:
-                optimal_cpus = max(16, total_physical_cores - 4)  # Use 28/32, 27/31, etc.
+                optimal_cpus = max(16, total_physical_cores - 2)  # Use 30/32, 29/31, etc.
             else:
-                optimal_cpus = min(32, int(total_physical_cores * 0.85))  # Use 85% on huge systems
+                optimal_cpus = min(32, int(total_physical_cores * 0.90))  # Use 90% on huge systems
             
             # Ensure at least 1 CPU and not more than available cores
             optimal_cpus = max(1, min(optimal_cpus, total_physical_cores))
@@ -244,10 +245,10 @@ class EcoliAbricateExecutor:
             if version_match:
                 version_str = version_match.group(1)
                 if version_str >= "1.0.1":
-                    self.logger.info("✓ ABRicate version meets requirement (>=1.0.1)")
+                    self.logger.info("✓ ABRicate version meets requirement (>=1.2.0)")
                     return True
                 else:
-                    self.logger.error("ABRicate version too old: %s. Required >=1.0.1", version_str)
+                    self.logger.error("ABRicate version too old: %s. Required >=1.2.0", version_str)
                     return False
             self.logger.info("✓ ABRicate installed (version check skipped)")
             return True
@@ -636,7 +637,7 @@ class EcoliAbricateExecutor:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper ABRicate v1.0.1
+                Analysis performed using EcoliTyper ABRicate v1.2.0
             </p>
         </div>
     </div>
@@ -1233,7 +1234,7 @@ class EcoliAbricateExecutor:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper ABRicate v1.0.1
+                Analysis performed using EcoliTyper ABRicate v1.2.0
             </p>
         </div>
     </div>
@@ -1265,7 +1266,7 @@ class EcoliAbricateExecutor:
                     hit_with_genome['genome'] = genome_name
                     db_results[db].append(hit_with_genome)
         
-        # Create summary file and HTML report for each database
+        # Create summary files for each database
         for db, hits in db_results.items():
             if hits:
                 # Create TSV summary
@@ -1285,10 +1286,280 @@ class EcoliAbricateExecutor:
                 
                 self.logger.info("✓ Created %s summary: %s (%d hits)", db, summary_file, len(hits))
                 
+                # Create JSON summary for this database
+                self._create_database_json_summary(db, hits, output_base)
+                
                 # Create HTML summary report for this database
                 self._create_database_summary_html(db, hits, output_base)
             else:
                 self.logger.info("No hits for database %s, skipping summary", db)
+    
+    def _create_database_json_summary(self, database: str, hits: List[Dict], output_base: str):
+        """Create JSON summary report for a specific database across all genomes"""
+        
+        # Calculate statistics
+        unique_genomes = list(set(hit['genome'] for hit in hits))
+        unique_genes = list(set(hit['gene'] for hit in hits))
+        
+        # Calculate gene frequency
+        gene_frequency = {}
+        gene_details = {}
+        for hit in hits:
+            gene = hit['gene']
+            if gene not in gene_frequency:
+                gene_frequency[gene] = set()
+                gene_details[gene] = {
+                    'product': hit['product'],
+                    'databases': set(),
+                    'avg_coverage': 0,
+                    'avg_identity': 0
+                }
+            gene_frequency[gene].add(hit['genome'])
+            gene_details[gene]['databases'].add(hit['database'])
+            
+            # Track coverage and identity for averaging
+            if 'coverage_sum' not in gene_details[gene]:
+                gene_details[gene]['coverage_sum'] = 0
+                gene_details[gene]['identity_sum'] = 0
+                gene_details[gene]['count'] = 0
+            
+            try:
+                coverage = float(hit['coverage_percent'].replace('%', ''))
+                identity = float(hit['identity_percent'].replace('%', ''))
+                gene_details[gene]['coverage_sum'] += coverage
+                gene_details[gene]['identity_sum'] += identity
+                gene_details[gene]['count'] += 1
+            except:
+                pass
+        
+        # Calculate averages
+        for gene in gene_details:
+            if gene_details[gene]['count'] > 0:
+                gene_details[gene]['avg_coverage'] = round(gene_details[gene]['coverage_sum'] / gene_details[gene]['count'], 2)
+                gene_details[gene]['avg_identity'] = round(gene_details[gene]['identity_sum'] / gene_details[gene]['count'], 2)
+            del gene_details[gene]['coverage_sum']
+            del gene_details[gene]['identity_sum']
+            del gene_details[gene]['count']
+            gene_details[gene]['databases'] = list(gene_details[gene]['databases'])
+        
+        # Calculate per-genome statistics
+        genomes_summary = {}
+        for genome in unique_genomes:
+            genome_hits = [h for h in hits if h['genome'] == genome]
+            genomes_summary[genome] = {
+                'total_hits': len(genome_hits),
+                'unique_genes': len(set(h['gene'] for h in genome_hits)),
+                'genes': list(set(h['gene'] for h in genome_hits))
+            }
+        
+        # Risk analysis for this database
+        risk_genes = {
+            'critical_resistance': [],
+            'high_risk_resistance': [],
+            'critical_virulence': [],
+            'high_risk_virulence': []
+        }
+        
+        for gene in unique_genes:
+            gene_base = gene.split('-')[0] if '-' in gene else gene
+            
+            if any(crit_gene in gene_base for crit_gene in self.critical_resistance_genes):
+                risk_genes['critical_resistance'].append(gene)
+            elif any(hr_gene in gene_base for hr_gene in self.high_risk_genes):
+                risk_genes['high_risk_resistance'].append(gene)
+            elif any(crit_vf in gene_base for crit_vf in self.critical_virulence_genes):
+                risk_genes['critical_virulence'].append(gene)
+            elif any(vf_gene in gene_base for vf_gene in self.virulence_genes):
+                risk_genes['high_risk_virulence'].append(gene)
+        
+        # Build JSON report
+        json_report = {
+            "metadata": {
+                "database_name": database,
+                "analysis_type": "ABRicate Antimicrobial Resistance & Virulence",
+                "total_genomes": len(unique_genomes),
+                "total_hits": len(hits),
+                "analysis_date": self.metadata['analysis_date'],
+                "tool_version": self.metadata['version']
+            },
+            "summary_statistics": {
+                "unique_genes": len(unique_genes),
+                "unique_genomes": len(unique_genomes),
+                "hits_per_genome": round(len(hits) / len(unique_genomes), 2) if unique_genomes else 0,
+                "risk_analysis": {
+                    "critical_resistance_genes": len(risk_genes['critical_resistance']),
+                    "high_risk_resistance_genes": len(risk_genes['high_risk_resistance']),
+                    "critical_virulence_genes": len(risk_genes['critical_virulence']),
+                    "high_risk_virulence_genes": len(risk_genes['high_risk_virulence'])
+                }
+            },
+            "gene_analysis": {
+                "most_frequent_genes": dict(sorted(
+                    {gene: len(genomes) for gene, genomes in gene_frequency.items()}.items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )),
+                "gene_details": gene_details
+            },
+            "genome_analysis": genomes_summary,
+            "risk_genes": risk_genes,
+            "raw_hits_summary": {
+                "total_hits": len(hits),
+                "hits_by_genome": {genome: len([h for h in hits if h['genome'] == genome]) for genome in unique_genomes}
+            }
+        }
+        
+        # Write JSON report
+        json_file = os.path.join(output_base, f"ecoli_{database}_summary.json")
+        with open(json_file, 'w') as f:
+            json.dump(json_report, f, indent=4, default=str)
+        
+        self.logger.info("✓ Created JSON summary: %s", json_file)
+    
+    def create_master_json_summary(self, all_results: Dict[str, Any], output_base: str):
+        """Create master JSON summary containing everything from all databases and all genomes"""
+        self.logger.info("Creating master JSON summary for all databases and genomes...")
+        
+        master_report = {
+            "metadata": {
+                **self.metadata,
+                "analysis_type": "E. coli Comprehensive Antimicrobial Resistance & Virulence Analysis",
+                "databases_analyzed": self.required_databases,
+                "total_genomes": len(all_results),
+                "analysis_parameters": {
+                    "minimum_identity": 80,
+                    "minimum_coverage": 80
+                }
+            },
+            "overall_summary": {
+                "total_genomes": len(all_results),
+                "total_hits": 0,
+                "critical_resistance_genes": 0,
+                "critical_virulence_genes": 0,
+                "esbl_positive_genomes": 0,
+                "carbapenemase_positive_genomes": 0,
+                "colistin_resistant_genomes": 0
+            },
+            "database_summaries": {},
+            "genome_summaries": {},
+            "risk_assessment": {
+                "critical_resistance_genes_found": [],
+                "critical_virulence_genes_found": [],
+                "high_risk_genes_found": [],
+                "resistance_classes_found": defaultdict(list)
+            },
+            "detailed_results": {}
+        }
+        
+        # Process each genome
+        for genome_name, genome_result in all_results.items():
+            # Collect all hits for this genome
+            all_genome_hits = []
+            for db_result in genome_result['results'].values():
+                all_genome_hits.extend(db_result['hits'])
+            
+            # Analyze resistance for this genome
+            analysis = self.analyze_ecoli_resistance(all_genome_hits)
+            
+            # Update overall summary
+            master_report["overall_summary"]["total_hits"] += analysis['total_hits']
+            master_report["overall_summary"]["critical_resistance_genes"] += analysis['total_critical_resistance']
+            master_report["overall_summary"]["critical_virulence_genes"] += analysis['total_critical_virulence']
+            
+            if analysis['esbl_status'] == 'positive':
+                master_report["overall_summary"]["esbl_positive_genomes"] += 1
+            if analysis['carbapenemase_status'] == 'positive':
+                master_report["overall_summary"]["carbapenemase_positive_genomes"] += 1
+            if analysis['colistin_resistance'] == 'positive':
+                master_report["overall_summary"]["colistin_resistant_genomes"] += 1
+            
+            # Add to genome summaries
+            master_report["genome_summaries"][genome_name] = {
+                "total_hits": analysis['total_hits'],
+                "critical_resistance": analysis['total_critical_resistance'],
+                "critical_virulence": analysis['total_critical_virulence'],
+                "esbl_status": analysis['esbl_status'],
+                "carbapenemase_status": analysis['carbapenemase_status'],
+                "colistin_resistance": analysis['colistin_resistance'],
+                "database_hits": {db: result['hit_count'] for db, result in genome_result['results'].items()}
+            }
+            
+            # Update risk assessment
+            for gene_info in analysis['critical_resistance_genes']:
+                if gene_info['gene'] not in master_report["risk_assessment"]["critical_resistance_genes_found"]:
+                    master_report["risk_assessment"]["critical_resistance_genes_found"].append(gene_info['gene'])
+            
+            for gene_info in analysis['critical_virulence_genes']:
+                if gene_info['gene'] not in master_report["risk_assessment"]["critical_virulence_genes_found"]:
+                    master_report["risk_assessment"]["critical_virulence_genes_found"].append(gene_info['gene'])
+            
+            for gene_info in analysis['high_risk_resistance_genes'] + analysis['high_risk_virulence_genes']:
+                if gene_info['gene'] not in master_report["risk_assessment"]["high_risk_genes_found"]:
+                    master_report["risk_assessment"]["high_risk_genes_found"].append(gene_info['gene'])
+            
+            # Update resistance classes
+            for class_name, genes in analysis['resistance_classes'].items():
+                for gene_info in genes:
+                    if gene_info['gene'] not in [g['gene'] for g in master_report["risk_assessment"]["resistance_classes_found"][class_name]]:
+                        master_report["risk_assessment"]["resistance_classes_found"][class_name].append(gene_info)
+            
+            # Add detailed results
+            master_report["detailed_results"][genome_name] = {
+                "total_hits": genome_result['total_hits'],
+                "database_results": genome_result['results']
+            }
+        
+        # Create database summaries
+        for db in self.required_databases:
+            # Collect all hits for this database across all genomes
+            db_hits = []
+            for genome_name, genome_result in all_results.items():
+                if db in genome_result['results']:
+                    for hit in genome_result['results'][db]['hits']:
+                        hit_with_genome = hit.copy()
+                        hit_with_genome['genome'] = genome_name
+                        db_hits.append(hit_with_genome)
+            
+            if db_hits:
+                unique_genes = len(set(h['gene'] for h in db_hits))
+                unique_genomes = len(set(h['genome'] for h in db_hits))
+                
+                master_report["database_summaries"][db] = {
+                    "total_hits": len(db_hits),
+                    "unique_genes": unique_genes,
+                    "unique_genomes": unique_genomes,
+                    "hits_per_genome": round(len(db_hits) / unique_genomes, 2) if unique_genomes else 0,
+                    "most_frequent_genes": dict(Counter([h['gene'] for h in db_hits]).most_common(10))
+                }
+            else:
+                master_report["database_summaries"][db] = {
+                    "total_hits": 0,
+                    "unique_genes": 0,
+                    "unique_genomes": 0,
+                    "hits_per_genome": 0,
+                    "most_frequent_genes": {}
+                }
+        
+        # Sort and clean up
+        master_report["risk_assessment"]["critical_resistance_genes_found"].sort()
+        master_report["risk_assessment"]["critical_virulence_genes_found"].sort()
+        master_report["risk_assessment"]["high_risk_genes_found"].sort()
+        master_report["risk_assessment"]["resistance_classes_found"] = dict(master_report["risk_assessment"]["resistance_classes_found"])
+        
+        # Add performance metrics
+        master_report["performance_metrics"] = {
+            "cpu_cores_used": self.cpus,
+            "available_ram_gb": round(self.available_ram, 2),
+            "processing_mode": "MAXIMUM SPEED" if self.cpus > 8 else "STANDARD"
+        }
+        
+        # Write master JSON report
+        master_file = os.path.join(output_base, "ecoli_abricate_master_summary.json")
+        with open(master_file, 'w') as f:
+            json.dump(master_report, f, indent=4, default=str)
+        
+        self.logger.info("✓ Created master JSON summary: %s", master_file)
+        return master_file
     
     def _create_database_summary_html(self, database: str, hits: List[Dict], output_base: str):
         """Create HTML summary report for a specific database across all genomes"""
@@ -1316,6 +1587,7 @@ class EcoliAbricateExecutor:
         
         # Count unique genomes
         unique_genomes = list(set(hit['genome'] for hit in hits))
+        total_genomes = len(unique_genomes)
         
         # Count genes per genome
         genes_per_genome = {}
@@ -1324,7 +1596,7 @@ class EcoliAbricateExecutor:
             if genome not in genes_per_genome:
                 genes_per_genome[genome] = set()
             genes_per_genome[genome].add(hit['gene'])
-        
+
         html_content = f"""
 <!DOCTYPE html>
 <html>
@@ -1423,6 +1695,20 @@ class EcoliAbricateExecutor:
             text-decoration: underline;
         }}
         .present {{ background-color: #d4edda; }}
+        .percentage-badge {{
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-left: 5px;
+            border: 1px solid #bbdefb;
+        }}
+        .frequency-cell {{
+            font-weight: 600;
+            color: #2c3e50;
+        }}
     </style>
     {quotes_js}
 </head>
@@ -1446,7 +1732,7 @@ class EcoliAbricateExecutor:
                 </div>
                 <div class="stat-card">
                     <h3>Genomes</h3>
-                    <p style="font-size: 2em; margin: 0;">{len(unique_genomes)}</p>
+                    <p style="font-size: 2em; margin: 0;">{total_genomes}</p>
                 </div>
                 <div class="stat-card">
                     <h3>Unique Genes</h3>
@@ -1499,7 +1785,7 @@ class EcoliAbricateExecutor:
                 <tbody>
 """
         
-        # Calculate gene frequency
+        # Calculate gene frequency with percentages
         gene_frequency = {}
         for hit in hits:
             gene = hit['gene']
@@ -1509,10 +1795,18 @@ class EcoliAbricateExecutor:
         
         for gene, genomes in sorted(gene_frequency.items(), key=lambda x: len(x[1]), reverse=True):
             genome_list = ", ".join(sorted(genomes))
+            count = len(genomes)
+            percentage = (count / total_genomes * 100) if total_genomes > 0 else 0
+            
             html_content += f"""
                     <tr>
                         <td><strong>{gene}</strong></td>
-                        <td>{len(genomes)}</td>
+                        <td class="frequency-cell">
+                            {count} 
+                            <span class="percentage-badge" title="Present in {count} of {total_genomes} genomes">
+                                ({percentage:.1f}%)
+                            </span>
+                        </td>
                         <td>{genome_list}</td>
                     </tr>
 """
@@ -1529,7 +1823,7 @@ class EcoliAbricateExecutor:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper ABRicate v1.0.1
+                Analysis performed using EcoliTyper ABRicate v1.2.0
             </p>
         </div>
     </div>
@@ -1638,9 +1932,13 @@ class EcoliAbricateExecutor:
         # Create database summary files and HTML reports after processing all genomes
         self.create_database_summaries(all_results, output_base)
         
+        # Create master JSON summary
+        master_json_file = self.create_master_json_summary(all_results, output_base)
+        
         self.logger.info("=== E. COLI ANALYSIS COMPLETE ===")
         self.logger.info("Processed %d genomes", len(all_results))
         self.logger.info("Results saved to: %s", output_base)
+        self.logger.info("Master JSON summary: %s", master_json_file)
         
         return all_results
 
@@ -1716,6 +2014,15 @@ Supported FASTA extensions: .fasta, .fa, .fna, .faa
         executor.logger.info("🗃️  DATABASE USAGE SUMMARY")
         executor.logger.info("="*50)
         executor.logger.info("Used databases: %s", ", ".join(executor.required_databases))
+        
+        # JSON summary files
+        executor.logger.info("\n" + "="*50)
+        executor.logger.info("📊 JSON SUMMARY FILES")
+        executor.logger.info("="*50)
+        executor.logger.info("Created per-database JSON summaries:")
+        for db in executor.required_databases:
+            executor.logger.info("  • %s_summary.json", db)
+        executor.logger.info("Created master JSON summary: ecoli_abricate_master_summary.json")
         
         # Performance summary
         executor.logger.info("\n" + "="*50)

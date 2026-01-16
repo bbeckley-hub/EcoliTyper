@@ -39,8 +39,8 @@ setup(
         "Programming Language :: Python :: 3.11",
     ],
     keywords="bioinformatics, ecoli, typing, mlst, serotyping, amr, virulence, genomics",
-    packages=find_packages(include=["ecoliTyper", "ecoliTyper.*"]),
-    python_requires=">=3.8, <3.12",
+    packages=find_packages(),
+    python_requires=">=3.8",
     install_requires=[
         "pandas>=1.5.0",
         "biopython>=1.80", 
@@ -48,8 +48,27 @@ setup(
         "requests>=2.28.0",
         "tqdm>=4.64.0",
         "click>=8.0.0",
-        "tabulate",
+        "tabulate>=0.9.0",
+        "ezclermont>=0.7.0",
+        "cgecore>=1.5.6",
+        # HTML parsing for summary/visualization
+        "beautifulsoup4>=4.11.0",
+        "lxml>=4.9.0",
+        # Visualization
+        "matplotlib>=3.5.0",
+        "seaborn>=0.12.0",
+        "scipy>=1.10.1",
     ],
+    extras_require={
+        'full': [
+            "plotly>=5.10.0",
+            "scipy>=1.9.0",
+        ],
+        'visualization': [
+            "plotly>=5.10.0",
+            "scipy>=1.9.0",
+        ]
+    },
     entry_points={
         "console_scripts": [
             "ecolityper=ecoliTyper.ecolityper:main",
@@ -57,27 +76,7 @@ setup(
     },
     include_package_data=True,
     package_data={
-        "ecoliTyper": [
-            # MLST module
-            "modules/mlst_module/*.py",
-            "modules/mlst_module/db/**/*",
-            "modules/mlst_module/bin/*",
-            "modules/mlst_module/perl5/**/*",
-            "modules/mlst_module/scripts/*",
-            # Serotyping module
-            "modules/serotypefinder_module/*.py", 
-            "modules/serotypefinder_module/serotypefinder_db/**/*",
-            # CH Typing module
-            "modules/CHTyper_module/*.py",
-            "modules/CHTyper_module/chtyper_db/**/*",
-            # Other modules
-            "modules/phylogrouping_module/*.py",
-            "modules/Abricate_module/*.py",
-            "modules/Amrfinder_module/*.py",
-            "modules/Ecoli_lineage/*.py",
-            # Core files
-            "core/*.py",
-        ],
+        '': ['**/*'],  # Include EVERYTHING recursively
     },
     zip_safe=False,
 )

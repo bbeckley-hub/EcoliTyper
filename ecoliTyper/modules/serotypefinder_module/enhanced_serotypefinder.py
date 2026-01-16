@@ -5,7 +5,7 @@ Handles batch processing, automatic directory management, and multi-format repor
 Author: Brown Beckley
 Email: <brownbeckley94@gmail.com>
 Affliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025
+Date: 2025-12-16
 Send a quick mail for any issues or further explanations.
 """
 
@@ -201,6 +201,88 @@ class EnhancedSerotypeFinder:
         
         self.results = results
         return results
+    
+    def generate_json_report(self, output_dir: Path) -> str:
+        """Generate structured JSON report with comprehensive analysis data"""
+        json_report = {
+            "metadata": self.metadata,
+            "analysis_summary": {
+                "total_samples": len(self.results),
+                "successful_analyses": len([r for r in self.results if r['status'] == 'Completed']),
+                "failed_analyses": len([r for r in self.results if r['status'] != 'Completed']),
+                "unique_serotypes_found": len(set([r['serotype'] for r in self.results if r['serotype'] != "Unknown"])),
+                "unique_o_types": len(set([r['o_type'] for r in self.results if r['o_type'] != "Unknown"])),
+                "unique_h_types": len(set([r['h_type'] for r in self.results if r['h_type'] != "Unknown"]))
+            },
+            "serotype_distribution": self._calculate_serotype_distribution(),
+            "detailed_results": self.results,
+            "run_parameters": {
+                "database_path": str(self.db_path),
+                "threads": self.threads,
+                "analysis_timestamp": datetime.now().isoformat()
+            }
+        }
+        
+        json_file = output_dir / "serotype_analysis_report.json"
+        with open(json_file, 'w') as f:
+            json.dump(json_report, f, indent=4, default=str)
+        
+        return str(json_file)
+    
+    def _calculate_serotype_distribution(self) -> Dict[str, Any]:
+        """Calculate distribution statistics for serotypes"""
+        distribution = {
+            "serotype_counts": {},
+            "o_type_counts": {},
+            "h_type_counts": {},
+            "gene_frequency": {}
+        }
+        
+        # Count serotypes
+        for result in self.results:
+            if result['status'] == 'Completed':
+                serotype = result['serotype']
+                o_type = result['o_type']
+                h_type = result['h_type']
+                
+                # Count serotypes
+                distribution["serotype_counts"][serotype] = distribution["serotype_counts"].get(serotype, 0) + 1
+                
+                # Count O-types
+                if o_type != "Unknown":
+                    distribution["o_type_counts"][o_type] = distribution["o_type_counts"].get(o_type, 0) + 1
+                
+                # Count H-types
+                if h_type != "Unknown":
+                    distribution["h_type_counts"][h_type] = distribution["h_type_counts"].get(h_type, 0) + 1
+                
+                # Count gene frequencies
+                for gene in result['genes_found']:
+                    distribution["gene_frequency"][gene] = distribution["gene_frequency"].get(gene, 0) + 1
+        
+        # Sort distributions by frequency
+        distribution["serotype_counts"] = dict(sorted(
+            distribution["serotype_counts"].items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        ))
+        distribution["o_type_counts"] = dict(sorted(
+            distribution["o_type_counts"].items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        ))
+        distribution["h_type_counts"] = dict(sorted(
+            distribution["h_type_counts"].items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        ))
+        distribution["gene_frequency"] = dict(sorted(
+            distribution["gene_frequency"].items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        ))
+        
+        return distribution
     
     def generate_html_report(self, output_dir: Path) -> str:
         """Generate comprehensive HTML report with rotating science quotes"""
@@ -582,6 +664,7 @@ def main():
         
         # Generate reports
         print("\n📊 Generating reports...")
+        json_file = finder.generate_json_report(main_output_dir)
         html_file = finder.generate_html_report(main_output_dir)
         tsv_file = finder.generate_tsv_report(main_output_dir)
         
@@ -592,6 +675,7 @@ def main():
         print("\n✅ Analysis Complete!")
         print(f"📊 Samples processed: {len(results)}")
         print(f"📁 Results directory: {main_output_dir}")
+        print(f"📄 JSON Report: {json_file}")
         print(f"📄 HTML Report: {html_file}")
         print(f"📊 TSV Report: {tsv_file}")
         

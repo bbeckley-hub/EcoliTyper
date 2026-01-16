@@ -18,8 +18,33 @@ import signal
 import threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Set
+import time
+
+# Color definitions - ONLY FOR CONSOLE OUTPUT, NOT FOR HELP TEXT
+class Colors:
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+    
+    # Regular colors
+    RED = "\033[31m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    BLUE = "\033[34m"
+    MAGENTA = "\033[35m"
+    CYAN = "\033[36m"
+    WHITE = "\033[37m"
+    
+    # Bright colors
+    BRIGHT_RED = "\033[91m"
+    BRIGHT_GREEN = "\033[92m"
+    BRIGHT_YELLOW = "\033[93m"
+    BRIGHT_BLUE = "\033[94m"
+    BRIGHT_MAGENTA = "\033[95m"
+    BRIGHT_CYAN = "\033[96m"
+    BRIGHT_WHITE = "\033[97m"
 
 # Import banner
 try:
@@ -38,14 +63,54 @@ class EcoliTyperOrchestrator:
         self.fasta_files = []
         self.interrupted = False
         self.output_lock = threading.Lock()  # Prevent output mixing
+        self.start_time = None
+        self.total_duration = None
+        
+        # Dictionary of HTML files that summary/visualization modules need
+        self.required_html_files = {
+            'mlst': ["mlst_summary.html"],
+            'serotyping': ["serotype_analysis_report.html"],
+            'chtyper': ["chtyper_results.html"],
+            'phylogrouping': ["phylogrouping_results.html"],
+            'abricate': [
+                "ecoli_card_summary_report.html",
+                "ecoli_vfdb_summary_report.html",
+                "ecoli_argannot_summary_report.html",
+                "ecoli_ecoh_summary_report.html",
+                "ecoli_ecoli_vf_summary_report.html",
+                "ecoli_megares_summary_report.html",
+                "ecoli_ncbi_summary_report.html",
+                "ecoli_plasmidfinder_summary_report.html",
+                "ecoli_resfinder_summary_report.html"
+            ],
+            'amrfinder': ["ecoli_amrfinder_summary_report.html"]
+        }
         
         # Setup interrupt handler for automatic cleanup
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
     
+    def _format_duration(self, seconds: float) -> str:
+        """Format duration in human readable format"""
+        if seconds < 60:
+            return f"{seconds:.1f} seconds"
+        elif seconds < 3600:
+            minutes = int(seconds // 60)
+            secs = seconds % 60
+            return f"{minutes} minutes {secs:.0f} seconds"
+        else:
+            hours = int(seconds // 3600)
+            minutes = int((seconds % 3600) // 60)
+            secs = seconds % 60
+            return f"{hours} hours {minutes} minutes {secs:.0f} seconds"
+    
     def _signal_handler(self, signum, frame):
         """Handle interrupt signals with automatic cleanup"""
         self.interrupted = True
+        if self.start_time:
+            self.total_duration = time.time() - self.start_time
+            with self.output_lock:
+                print(f"\n{Colors.BRIGHT_RED}⏱️  Total analysis ran for: {self._format_duration(self.total_duration)}{Colors.RESET}")
         self.banner.display_error(f"Analysis interrupted by user (signal {signum})")
         self.banner.display_info("Starting automatic cleanup...")
         self._emergency_cleanup()
@@ -58,7 +123,8 @@ class EcoliTyperOrchestrator:
             modules = [
                 "mlst_module", "serotypefinder_module", 
                 "CHTyper_module", "phylogrouping_module",
-                "Abricate_module", "Amrfinder_module"
+                "Abricate_module", "Amrfinder_module",
+                "Summary_module", "Visualization_module"  # ADDED
             ]
             
             for module in modules:
@@ -130,11 +196,8 @@ class EcoliTyperOrchestrator:
         return "*"
 
     def cleanup_module_directory(self, module_path: Path, fasta_files: List[Path]):
-        """COMPREHENSIVE cleanup of module directory after analysis"""
+        """COMPREHENSIVE cleanup of module directory after analysis - SILENT VERSION"""
         try:
-            with self.output_lock:
-                self.banner.display_info(f"Cleaning up {module_path.name}...")
-            
             # 1. Remove copied input files
             for fasta_file in fasta_files:
                 temp_file = module_path / fasta_file.name
@@ -145,7 +208,8 @@ class EcoliTyperOrchestrator:
             output_dirs = [
                 "mlst_results", "results", "SerotypeFinder_results",
                 "chtyper_results", "phylogrouping_results",
-                "ecoli_abricate_results", "ecoli_amrfinder_results"
+                "ecoli_abricate_results", "ecoli_amrfinder_results",
+                "GENIUS_ULTIMATE_REPORTS", "ECOLI_VISUALIZATIONS"  
             ]
             for output_dir in output_dirs:
                 dir_path = module_path / output_dir
@@ -157,14 +221,11 @@ class EcoliTyperOrchestrator:
             for pattern in temp_patterns:
                 for temp_file in module_path.glob(pattern):
                     if temp_file.is_file():
-                        temp_file.unlink()
-            
-            with self.output_lock:
-                self.banner.display_success(f"✅ {module_path.name} cleaned up successfully")
+                        temp_file.unlink()            
             
         except Exception as e:
             with self.output_lock:
-                self.banner.display_warning(f"⚠️  Partial cleanup issue in {module_path.name}: {str(e)}")
+                self.banner.display_warning(f"⚠️  Partial cleanup issue in {module_path.name}: {str(e)}")    
 
     def run_mlst_analysis(self, fasta_files: List[Path], output_dir: Path, threads: int) -> bool:
         """Run MLST analysis - PRODUCTION VERSION"""
@@ -631,6 +692,192 @@ class EcoliTyperOrchestrator:
             # ALWAYS cleanup, even if analysis fails
             self.cleanup_module_directory(amr_module_path, fasta_files)
 
+    def copy_html_files_to_module(self, module_path: Path, output_dir: Path) -> int:
+        """Copy required HTML files from analysis results to module directory"""
+        files_copied = 0
+        
+        for module_name, html_files in self.required_html_files.items():
+            result_dir = output_dir / f"{module_name}_results"
+            
+            if result_dir.exists():
+                for html_file in html_files:
+                    source_file = result_dir / html_file
+                    if source_file.exists():
+                        target_file = module_path / html_file
+                        shutil.copy2(source_file, target_file)
+                        files_copied += 1
+                    else:
+                        # Try to find any matching HTML file
+                        for actual_file in result_dir.glob("*.html"):
+                            if html_file.lower() in actual_file.name.lower():
+                                target_file = module_path / html_file
+                                shutil.copy2(actual_file, target_file)
+                                files_copied += 1
+                                break
+        
+        return files_copied
+
+    def run_summary_analysis(self, output_dir: Path) -> bool:
+        """Run summary report generation"""
+        summary_module_path = self.base_dir / "modules" / "Summary_module"
+        
+        try:
+            with self.output_lock:
+                self.banner.start_analysis_timer("summary")
+                self.banner.display_module_header("Summary Report", "Comprehensive analysis summary reports")
+            
+            summary_script = summary_module_path / "genius_reporter.py"
+            
+            if not summary_script.exists():
+                with self.output_lock:
+                    self.banner.display_error(f"Summary script not found at: {summary_script}")
+                return False
+            
+            # Clean up any existing HTML files in the summary module
+            for html_file in summary_module_path.glob("*.html"):
+                if html_file.is_file():
+                    html_file.unlink()
+            
+            # Copy HTML files from analysis results to the summary module
+            with self.output_lock:
+                self.banner.display_info("Copying HTML files from analysis results to summary module...")
+            
+            files_copied = self.copy_html_files_to_module(summary_module_path, output_dir)
+            
+            with self.output_lock:
+                if files_copied > 0:
+                    self.banner.display_success(f"Copied {files_copied} HTML files to summary module")
+                else:
+                    self.banner.display_warning("No HTML files found to copy to summary module")
+            
+            # Build command
+            cmd = [
+                sys.executable, str(summary_script),
+                "-i", "."
+            ]
+            
+            with self.output_lock:
+                self.banner.display_info("Running summary report generation...")
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=summary_module_path)
+            
+            if result.returncode == 0:
+                with self.output_lock:
+                    self.banner.stop_analysis_timer("summary")
+                    self.banner.display_success("Summary report generation completed!")
+                
+                # Copy results to output directory
+                summary_target = output_dir / "summary_results"
+                if summary_target.exists():
+                    shutil.rmtree(summary_target)
+                summary_target.mkdir(parents=True)
+                
+                # Copy the GENIUS_ULTIMATE_REPORTS folder
+                summary_source_dir = summary_module_path / "GENIUS_ULTIMATE_REPORTS"
+                if summary_source_dir.exists():
+                    shutil.copytree(summary_source_dir, summary_target / "GENIUS_ULTIMATE_REPORTS")
+                    with self.output_lock:
+                        self.banner.display_success(f"Summary reports folder copied to: {summary_target}")
+                else:
+                    with self.output_lock:
+                        self.banner.display_warning("Summary module did not create GENIUS_ULTIMATE_REPORTS folder")
+                
+                return True
+            else:
+                with self.output_lock:
+                    self.banner.display_warning("Summary report generation had warnings")
+                    if result.stderr:
+                        self.banner.display_info(f"Summary stderr: {result.stderr[:500]}...")
+                return True
+                
+        except Exception as e:
+            with self.output_lock:
+                self.banner.display_error(f"Summary report generation failed: {str(e)}")
+            return False
+        finally:
+            # Clean up the summary module directory
+            self.cleanup_module_directory(summary_module_path, [])
+
+    def run_visualization_analysis(self, output_dir: Path) -> bool:
+        """Run visualization generation"""
+        visualization_module_path = self.base_dir / "modules" / "Visualization_module"
+        
+        try:
+            with self.output_lock:
+                self.banner.start_analysis_timer("visualization")
+                self.banner.display_module_header("Visualization", "Analysis visualizations and charts")
+            
+            visualization_script = visualization_module_path / "visualization_reporter.py"
+            
+            if not visualization_script.exists():
+                with self.output_lock:
+                    self.banner.display_error(f"Visualization script not found at: {visualization_script}")
+                return False
+            
+            # Clean up any existing HTML files in the visualization module
+            for html_file in visualization_module_path.glob("*.html"):
+                if html_file.is_file():
+                    html_file.unlink()
+            
+            # Copy HTML files from analysis results to the visualization module
+            with self.output_lock:
+                self.banner.display_info("Copying HTML files from analysis results to visualization module...")
+            
+            files_copied = self.copy_html_files_to_module(visualization_module_path, output_dir)
+            
+            with self.output_lock:
+                if files_copied > 0:
+                    self.banner.display_success(f"Copied {files_copied} HTML files to visualization module")
+                else:
+                    self.banner.display_warning("No HTML files found to copy to visualization module")
+            
+            # Build command
+            cmd = [
+                sys.executable, str(visualization_script)
+            ]
+            
+            with self.output_lock:
+                self.banner.display_info("Running visualization generation...")
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=visualization_module_path)
+            
+            if result.returncode == 0:
+                with self.output_lock:
+                    self.banner.stop_analysis_timer("visualization")
+                    self.banner.display_success("Visualization generation completed!")
+                
+                # Copy results to output directory
+                visualization_target = output_dir / "visualization_results"
+                if visualization_target.exists():
+                    shutil.rmtree(visualization_target)
+                visualization_target.mkdir(parents=True)
+                
+                # Copy the ECOLI_VISUALIZATIONS folder
+                viz_source_dir = visualization_module_path / "ECOLI_VISUALIZATIONS"
+                if viz_source_dir.exists():
+                    shutil.copytree(viz_source_dir, visualization_target / "ECOLI_VISUALIZATIONS")
+                    with self.output_lock:
+                        self.banner.display_success(f"Visualizations folder copied to: {visualization_target}")
+                else:
+                    with self.output_lock:
+                        self.banner.display_warning("Visualization module did not create ECOLI_VISUALIZATIONS folder")
+                
+                return True
+            else:
+                with self.output_lock:
+                    self.banner.display_warning("Visualization generation had warnings")
+                    if result.stderr:
+                        self.banner.display_info(f"Visualization stderr: {result.stderr[:500]}...")
+                return True
+                
+        except Exception as e:
+            with self.output_lock:
+                self.banner.display_error(f"Visualization generation failed: {str(e)}")
+            return False
+        finally:
+            # Clean up the visualization module directory
+            self.cleanup_module_directory(visualization_module_path, [])
+
     def run_lineage_analysis(self, output_dir: Path) -> bool:
         """Run lineage database generation"""
         try:
@@ -687,7 +934,7 @@ class EcoliTyperOrchestrator:
     def run_parallel_analyses(self, fasta_files: List[Path], output_dir: Path, threads: int, 
                             skip_modules: Dict[str, bool]) -> Dict[str, bool]:
         """Run analyses in parallel with synchronized output"""
-        # Regular analyses (run in parallel)
+        # Regular analyses (run in parallel) - EXCLUDE AMRFINDER (runs sequentially after)
         analysis_functions = [
             (self.run_mlst_analysis, "MLST", not skip_modules.get('mlst', False)),
             (self.run_serotyping_analysis, "Serotyping", not skip_modules.get('serotyping', False)),
@@ -727,9 +974,9 @@ class EcoliTyperOrchestrator:
                     
                     with self.output_lock:
                         if success:
-                            self.banner.display_success(f"✅ {analysis_name} completed")
+                            self.banner.display_success(f"✅ {analysis_name} completed successfully!")
                         else:
-                            self.banner.display_error(f"❌ {analysis_name} failed")
+                            self.banner.display_warning(f"⚠️  {analysis_name} completed with issues")
                         
                 except Exception as e:
                     with self.output_lock:
@@ -744,7 +991,7 @@ class EcoliTyperOrchestrator:
         if skip_modules is None:
             skip_modules = {}
         
-        start_time = datetime.now()
+        self.start_time = time.time()
         
         try:
             # Display beautiful startup sequence
@@ -770,7 +1017,8 @@ class EcoliTyperOrchestrator:
             # Create output structure
             subdirs = [
                 "mlst_results", "serotyping_results", "chtyper_results",
-                "phylogrouping_results", "abricate_results", "amrfinder_results", "lineage_results"
+                "phylogrouping_results", "abricate_results", "amrfinder_results", 
+                "lineage_results", "summary_results", "visualization_results"
             ]
             for subdir in subdirs:
                 (output_path / subdir).mkdir(exist_ok=True)
@@ -784,17 +1032,19 @@ class EcoliTyperOrchestrator:
                 ("Phylogrouping", not skip_modules.get('phylogrouping', False)),
                 ("ABRicate", not skip_modules.get('abricate', False)),
                 ("AMRfinderPlus", not skip_modules.get('amrfinder', False)),
-                ("Lineage Reference", not skip_modules.get('lineage', False))
+                ("Lineage Reference", not skip_modules.get('lineage', False)),
+                ("Summary Reports", not skip_modules.get('summary', False)),
+                ("Visualizations", not skip_modules.get('visualization', False))
             ]
             
             for analysis, enabled in analyses_to_run:
                 status = "✅ ENABLED" if enabled else "⏸️  SKIPPED"
                 print(f"   {status} - {analysis}")
             
-            # Run main analyses in parallel (except AMRfinder)
+            # Run main analyses in parallel (except AMRfinder) - OLD WORKING LOGIC
             analysis_results = self.run_parallel_analyses(self.fasta_files, output_path, threads, skip_modules)
             
-            # Run AMRfinderPlus analysis LAST (always sequential due to resource usage)
+            # Run AMRfinderPlus analysis LAST (always sequential due to resource usage) - OLD WORKING LOGIC
             if not skip_modules.get('amrfinder', False) and not self.interrupted:
                 amr_success = self.run_amrfinder_analysis(self.fasta_files, output_path, threads)
                 analysis_results["AMRfinderPlus"] = amr_success
@@ -804,15 +1054,27 @@ class EcoliTyperOrchestrator:
                 lineage_success = self.run_lineage_analysis(output_path)
                 analysis_results["Lineage Reference"] = lineage_success
             
-            # Display beautiful completion footer
+            # Run summary analysis if not skipped
+            if not skip_modules.get('summary', False) and not self.interrupted:
+                summary_success = self.run_summary_analysis(output_path)
+                analysis_results["Summary Reports"] = summary_success
+            
+            # Run visualization analysis if not skipped
+            if not skip_modules.get('visualization', False) and not self.interrupted:
+                visualization_success = self.run_visualization_analysis(output_path)
+                analysis_results["Visualizations"] = visualization_success
+            
+            # Calculate total duration
+            self.total_duration = time.time() - self.start_time
+            
+            # Display beautiful completion footer with total time
             successful_count = sum(analysis_results.values())
             total_count = len(analysis_results)
             
-            self.banner.display_footer(samples_processed=len(self.fasta_files))
-            
-            # ADDED: Display citation request and random footer message
-            self.banner.display_citation_request()
-            self.banner.display_random_footer()
+            self.banner.display_footer(
+                analysis_time=self._format_duration(self.total_duration),
+                samples_processed=len(self.fasta_files)
+            )
             
             # Final status
             if successful_count == total_count:
@@ -831,21 +1093,32 @@ class EcoliTyperOrchestrator:
             import traceback
             traceback.print_exc()
 
+def display_help_banner():
+    """Display a clean, formatted help banner without colors interfering"""
+    print("=" * 100)
+    print("🧬 EcoliTyper: Complete E. coli Typing Pipeline 🧬")
+    print("=" * 100)
+    print()
+
 def main():
     """Main entry point for EcoliTyper"""
+    # Show clean banner for help
+    if '-h' in sys.argv or '--help' in sys.argv:
+        display_help_banner()
+    
     parser = argparse.ArgumentParser(
-        description="EcoliTyper: Complete E. coli Typing Pipeline",
+        description='EcoliTyper: Complete E. coli Typing Pipeline',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
+EXAMPLES:
   ecolityper -i genome.fna -o results/
   ecolityper -i "*.fna" -o batch_results --threads 8
   ecolityper -i "*.fasta" -o analysis --threads 16 --skip-lineage
   ecolityper -i "genome*.fa" -o results/ --threads 4
 
-Supported FASTA formats: .fna, .fasta, .fa, .fsa
+SUPPORTED FASTA FORMATS: .fna, .fasta, .fa, .fsa
 
-Analysis Modules:
+ANALYSIS MODULES:
   • MLST (Multi-Locus Sequence Typing)
   • Serotyping (O and H antigen determination)
   • CH Typing (FumC and FimH typing)  
@@ -853,38 +1126,53 @@ Analysis Modules:
   • ABRicate (Resistance/Virulence/Plasmid screening)
   • AMRfinderPlus (NCBI AMR gene detection) 
   • Lineage reference database
+  • Summary Reports (HTML summary reports)           
+  • Visualizations (Charts and visualizations)       
 
+PRIOR SETUP REQUIRED:
+  • abricate --setupdb
 
-  Please run the following commands prior to analysis:
-  • amrfinder -u (For database update)
-  • abricate --setupdb (For latest database)
+OUTPUT:
+  Comprehensive results for all analyses in organized directories
 
-Output: Comprehensive results for all analyses in organized directories
-        """
+CONTACT:
+  Brown Beckley <brownbeckley94@gmail.com>
+  University of Ghana Medical School - Department of Medical Biochemistry
+
+  Drop a Star On Github If You Find This Tool Useful!!!
+"""
     )
     
+    # Required arguments
     parser.add_argument('-i', '--input', required=True,
                        help='Input FASTA file(s) - can use glob patterns like "*.fna" or "*.fasta"')
     parser.add_argument('-o', '--output', required=True,
                        help='Output directory for all results')
+    
+    # Optional arguments
     parser.add_argument('-t', '--threads', type=int, default=2,
                        help='Number of threads (default: 2)')
     
     # Skip options
-    parser.add_argument('--skip-amrfinder', action='store_true', 
-                       help='Skip AMRfinderPlus analysis')
-    parser.add_argument('--skip-abricate', action='store_true',
-                       help='Skip ABRicate analysis')
-    parser.add_argument('--skip-mlst', action='store_true',
-                       help='Skip MLST analysis')
-    parser.add_argument('--skip-serotyping', action='store_true',
-                       help='Skip serotyping analysis')
-    parser.add_argument('--skip-chtyper', action='store_true',
-                       help='Skip CH typing analysis')
-    parser.add_argument('--skip-phylogrouping', action='store_true',
-                       help='Skip phylogrouping analysis')
-    parser.add_argument('--skip-lineage', action='store_true',
-                       help='Skip lineage reference generation')
+    skip_group = parser.add_argument_group('Skip Options (disable specific analyses)')
+    skip_group.add_argument('--skip-amrfinder', action='store_true', 
+                           help='Skip AMRfinderPlus analysis')
+    skip_group.add_argument('--skip-abricate', action='store_true',
+                           help='Skip ABRicate analysis')
+    skip_group.add_argument('--skip-mlst', action='store_true',
+                           help='Skip MLST analysis')
+    skip_group.add_argument('--skip-serotyping', action='store_true',
+                           help='Skip serotyping analysis')
+    skip_group.add_argument('--skip-chtyper', action='store_true',
+                           help='Skip CH typing analysis')
+    skip_group.add_argument('--skip-phylogrouping', action='store_true',
+                           help='Skip phylogrouping analysis')
+    skip_group.add_argument('--skip-lineage', action='store_true',
+                           help='Skip lineage reference generation')
+    skip_group.add_argument('--skip-summary', action='store_true',
+                           help='Skip summary report generation')
+    skip_group.add_argument('--skip-visualization', action='store_true',
+                           help='Skip visualization generation')
     
     args = parser.parse_args()
     
@@ -896,7 +1184,9 @@ Output: Comprehensive results for all analyses in organized directories
         'serotyping': args.skip_serotyping,
         'chtyper': args.skip_chtyper,
         'phylogrouping': args.skip_phylogrouping,
-        'lineage': args.skip_lineage
+        'lineage': args.skip_lineage,
+        'summary': args.skip_summary,
+        'visualization': args.skip_visualization
     }
     
     # Create and run EcoliTyper
@@ -910,9 +1200,9 @@ Output: Comprehensive results for all analyses in organized directories
             skip_modules=skip_modules
         )
     except KeyboardInterrupt:
-        print("\n❌ Analysis interrupted by user - automatic cleanup completed")
+        print(f"\n{Colors.BRIGHT_RED}❌ Analysis interrupted by user - automatic cleanup completed{Colors.RESET}")
     except Exception as e:
-        print(f"\n💥 Critical error: {e}")
+        print(f"\n{Colors.BRIGHT_RED}💥 Critical error: {e}{Colors.RESET}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

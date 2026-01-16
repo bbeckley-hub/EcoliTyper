@@ -25,3 +25,35 @@ recursive-include ecoliTyper/core *.py
 include ecoliTyper/*.py
 include ecoliTyper/core/*.py
 include ecoliTyper/modules/*/*.py
+# MANIFEST.in
+include LICENSE
+include README.md
+include requirements.txt
+include pyproject.toml
+
+# Include all Python files
+recursive-include ecoliTyper *.py
+
+# Include all data files
+recursive-include ecoliTyper/modules *.fa
+recursive-include ecoliTyper/modules *.fna
+recursive-include ecoliTyper/modules *.fasta
+recursive-include ecoliTyper/modules *.tsv
+recursive-include ecoliTyper/modules *.csv
+recursive-include ecoliTyper/modules *.txt
+recursive-include ecoliTyper/modules *.json
+recursive-include ecoliTyper/modules *.html
+recursive-include ecoliTyper/modules *.db
+recursive-include ecoliTyper/modules *.sh
+recursive-include ecoliTyper/modules *.pl
+recursive-include ecoliTyper/modules *.R
+
+# Include all executables
+recursive-include ecoliTyper/modules/Amrfinder_module/bin *
+recursive-include ecoliTyper/modules/Amrfinder_module/data *
+recursive-include ecoliTyper/modules/mlst_module/bin *
+recursive-include ecoliTyper/modules/mlst_module/db *
+recursive-include ecoliTyper/modules/mlst_module/perl5 *
+recursive-include ecoliTyper/modules/mlst_module/scripts *
+recursive-include ecoliTyper/modules/serotypefinder_module/serotypefinder_db *
+recursive-include ecoliTyper/modules/CHTyper_module/chtyper_db *

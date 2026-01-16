@@ -4,7 +4,7 @@ EcoliTyper Module for MLST Analysis of E. coli
 Comprehensive MLST analysis with beautiful HTML reporting
 Author: Beckley Brown <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025
+Date: 2025-12-16
 Send a quick mail for any issues or further explanations.
 """
 
@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import pandas as pd
 from datetime import datetime
+from collections import Counter
 
 class EcoliTyper:
     def __init__(self, database_dir: Path, script_dir: Path):
@@ -481,7 +482,114 @@ Detailed Alleles:
         # Create HTML summary
         self.create_mlst_html_summary(all_results, output_dir)
         
+        # Create JSON summary
+        self.create_mlst_json_summary(all_results, output_dir)
+        
         print("✅ MLST summary files created successfully!")
+
+    def create_mlst_json_summary(self, all_results: Dict[str, Dict], output_dir: Path) -> str:
+        """Generate structured JSON summary report"""
+        
+        # Calculate summary statistics
+        total_samples = len(all_results)
+        successful_samples = len([r for r in all_results.values() if r['st'] not in ['ND', 'UNKNOWN', '-']])
+        
+        # Count ST distribution
+        st_distribution = {}
+        for result in all_results.values():
+            st = result['st']
+            if st not in ['ND', 'UNKNOWN', '-']:
+                st_distribution[st] = st_distribution.get(st, 0) + 1
+        
+        # Sort distribution by frequency
+        st_distribution = dict(sorted(
+            st_distribution.items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        ))
+        
+        # Get unique STs and alleles
+        unique_sts = list(st_distribution.keys())
+        
+        # Count allele frequencies for each gene
+        allele_frequencies = {}
+        for result in all_results.values():
+            for gene, allele in result['alleles'].items():
+                if gene not in allele_frequencies:
+                    allele_frequencies[gene] = {}
+                allele_frequencies[gene][allele] = allele_frequencies[gene].get(allele, 0) + 1
+        
+        # Sort allele frequencies
+        for gene in allele_frequencies:
+            allele_frequencies[gene] = dict(sorted(
+                allele_frequencies[gene].items(),
+                key=lambda x: x[1],
+                reverse=True
+            ))
+        
+        # Get all genes in the scheme
+        all_genes = set()
+        for result in all_results.values():
+            all_genes.update(result['alleles'].keys())
+        
+        # Prepare detailed results
+        detailed_results = []
+        for sample_name, result in all_results.items():
+            detailed_results.append({
+                "sample_id": sample_name,
+                "sequence_type": f"ST{result['st']}",
+                "st": result['st'],
+                "allele_profile": result['allele_profile'],
+                "confidence": result['confidence'],
+                "alleles": result['alleles'],
+                "file_name": sample_name
+            })
+        
+        # Build comprehensive JSON report
+        json_report = {
+            "metadata": {
+                **self.metadata,
+                "analysis_type": "MLST",
+                "mlst_scheme": "ecoli_achtman_4",
+                "database_directory": str(self.database_dir),
+                "total_files_analyzed": total_samples
+            },
+            "analysis_summary": {
+                "total_samples": total_samples,
+                "successful_typing": successful_samples,
+                "success_rate": round(successful_samples / total_samples * 100, 2) if total_samples > 0 else 0,
+                "unique_sequence_types": len(unique_sts),
+                "most_common_st": list(st_distribution.items())[0][0] if st_distribution else "None",
+                "st_distribution": st_distribution
+            },
+            "mlst_scheme_info": {
+                "name": "ecoli_achtman_4",
+                "description": "Escherichia coli MLST scheme based on 7 housekeeping genes",
+                "reference": "Wirth T, Falush D, Lan R, et al. Sex and virulence in Escherichia coli: an evolutionary perspective. Mol Microbiol. 2006;60(5):1136-51.",
+                "genes": list(all_genes)
+            },
+            "allele_statistics": {
+                "gene_count": len(all_genes),
+                "allele_frequencies": allele_frequencies,
+                "most_common_alleles": {
+                    gene: list(freq.items())[0][0] if freq else "None"
+                    for gene, freq in allele_frequencies.items()
+                }
+            },
+            "detailed_results": detailed_results,
+            "quality_metrics": {
+                "high_confidence_samples": len([r for r in all_results.values() if r['confidence'] == 'HIGH']),
+                "low_confidence_samples": len([r for r in all_results.values() if r['confidence'] == 'LOW']),
+                "failed_samples": total_samples - successful_samples
+            }
+        }
+        
+        json_file = output_dir / "mlst_summary.json"
+        with open(json_file, 'w') as f:
+            json.dump(json_report, f, indent=4, default=str)
+        
+        print(f"📄 JSON summary created: {json_file}")
+        return str(json_file)
 
     def create_mlst_tsv_summary(self, all_results: Dict[str, Dict], output_dir: Path):
         """Create TSV summary file with all samples"""
@@ -522,6 +630,11 @@ Detailed Alleles:
         for result in all_results.values():
             all_genes.update(result['alleles'].keys())
         sorted_genes = sorted(all_genes)
+        
+        # Count ST distribution for statistics
+        st_counts = Counter()
+        for result in all_results.values():
+            st_counts[result['st']] += 1
         
         # JavaScript for rotating quotes
         quotes_js = f"""
@@ -670,6 +783,16 @@ Detailed Alleles:
             padding-bottom: 10px;
             margin-bottom: 20px;
         }}
+        
+        .st-badge {{
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin: 2px;
+            font-size: 0.9em;
+        }}
     </style>
     {quotes_js}
 </head>
@@ -692,13 +815,29 @@ Detailed Alleles:
                     <div>Samples Processed</div>
                 </div>
                 <div class="stat-card">
-                    <div style="font-size: 2em; font-weight: bold;">{len(set(result['st'] for result in all_results.values()))}</div>
+                    <div style="font-size: 2em; font-weight: bold;">{len(st_counts)}</div>
                     <div>Unique STs</div>
                 </div>
                 <div class="stat-card">
                     <div style="font-size: 2em; font-weight: bold;">{len(sorted_genes)}</div>
                     <div>MLST Genes</div>
                 </div>
+                <div class="stat-card">
+                    <div style="font-size: 2em; font-weight: bold;">{len([r for r in all_results.values() if r['confidence'] == 'HIGH'])}</div>
+                    <div>High Confidence</div>
+                </div>
+            </div>
+            
+            <h3>🧬 Sequence Type Distribution</h3>
+            <div style="margin: 15px 0;">
+'''
+        
+        # Add ST badges with counts
+        for st, count in sorted(st_counts.items(), key=lambda x: x[1], reverse=True):
+            if st not in ['ND', 'UNKNOWN', '-']:
+                html_content += f'<span class="st-badge">ST{st} ({count})</span>'
+        
+        html_content += '''
             </div>
         </div>
         
@@ -711,6 +850,7 @@ Detailed Alleles:
                             <th>Sample</th>
                             <th>ST</th>
                             <th>Allele Profile</th>
+                            <th>Confidence</th>
 '''
         
         # Add gene headers
@@ -724,10 +864,12 @@ Detailed Alleles:
         
         # Add data rows
         for sample_name, result in all_results.items():
+            confidence_class = "confidence-high" if result['confidence'] == 'HIGH' else "confidence-low"
             html_content += f'''                        <tr>
                             <td><strong>{sample_name}</strong></td>
                             <td class="st-cell">ST{result['st']}</td>
                             <td>{result['allele_profile']}</td>
+                            <td class="{confidence_class}">{result['confidence']}</td>
 '''
             
             # Add allele values for each gene

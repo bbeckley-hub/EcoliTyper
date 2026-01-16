@@ -5,7 +5,7 @@ E. coli phylogrouping using ezClermont with beautiful reporting
 Author: Brown Beckley
 Email: <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025
+Date: 2025-12-16
 Send a quick mail for any issues or further explanations.
 """
 
@@ -318,6 +318,98 @@ class EnhancedEzClermont:
         self.results = results
         return results
     
+    def generate_json_report(self, output_dir: Path) -> str:
+        """Generate structured JSON summary report"""
+        # Calculate summary statistics
+        successful = len([r for r in self.results if r['status'] == 'Completed'])
+        failed = len([r for r in self.results if r['status'].startswith('Error')])
+        
+        # Count Clermont type distribution
+        clermont_distribution = {}
+        for result in self.results:
+            if result['status'] == 'Completed' and result['clermont_type'] != 'Unknown':
+                clermont_type = result['clermont_type']
+                clermont_distribution[clermont_type] = clermont_distribution.get(clermont_type, 0) + 1
+        
+        # Sort distribution by count
+        clermont_distribution = dict(sorted(
+            clermont_distribution.items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        ))
+        
+        # Count marker frequencies
+        marker_results = {
+            "tspe4": {"+": 0, "-": 0, "Unknown": 0},
+            "arpa": {"+": 0, "-": 0, "Unknown": 0},
+            "chu": {"+": 0, "-": 0, "Unknown": 0},
+            "yjaa": {"+": 0, "-": 0, "Unknown": 0}
+        }
+        
+        for result in self.results:
+            if result['status'] == 'Completed':
+                for marker in marker_results.keys():
+                    marker_value = result.get(marker, "Unknown")
+                    marker_results[marker][marker_value] = marker_results[marker].get(marker_value, 0) + 1
+        
+        # Create simplified results list
+        simplified_results = []
+        for result in self.results:
+            simplified_results.append({
+                "sample_id": result["sample_id"],
+                "clermont_type": result["clermont_type"],
+                "status": result["status"],
+                "file_path": result["file_path"],
+                "markers": {
+                    "tspe4": result["tspe4"],
+                    "arpa": result["arpa"],
+                    "chu": result["chu"],
+                    "yjaa": result["yjaa"]
+                }
+            })
+        
+        # Build comprehensive JSON report
+        json_report = {
+            "metadata": {
+                **self.metadata,
+                "ezclermont_path": self.ezclermont_path,
+                "threads_used": self.threads
+            },
+            "analysis_summary": {
+                "total_samples": len(self.results),
+                "successful_analyses": successful,
+                "failed_analyses": failed,
+                "success_rate": round(successful / len(self.results) * 100, 1) if len(self.results) > 0 else 0,
+                "unique_clermont_types": len(clermont_distribution),
+                "clermont_type_distribution": clermont_distribution
+            },
+            "marker_summary": marker_results,
+            "clermont_type_descriptions": {
+                "A": "Phylogroup A: Typically commensal strains",
+                "B1": "Phylogroup B1: Often associated with environmental strains",
+                "B2": "Phylogroup B2: Frequently contains extra-intestinal pathogenic E. coli (ExPEC)",
+                "C": "Phylogroup C: Intermediate between B2 and D",
+                "D": "Phylogroup D: Contains many pathogenic strains including uropathogenic E. coli",
+                "E": "Phylogroup E: Recently identified group, often associated with specific pathotypes",
+                "F": "Phylogroup F: Associated with certain pathogenic strains",
+                "G": "Phylogroup G: Newly identified group with distinct characteristics",
+                "Unknown": "Could not be classified into known Clermont phylogroups"
+            },
+            "detailed_results": simplified_results,
+            "analysis_notes": {
+                "method": "Clermont phylotyping based on chuA, yjaA, TspE4.C2, and arpA genes",
+                "algorithm": "Original Clermont algorithm (2000, 2013)",
+                "reference": "Clermont O, Christenson JK, Denamur E, Gordon DM. The Clermont Escherichia coli phylo-typing method revisited: improvement of specificity and detection of new phylo-groups. Environ Microbiol Rep. 2013;5(1):58-65.",
+                "version": "ezClermont V0.7.0"
+            }
+        }
+        
+        json_file = output_dir / "phylogrouping_results.json"
+        with open(json_file, 'w') as f:
+            json.dump(json_report, f, indent=4, default=str)
+        
+        return str(json_file)
+    
     def generate_html_report(self, output_dir: Path) -> str:
         """Generate comprehensive HTML report with rotating science quotes"""
         # JavaScript for rotating quotes
@@ -627,6 +719,7 @@ def main():
         
         # Generate reports
         print("\n📊 Generating reports...")
+        json_file = finder.generate_json_report(main_output_dir)
         html_file = finder.generate_html_report(main_output_dir)
         tsv_file = finder.generate_tsv_report(main_output_dir)
         
@@ -634,6 +727,7 @@ def main():
         print("\n✅ Analysis Complete!")
         print(f"📊 Samples processed: {len(results)}")
         print(f"📁 Results directory: {main_output_dir}")
+        print(f"📄 JSON Summary: {json_file}")
         print(f"📄 HTML Report: {html_file}")
         print(f"📊 TSV Report: {tsv_file}")
         

@@ -5,7 +5,7 @@ Complete E. coli sequence types, serotypes, phylogroups, pathotypes and referenc
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
 Scientific Review: Based on current literature and established typing schemes
-Date: 2025
+Date: 2025-09-13
 Send a quick mail for any issues or further explanations.
 """
 

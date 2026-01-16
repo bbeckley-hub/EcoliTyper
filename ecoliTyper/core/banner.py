@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-EcoliTyper Banner Module
-Beautiful ASCII art and scientific quotes for terminal display
+EcoliTyper Banner Module - FIXED VERSION
+Beautiful ASCII art and scientific quotes for terminal display - StaphScope Style
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
 Date: 2025
@@ -17,52 +17,34 @@ import os
 import shutil
 
 class EcoliTyperBanner:
-    """EcoliTyper Banner Display with Scientific Quotes and Time Tracking"""
+    """EcoliTyper Banner Display with Scientific Quotes"""
     
     def __init__(self):
         self.banner_art = self._get_banner_art()
         self.quotes = self._get_scientific_quotes()
-        self.footer_messages = self._get_footer_messages()
         self.version = "v1.0.0"
         self.author_info = self._get_author_info()
-        self.analysis_times = {}  # Track analysis times
+        self.terminal_width = self._get_terminal_width()
+        self.analysis_times = {}  # For timing functions
     
-    def _get_optimal_width(self, content_type="general"):
-        """Get optimal width based on content type"""
+    def _get_terminal_width(self):
+        """Get terminal width, default to 88 if cannot determine"""
         try:
-            terminal_width = shutil.get_terminal_size().columns
-            
-            if content_type == "quote":
-                return min(max(90, terminal_width - 20), 110)
-            elif content_type == "author":
-                return min(max(85, terminal_width - 25), 100)
-            elif content_type == "footer":
-                return min(max(95, terminal_width - 15), 120)
-            elif content_type == "citation":
-                return min(max(80, terminal_width - 20), 100)
-            else:
-                return 80
+            return min(100, shutil.get_terminal_size().columns - 2)
         except:
-            return {
-                "quote": 100,
-                "author": 90, 
-                "footer": 100,
-                "citation": 85,
-                "general": 80
-            }[content_type]
+            return 88
     
     def _get_banner_art(self):
         """Return the main EcoliTyper ASCII art"""
         return r"""
-    ███████╗ ██████╗ ██████╗ ██╗     ██╗████████╗██╗   ██╗██████╗ ███████╗██████╗ 
+    ███████╗ ██████╗ ██████╗ ██╗     ██╗████████╗██║   ██╗██████╗ ███████╗██████╗ 
     ██╔════╝██╔════╝██╔═══██╗██║     ██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
     ██████╗ ██║     ██║   ██║██║     ██║   ██║    ╚████╔╝ ██████╔╝█████╗  ██████╔╝
     ██╔══╝  ██║     ██║   ██║██║     ██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗
     ███████╗╚██████╗╚██████╔╝███████╗██║   ██║      ██║   ██║     ███████╗██║  ██║
     ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
     
-        🧫 Comprehensive E. coli Typing: MLST • Serotyping • CH Typing • Phylogrouping • Resistance Gene Profiling 
-                                       • Virulence & Plasmid Profiling • Lineage Db • AMR Screening
+        🧫 Comprehensive Escherichia coli Typing & Surveillance Platform
     """
     
     def _get_scientific_quotes(self):
@@ -109,21 +91,6 @@ class EcoliTyperBanner:
                 "author": "AMR Research"
             }
         ]
-
-    def _get_footer_messages(self):
-        """Return collection of footer messages about E. coli genomics"""
-        return [
-            "🔬 Advancing E. coli genomics research to combat antimicrobial resistance worldwide.",
-            "🌍 Contributing to global AMR surveillance through comprehensive E. coli typing.",
-            "💡 Harnessing genomic data for better understanding of E. coli epidemiology.",
-            "🦠 Bridging genomics and clinical practice in infectious disease management.",
-            "🧪 Pioneering open-source tools for accessible bacterial genomics research.",
-            "📊 Transforming raw sequences into actionable public health intelligence.",
-            "🔍 Uncovering the hidden stories within E. coli genomes for better outcomes.",
-            "💊 Fighting antimicrobial resistance one genome at a time through precise typing.",
-            "🧬 Decoding E. coli diversity to improve global health security.",
-            "⚕️ From sequence to insight: Advancing clinical microbiology through genomics."
-        ]
     
     def _get_author_info(self):
         """Return author information"""
@@ -147,40 +114,135 @@ class EcoliTyperBanner:
             WHITE = '\033[97m'
             BOLD = '\033[1m'
             UNDERLINE = '\033[4m'
+            DIM = '\033[2m'
             END = '\033[0m'
+            # Extended colors
+            LIGHT_BLUE = '\033[38;5;117m'
+            LIGHT_GREEN = '\033[38;5;120m'
+            LIGHT_YELLOW = '\033[38;5;228m'
+            ORANGE = '\033[38;5;214m'
+            PURPLE = '\033[38;5;141m'
+            PINK = '\033[38;5;213m'
         return Colors
     
-    def _create_box(self, width, char='═', corner_left='╔', corner_right='╗'):
-        """Create a horizontal box line"""
-        return f"{corner_left}{char * (width - 2)}{corner_right}"
-    
-    def _create_text_line(self, text, width, color=None, align='left', padding=2):
-        """Create a text line within the box"""
+    def display_banner(self, show_quote=True, show_author=True):
+        """Display the main EcoliTyper banner"""
         C = self._get_colors()
-        text_color = color or C.WHITE
+        width = self.terminal_width
         
-        # Calculate available width (subtract borders and padding)
-        available_width = width - (padding * 2) - 2  # -2 for borders
+        # Main banner
+        print(f"\n{C.CYAN}{C.BOLD}{self.banner_art}{C.END}")
         
-        # Handle text wrapping
-        if len(text) > available_width:
-            text = textwrap.fill(text, width=available_width)
+        # Top decoration
+        print(f"{C.CYAN}{'▓' * width}{C.END}")
+        print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
         
-        lines = text.split('\n') if '\n' in text else [text]
+        # Version and date
+        version_text = f"🔬 Version: {self.version}  |  {datetime.now().strftime('%Y-%m-%d')}  |  EcoliTyper Platform 🧬"
+        print(f"{C.YELLOW}{C.BOLD}{version_text.center(width)}{C.END}")
         
-        formatted_lines = []
-        for line in lines:
-            if align == 'center':
-                formatted_text = line.center(available_width)
-            elif align == 'right':
-                formatted_text = line.rjust(available_width)
-            else:  # left align
-                formatted_text = line.ljust(available_width)
+        print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
+        print(f"{C.CYAN}{'▓' * width}{C.END}\n")
+        
+        if show_quote:
+            quote = random.choice(self.quotes)
             
-            formatted_lines.append(f"║{' ' * padding}{text_color}{formatted_text}{C.END}{' ' * padding}║")
+            # Quote section header
+            print(f"{C.CYAN}{'▓' * width}{C.END}")
+            print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
+            print(f"{C.CYAN}{C.BOLD}{'💡 SCIENTIFIC INSPIRATION'.center(width)}{C.END}")
+            print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
+            print(f"{C.CYAN}{'▓' * width}{C.END}\n")
+            
+            # Quote text with wrapping
+            wrapper = textwrap.TextWrapper(width=width-4, initial_indent='  ', subsequent_indent='  ')
+            quote_lines = wrapper.wrap(f'"{quote["quote"]}"')
+            
+            for line in quote_lines:
+                print(f"{C.WHITE}{line}{C.END}")
+            
+            print()
+            author_text = f"— {quote['author']}"
+            print(f"{C.YELLOW}{C.BOLD}{author_text.rjust(width-2)}{C.END}")
+            
+            print(f"\n{C.CYAN}{'▓' * width}{C.END}")
+            print(f"{C.LIGHT_BLUE}{'─' * width}{C.END}\n")
         
-        return formatted_lines
+        if show_author:
+            # Author section header
+            print(f"{C.CYAN}{'▓' * width}{C.END}")
+            print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
+            print(f"{C.CYAN}{C.BOLD}{'👨‍💻 DEVELOPER & CONTACT INFORMATION'.center(width)}{C.END}")
+            print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
+            print(f"{C.CYAN}{'▓' * width}{C.END}\n")
+            
+            # Author details in columns
+            print(f"{C.LIGHT_BLUE}  👤 Name:{C.END}        {C.WHITE}{self.author_info['name']}{C.END}")
+            print(f"{C.LIGHT_BLUE}  🐙 GitHub:{C.END}      {C.WHITE}{self.author_info['github']}{C.END}")
+            print(f"{C.LIGHT_BLUE}  📧 Email:{C.END}       {C.WHITE}{self.author_info['email']}{C.END}")
+            print(f"{C.LIGHT_BLUE}  🏛️  Affiliation:{C.END} {C.WHITE}{self.author_info['affiliation']}{C.END}")
+            print(f"{C.LIGHT_BLUE}  📜 License:{C.END}     {C.WHITE}{self.author_info['license']}{C.END}")
+            
+            print(f"\n{C.CYAN}{'▓' * width}{C.END}")
+            print(f"{C.LIGHT_BLUE}{'─' * width}{C.END}\n")
     
+    def display_startup_sequence(self):
+        """Display animated startup sequence with progress - FIXED PROGRESS BARS"""
+        C = self._get_colors()
+        width = self.terminal_width
+        
+        # Header
+        print(f"\n{C.CYAN}{'▓' * width}{C.END}")
+        print(f"{C.CYAN}{'█' * width}{C.END}")
+        print(f"{C.CYAN}{C.BOLD}{'🚀 INITIALIZING ECOLITYPER ANALYSIS PLATFORM 🚀'.center(width)}{C.END}")
+        print(f"{C.CYAN}{'█' * width}{C.END}")
+        print(f"{C.CYAN}{'▓' * width}{C.END}")
+        print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}\n")
+        time.sleep(0.3)
+        
+        steps = [
+            ("🗄️", "Loading E. coli genomic databases", C.BLUE),
+            ("🧬", "Initializing MLST analysis engine", C.CYAN),
+            ("🔍", "Configuring serotyping algorithms", C.GREEN),
+            ("🧬", "Setting up CH typing analysis", C.YELLOW),
+            ("🌳", "Preparing zClermont phylogrouping", C.ORANGE),
+            ("🛡️", "Enabling Abricate analysis (Resistance/Virulence/Plasmids)", C.MAGENTA),
+            ("💊", "Configuring AMRfinderPlus (NCBI)", C.LIGHT_BLUE),
+            ("⚡", "Optimizing multi-threading capabilities", C.LIGHT_GREEN),
+        ]
+        
+        for i, (icon, step, color) in enumerate(steps, 1):
+            print(f"{color}[{i}/{len(steps)}] {icon}  {step}...{C.END}")
+            
+            # FIXED ANIMATION
+            progress_stages = [
+                '░░░░░░░░░░░░░░░░░░░░',
+                '▓░░░░░░░░░░░░░░░░░░░', 
+                '▓▓▓░░░░░░░░░░░░░░░░░',
+                '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+            ]
+            
+            # Show all 4 progress stages with proper animation
+            for j, stage in enumerate(progress_stages):
+                if j < len(progress_stages) - 1:
+                    # Show intermediate stage with carriage return
+                    print(f"{color}  {stage}{C.END}", end='\r', flush=True)
+                    time.sleep(0.08)
+                else:
+                    # Final stage - print with checkmark and newline
+                    print(f"{color}  {stage} {C.GREEN}✓{C.END}")
+            
+            time.sleep(0.1)
+        
+        # Footer
+        print(f"\n{C.LIGHT_BLUE}{'═' * width}{C.END}")
+        print(f"{C.GREEN}{'▓' * width}{C.END}")
+        print(f"{C.GREEN}{C.BOLD}{'✅ ECOLITYPER READY FOR ANALYSIS! ✅'.center(width)}{C.END}")
+        print(f"{C.GREEN}{'▓' * width}{C.END}")
+        print(f"{C.LIGHT_GREEN}{'═' * width}{C.END}\n")
+        time.sleep(0.3)
+    
+    # TIMING METHODS - From the orchestrator
     def start_analysis_timer(self, analysis_name):
         """Start timer for a specific analysis"""
         self.analysis_times[analysis_name] = {
@@ -217,310 +279,270 @@ class EcoliTyperBanner:
                 return f"{int(hours)}h {int(minutes)}m"
         return "Not completed"
     
-    def display_banner(self, show_quote=True, show_author=True):
-        """Display the main EcoliTyper banner"""
+    def display_footer(self, analysis_time=None, samples_processed=0):
+        """Display analysis completion footer"""
+        C = self._get_colors()
+        width = self.terminal_width
+        
+        print()
+        # Header
+        print(f"{C.CYAN}{'▓' * width}{C.END}")
+        print(f"{C.LIGHT_BLUE}{'━' * width}{C.END}")
+        print(f"{C.CYAN}{C.BOLD}{'🎉 ANALYSIS COMPLETE 🎉'.center(width)}{C.END}")
+        print(f"{C.LIGHT_BLUE}{'━' * width}{C.END}")
+        print(f"{C.CYAN}{'▓' * width}{C.END}\n")
+        
+        # Statistics
+        if analysis_time or samples_processed > 0:
+            print(f"{C.CYAN}{'▓' * width}{C.END}")
+            print(f"{C.LIGHT_BLUE}{'─' * width}{C.END}")
+            print(f"{C.YELLOW}{C.BOLD}{'📊 STATISTICS'.center(width)}{C.END}")
+            print(f"{C.LIGHT_BLUE}{'─' * width}{C.END}")
+            print(f"{C.CYAN}{'▓' * width}{C.END}\n")
+            
+            if analysis_time:
+                print(f"{C.WHITE}  ⏱️  Analysis Duration: {C.GREEN}{C.BOLD}{analysis_time}{C.END}")
+            if samples_processed > 0:
+                print(f"{C.WHITE}  🧫 E. coli Genomes Processed:  {C.GREEN}{C.BOLD}{samples_processed}{C.END}")
+            
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"{C.WHITE}  📅 Completion Time:    {C.CYAN}{C.BOLD}{current_time}{C.END}")
+            
+            print(f"\n{C.CYAN}{'▓' * width}{C.END}")
+            print(f"{C.LIGHT_BLUE}{'─' * width}{C.END}\n")
+        
+        # Support section
+        print(f"{C.CYAN}{'▓' * width}{C.END}")
+        print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
+        print(f"{C.CYAN}{C.BOLD}{'📞 SUPPORT & INQUIRIES'.center(width)}{C.END}")
+        print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
+        print(f"{C.CYAN}{'▓' * width}{C.END}\n")
+        
+        print(f"{C.WHITE}  👤 Contact:  {C.LIGHT_BLUE}{self.author_info['name']}{C.END}")
+        print(f"{C.WHITE}  🐙 GitHub:   {C.LIGHT_BLUE}{self.author_info['github']}{C.END}")
+        print(f"{C.WHITE}  📧 Email:    {C.LIGHT_BLUE}{self.author_info['email']}{C.END}")
+        
+        print(f"\n{C.CYAN}{'▓' * width}{C.END}")
+        print(f"{C.LIGHT_BLUE}{'─' * width}{C.END}\n")
+    
+    def display_module_header(self, module_name, description=""):
+        """Display header for specific analysis modules"""
+        C = self._get_colors()
+        width = self.terminal_width
+        
+        print(f"\n{C.CYAN}{'▓' * width}{C.END}")
+        print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
+        
+        # Module title
+        title = f"🧬 {module_name.upper()}"
+        print(f"{C.YELLOW}{C.BOLD}{title.center(width)}{C.END}")
+        
+        if description:
+            print(f"{C.LIGHT_BLUE}{'─' * width}{C.END}")
+            # Wrap long descriptions
+            wrapper = textwrap.TextWrapper(width=width-4, initial_indent='  ', subsequent_indent='  ')
+            desc_lines = wrapper.wrap(description)
+            for line in desc_lines:
+                print(f"{C.WHITE}{line}{C.END}")
+        
+        print(f"{C.LIGHT_BLUE}{'═' * width}{C.END}")
+        print(f"{C.CYAN}{'▓' * width}{C.END}\n")
+        
+        # Flush output to ensure header displays immediately
+        sys.stdout.flush()
+    
+    def display_section_divider(self, title="", color=None):
+        """Display a colorful section divider"""
+        C = self._get_colors()
+        section_color = color or C.CYAN
+        width = self.terminal_width
+        
+        print(f"\n{section_color}{'═' * width}{C.END}")
+        if title:
+            print(f"{section_color}{C.BOLD}{title.center(width)}{C.END}")
+            print(f"{section_color}{'═' * width}{C.END}\n")
+    
+    def display_warning(self, message):
+        """Display warning message"""
+        C = self._get_colors()
+        width = self.terminal_width
+        
+        # Wrap long messages
+        wrapper = textwrap.TextWrapper(width=width-4, initial_indent='  ', subsequent_indent='  ')
+        message_lines = wrapper.wrap(message)
+        
+        print(f"{C.YELLOW}{'─' * width}{C.END}")
+        if len(message_lines) == 1:
+            print(f"{C.YELLOW}{C.BOLD}⚠️  WARNING:{C.END} {C.YELLOW}{message}{C.END}")
+        else:
+            print(f"{C.YELLOW}{C.BOLD}⚠️  WARNING:{C.END}")
+            for line in message_lines:
+                print(f"{C.YELLOW}  {line}{C.END}")
+        print(f"{C.YELLOW}{'─' * width}{C.END}")
+    
+    def display_error(self, message):
+        """Display error message"""
+        C = self._get_colors()
+        width = self.terminal_width
+        
+        # Wrap long messages
+        wrapper = textwrap.TextWrapper(width=width-4, initial_indent='  ', subsequent_indent='  ')
+        message_lines = wrapper.wrap(message)
+        
+        print(f"{C.RED}{'─' * width}{C.END}")
+        if len(message_lines) == 1:
+            print(f"{C.RED}{C.BOLD}❌ ERROR:{C.END} {C.RED}{message}{C.END}")
+        else:
+            print(f"{C.RED}{C.BOLD}❌ ERROR:{C.END}")
+            for line in message_lines:
+                print(f"{C.RED}  {line}{C.END}")
+        print(f"{C.RED}{'─' * width}{C.END}")
+    
+    def display_success(self, message):
+        """Display success message"""
+        C = self._get_colors()
+        width = self.terminal_width
+        
+        # Wrap long messages
+        wrapper = textwrap.TextWrapper(width=width-4, initial_indent='  ', subsequent_indent='  ')
+        message_lines = wrapper.wrap(message)
+        
+        print(f"{C.GREEN}{'─' * width}{C.END}")
+        if len(message_lines) == 1:
+            print(f"{C.GREEN}{C.BOLD}✅ SUCCESS:{C.END} {C.GREEN}{message}{C.END}")
+        else:
+            print(f"{C.GREEN}{C.BOLD}✅ SUCCESS:{C.END}")
+            for line in message_lines:
+                print(f"{C.GREEN}  {line}{C.END}")
+        print(f"{C.GREEN}{'─' * width}{C.END}")
+    
+    def display_info(self, message):
+        """Display info message"""
+        C = self._get_colors()
+        width = self.terminal_width
+        
+        # Wrap long messages
+        wrapper = textwrap.TextWrapper(width=width-4, initial_indent='  ', subsequent_indent='  ')
+        message_lines = wrapper.wrap(message)
+        
+        print(f"{C.CYAN}{'─' * width}{C.END}")
+        if len(message_lines) == 1:
+            print(f"{C.CYAN}{C.BOLD}💡 INFO:{C.END} {C.CYAN}{message}{C.END}")
+        else:
+            print(f"{C.CYAN}{C.BOLD}💡 INFO:{C.END}")
+            for line in message_lines:
+                print(f"{C.CYAN}  {line}{C.END}")
+        print(f"{C.CYAN}{'─' * width}{C.END}")
+    
+    def display_progress_bar(self, iteration, total, prefix='', suffix='', length=50, fill='█'):
+        """Display enhanced progress bar"""
         C = self._get_colors()
         
-        print(f"{C.CYAN}{C.BOLD}{self.banner_art}{C.END}")
-        print(f"{C.YELLOW}{C.BOLD}         Version: {self.version}{C.END}")
-        print()
+        # Don't display if we're at 0% or 100% and suffix is empty
+        if iteration == 0 and not suffix:
+            return
+            
+        percent = ("{0:.1f}").format(100 * (iteration / float(total)))
+        filled_length = int(length * iteration // total)
+        bar = fill * filled_length + '░' * (length - filled_length)
         
-        if show_quote:
-            quote = random.choice(self.quotes)
-            quote_width = self._get_optimal_width("quote")
-            
-            # Quote box
-            print(f"{C.GREEN}{self._create_box(quote_width, '═', '╔', '╗')}{C.END}")
-            
-            # Title
-            title_lines = self._create_text_line("💡 SCIENTIFIC QUOTE", quote_width, C.CYAN + C.BOLD, 'left')
-            for line in title_lines:
-                print(line)
-            
-            print(f"{C.GREEN}{self._create_box(quote_width, '─', '╠', '╣')}{C.END}")
-            
-            # Quote text
-            quote_lines = self._create_text_line(quote['quote'], quote_width, C.WHITE, 'left')
-            for line in quote_lines:
-                print(line)
-            
-            # Author
-            author_lines = self._create_text_line(f"— {quote['author']}", quote_width, C.YELLOW, 'right')
-            for line in author_lines:
-                print(line)
-            
-            print(f"{C.GREEN}{self._create_box(quote_width, '═', '╚', '╝')}{C.END}")
+        # Color gradient based on progress
+        if iteration < total * 0.33:
+            color = C.RED
+        elif iteration < total * 0.66:
+            color = C.YELLOW
+        else:
+            color = C.GREEN
+        
+        # For intermediate updates, use \r to overwrite
+        print(f'\r{C.CYAN}{prefix}{C.END} {color}[{bar}]{C.END} {C.BOLD}{percent}%{C.END} {C.DIM}{suffix}{C.END}', end='\r')
+        
+        # If this is the final iteration, print newline
+        if iteration == total:
             print()
-        
-        if show_author:
-            author_width = self._get_optimal_width("author")
-            
-            # Author info box
-            print(f"{C.GREEN}{self._create_box(author_width, '═', '╔', '╗')}{C.END}")
-            
-            # Title
-            title_lines = self._create_text_line("👨‍💻 AUTHOR INFORMATION", author_width, C.MAGENTA + C.BOLD, 'left')
-            for line in title_lines:
-                print(line)
-            
-            print(f"{C.GREEN}{self._create_box(author_width, '─', '╠', '╣')}{C.END}")
-            
-            # Author details
-            details = [
-                f"Name: {self.author_info['name']}",
-                f"GitHub: {self.author_info['github']}",
-                f"Email: {self.author_info['email']}",
-                f"Affiliation: {self.author_info['affiliation']}",
-                f"License: {self.author_info['license']}"
-            ]
-            
-            for detail in details:
-                detail_lines = self._create_text_line(detail, author_width, C.WHITE, 'left')
-                for line in detail_lines:
-                    print(line)
-            
-            print(f"{C.GREEN}{self._create_box(author_width, '═', '╚', '╝')}{C.END}")
-        print()
+            sys.stdout.flush()
     
-    def display_startup_sequence(self):
-        """Display animated startup sequence"""
-        C = self._get_colors()
-        
-        print(f"{C.CYAN}{C.BOLD}🚀 Initializing EcoliTyper Analysis Platform...{C.END}")
-        time.sleep(0.5)
-        
-        steps = [
-            "Loading E. coli genomic databases...",
-            "Initializing MLST analysis engine...",
-            "Configuring serotyping algorithms...",
-            "Setting up CH typing analysis...",
-            "Preparing zClermont phylogrouping...",
-            "Enabling Abricate analysis (Resistance/Virulence/Plasmids)...",
-            "Configuring AMRfinderPlus (NCBI)...",
-            "Building lineage database reference...",
-            "Optimizing multi-threading capabilities...",
-        ]
-        
-        for i, step in enumerate(steps, 1):
-            print(f"{C.YELLOW}[{i}/{len(steps)}] {step}{C.END}")
-            time.sleep(0.3)
-        
-        print(f"{C.GREEN}{C.BOLD}✅ EcoliTyper ready for comprehensive analysis!{C.END}")
-        print()
-    
+    # Additional methods for compatibility
     def display_citation_request(self):
-        """Display citation request box"""
+        """Display citation request"""
         C = self._get_colors()
+        width = self.terminal_width
         
-        citation_width = self._get_optimal_width("citation")
+        print(f"\n{C.MAGENTA}{'═' * width}{C.END}")
+        print(f"{C.MAGENTA}{C.BOLD}{'📚 CITATION REQUEST'.center(width)}{C.END}")
+        print(f"{C.MAGENTA}{'═' * width}{C.END}")
         
-        print()
-        print(f"{C.MAGENTA}{self._create_box(citation_width, '═', '╔', '╗')}{C.END}")
-        
-        # Title
-        title_lines = self._create_text_line("📚 CITATION REQUEST", citation_width, C.MAGENTA + C.BOLD, 'center')
-        for line in title_lines:
-            print(line)
-        
-        print(f"{C.MAGENTA}{self._create_box(citation_width, '─', '╠', '╣')}{C.END}")
-        
-        # Citation message
         messages = [
             "If you use EcoliTyper in your research, please cite:",
             "",
             "EcoliTyper: A species-optimized computational pipeline",
             "for comprehensive genotyping and surveillance of Escherichia coli.",
             "",
-            "Citation details will be updated upon manuscript",
-            "acceptance. Please check GitHub for updates.",
-            "",
             "GitHub: https://github.com/bbeckley-hub/EcoliTyper"
         ]
         
         for message in messages:
-            message_lines = self._create_text_line(message, citation_width, C.WHITE, 'center')
-            for line in message_lines:
-                print(line)
+            if message:
+                print(f"{C.WHITE}{message.center(width)}{C.END}")
+            else:
+                print()
         
-        print(f"{C.MAGENTA}{self._create_box(citation_width, '═', '╚', '╝')}{C.END}")
-        print()
+        print(f"{C.MAGENTA}{'═' * width}{C.END}\n")
     
     def display_random_footer(self):
         """Display random footer message about E. coli genomics"""
         C = self._get_colors()
         
-        message = random.choice(self.footer_messages)
+        footer_messages = [
+            "🔬 Advancing E. coli genomics research to combat antimicrobial resistance worldwide.",
+            "🌍 Contributing to global AMR surveillance through comprehensive E. coli typing.",
+            "💡 Harnessing genomic data for better understanding of E. coli epidemiology.",
+            "🦠 Bridging genomics and clinical practice in infectious disease management.",
+            "🧪 Pioneering open-source tools for accessible bacterial genomics research.",
+        ]
         
-        # Simple centered message without box
-        print(f"{C.CYAN}{C.BOLD}✨ {message}{C.END}")
-        print()
-    
-    def display_footer(self, samples_processed=0):
-        """Display analysis completion footer"""
-        C = self._get_colors()
+        message = random.choice(footer_messages)
+        width = self.terminal_width
         
-        footer_width = self._get_optimal_width("footer")
-        
-        print()
-        print(f"{C.MAGENTA}{self._create_box(footer_width, '═', '╔', '╗')}{C.END}")
-        
-        # Title
-        title_lines = self._create_text_line("ANALYSIS COMPLETE - ECOLITYPER", footer_width, C.MAGENTA + C.BOLD, 'center')
-        for line in title_lines:
-            print(line)
-        
-        print(f"{C.MAGENTA}{self._create_box(footer_width, '═', '╠', '╣')}{C.END}")
-        
-        # Analysis details - Show total time instead of individual timings
-        total_duration = sum(
-            (t['duration'].total_seconds() if t['duration'] else 0) 
-            for t in self.analysis_times.values()
-        )
-        
-        if total_duration > 0:
-            if total_duration < 60:
-                total_str = f"{total_duration:.1f} seconds"
-            elif total_duration < 3600:
-                minutes = total_duration // 60
-                seconds = total_duration % 60
-                total_str = f"{int(minutes)} minutes {int(seconds)} seconds"
-            else:
-                hours = total_duration // 3600
-                minutes = (total_duration % 3600) // 60
-                total_str = f"{int(hours)} hours {int(minutes)} minutes"
-            
-            time_lines = self._create_text_line(f"⏱️  Total Analysis Time: {total_str}", footer_width, C.CYAN, 'left')
-            for line in time_lines:
-                print(line)
-        
-        if samples_processed > 0:
-            samples_lines = self._create_text_line(f"🧫 E. coli Genomes Processed: {samples_processed}", footer_width, C.GREEN, 'left')
-            for line in samples_lines:
-                print(line)
-        
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        time_lines = self._create_text_line(f"📅 Completion Time: {current_time}", footer_width, C.YELLOW, 'left')
-        for line in time_lines:
-            print(line)
-        
-        print(f"{C.MAGENTA}{self._create_box(footer_width, '═', '╠', '╣')}{C.END}")
-        
-        # Support information
-        support_lines = self._create_text_line("TECHNICAL SUPPORT & INQUIRIES:", footer_width, C.WHITE + C.BOLD, 'left')
-        for line in support_lines:
-            print(line)
-        
-        author_lines = self._create_text_line(f"Author: {self.author_info['name']}", footer_width, C.CYAN, 'left')
-        for line in author_lines:
-            print(line)
-        
-        github_lines = self._create_text_line(f"GitHub: {self.author_info['github']}", footer_width, C.BLUE, 'left')
-        for line in github_lines:
-            print(line)
-        
-        email_lines = self._create_text_line(f"Email: {self.author_info['email']}", footer_width, C.GREEN, 'left')
-        for line in email_lines:
-            print(line)
-        
-        affiliation_lines = self._create_text_line(f"Affiliation: {self.author_info['affiliation']}", footer_width, C.WHITE, 'left')
-        for line in affiliation_lines:
-            print(line)
-        
-        print(f"{C.MAGENTA}{self._create_box(footer_width, '═', '╚', '╝')}{C.END}")
-        print()
-    
-    def display_module_header(self, module_name, description=""):
-        """Display header for specific analysis modules"""
-        C = self._get_colors()
-        
-        module_width = self._get_optimal_width("general")
-        
-        print()
-        print(f"{C.BLUE}{self._create_box(module_width, '═', '╔', '╗')}{C.END}")
-        
-        # Module name
-        module_lines = self._create_text_line(f"🧬 {module_name.upper()}", module_width, C.BLUE + C.BOLD, 'left')
-        for line in module_lines:
-            print(line)
-        
-        if description:
-            print(f"{C.BLUE}{self._create_box(module_width, '─', '╠', '╣')}{C.END}")
-            # Description
-            desc_lines = self._create_text_line(description, module_width, C.WHITE, 'left')
-            for line in desc_lines:
-                print(line)
-        
-        print(f"{C.BLUE}{self._create_box(module_width, '═', '╚', '╝')}{C.END}")
-        print()
-    
-    def display_warning(self, message):
-        """Display warning message"""
-        C = self._get_colors()
-        print(f"{C.YELLOW}⚠️  WARNING: {message}{C.END}")
-    
-    def display_error(self, message):
-        """Display error message"""
-        C = self._get_colors()
-        print(f"{C.RED}❌ ERROR: {message}{C.END}")
-    
-    def display_success(self, message):
-        """Display success message"""
-        C = self._get_colors()
-        print(f"{C.GREEN}✅ SUCCESS: {message}{C.END}")
-    
-    def display_info(self, message):
-        """Display info message"""
-        C = self._get_colors()
-        print(f"{C.CYAN}💡 INFO: {message}{C.END}")
-    
-    def display_progress_bar(self, iteration, total, prefix='', suffix='', length=50, fill='█'):
-        """Display progress bar"""
-        C = self._get_colors()
-        percent = ("{0:.1f}").format(100 * (iteration / float(total)))
-        filled_length = int(length * iteration // total)
-        bar = fill * filled_length + '-' * (length - filled_length)
-        print(f'\r{C.CYAN}{prefix} |{bar}| {percent}% {suffix}{C.END}', end='\r')
-        if iteration == total:
-            print()
+        print(f"\n{C.CYAN}{'═' * width}{C.END}")
+        print(f"{C.CYAN}{C.BOLD}{'✨ ' + message + ' ✨'.center(width)}{C.END}")
+        print(f"{C.CYAN}{'═' * width}{C.END}\n")
 
 def main():
-    """Test the banner display with all modules"""
+    """Test the fixed banner display"""
     banner = EcoliTyperBanner()
     
     # Display full banner with startup sequence
     banner.display_startup_sequence()
     banner.display_banner(show_quote=True, show_author=True)
     
-    # Simulate ALL analysis modules with timing
-    modules = [
-        ("MLST Analysis", "mlst", "Multi-Locus Sequence Typing for E. coli"),
-        ("Serotyping", "serotyping", "O and H antigen determination"),
-        ("CH Typing", "ch_typing", "CH typing analysis"),
-        ("Phylogrouping", "phylogrouping", "zClermont phylogrouping algorithm"),
-        ("Abricate Analysis", "abricate", "Resistance, Virulence, and Plasmid gene screening"),
-        ("AMRfinderPlus", "amrfinder", "NCBI AMR gene detection"),
-        ("Lineage Database", "lineage_db", "Lineage database querying and reference")
-    ]
+    # Test module headers
+    banner.display_module_header("MLST Analysis", "Multi-Locus Sequence Typing for E. coli")
+    banner.display_info("Copied 1 files to MLST module")
+    banner.display_info("Running MLST analysis with pattern: '*.fna'")
+    banner.display_success("MLST analysis completed!")
     
-    for module_name, module_key, description in modules:
-        banner.start_analysis_timer(module_key)
-        banner.display_module_header(module_name, description)
-        # Simulate processing time
-        time.sleep(0.5 + random.random())
-        banner.stop_analysis_timer(module_key)
-        banner.display_success(f"{module_name} completed!")
+    print()
+    banner.display_module_header("Serotyping Analysis", "O and H antigen determination")
+    banner.display_info("Copied 1 files to serotyping module")
+    banner.display_success("Serotyping analysis completed!")
     
     # Test progress bar
-    print("Overall progress demonstration:")
+    print("\n🔄 Progress demonstration:")
     for i in range(101):
-        banner.display_progress_bar(i, 100, prefix='EcoliTyper Progress:', suffix='Complete', length=40)
+        banner.display_progress_bar(i, 100, prefix='Analyzing E. coli:', suffix='Complete', length=50)
         time.sleep(0.02)
-    print()
     
-    # Display footer with total time only
-    banner.display_footer(samples_processed=8)
+    # Test timing methods
+    banner.start_analysis_timer("Test Analysis")
+    time.sleep(1)
+    banner.stop_analysis_timer("Test Analysis")
+    print(f"\nAnalysis time: {banner.get_analysis_time('Test Analysis')}")
     
-    # NEW: Display citation request and random footer
+    # Display footer
+    banner.display_footer(analysis_time="2 minutes, 15 seconds", samples_processed=8)
+    
+    # Test citation and footer
     banner.display_citation_request()
     banner.display_random_footer()
 

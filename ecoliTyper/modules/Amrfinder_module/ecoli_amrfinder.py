@@ -22,6 +22,7 @@ from datetime import datetime
 import psutil
 import math
 import json
+from collections import defaultdict
 
 class EcoliAMRfinderPlus:
     """AMRfinderPlus executor for E. coli with comprehensive HTML reporting - MAXIMUM SPEED"""
@@ -29,6 +30,11 @@ class EcoliAMRfinderPlus:
     def __init__(self, cpus: int = None):
         # Setup logging FIRST
         self.logger = self._setup_logging()
+        
+        # Get module directory and set bundled paths
+        self.module_dir = os.path.dirname(os.path.abspath(__file__))
+        self.bundled_amrfinder = os.path.join(self.module_dir, "bin", "amrfinder")
+        self.bundled_database = os.path.join(self.module_dir, "data", "amrfinder_db")
         
         # Initialize available_ram before calculating cpus
         self.available_ram = self._get_available_ram()
@@ -43,7 +49,9 @@ class EcoliAMRfinderPlus:
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
             "affiliation": "University of Ghana Medical School",
-            "analysis_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "analysis_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "amrfinder_version": "4.2.4",
+            "database_version": "2025-12-03.1"
         }
         
         # Comprehensive high-risk and critical gene sets
@@ -93,12 +101,12 @@ class EcoliAMRfinderPlus:
         }
         
         self.science_quotes = [
-            "“The important thing is not to stop questioning. Curiosity has its own reason for existence.” - Albert Einstein",
-            "“Nothing in life is to be feared, it is only to be understood.” - Marie Curie", 
-            "“The microscope opens a new world to the investigator.” - Robert Koch",
-            "“In science, the credit goes to the man who convinces the world, not to the man to whom the idea first occurs.” - Francis Darwin",
-            "“The good thing about science is that it's true whether or not you believe in it.” - Neil deGrasse Tyson",
-            "“Science knows no country, because knowledge belongs to humanity.” - Louis Pasteur"
+            "The important thing is not to stop questioning. Curiosity has its own reason for existence. - Albert Einstein",
+            "Nothing in life is to be feared, it is only to be understood. - Marie Curie", 
+            "The microscope opens a new world to the investigator. - Robert Koch",
+            "In science, the credit goes to the man who convinces the world, not to the man to whom the idea first occurs. - Francis Darwin",
+            "The good thing about science is that it's true whether or not you believe in it. - Neil deGrasse Tyson",
+            "Science knows no country, because knowledge belongs to humanity. - Louis Pasteur"
         ]
     
     def _setup_logging(self):
@@ -134,11 +142,11 @@ class EcoliAMRfinderPlus:
             elif total_physical_cores <= 8:
                 optimal_cpus = total_physical_cores - 1  # Use 7/8, 6/7, etc.
             elif total_physical_cores <= 16:
-                optimal_cpus = max(8, total_physical_cores - 2)  # Use 14/16, 13/15, etc.
+                optimal_cpus = max(8, total_physical_cores - 1)  # Use 15/16, 14/15, etc.
             elif total_physical_cores <= 32:
-                optimal_cpus = max(16, total_physical_cores - 4)  # Use 28/32, 27/31, etc.
+                optimal_cpus = max(16, total_physical_cores - 2)  # Use 30/32, 29/31, etc.
             else:
-                optimal_cpus = min(32, int(total_physical_cores * 0.85))  # Use 85% on huge systems
+                optimal_cpus = min(32, int(total_physical_cores * 0.90))  # Use 90% on huge systems
             
             # Ensure at least 1 CPU and not more than available cores
             optimal_cpus = max(1, min(optimal_cpus, total_physical_cores))
@@ -179,22 +187,95 @@ class EcoliAMRfinderPlus:
         # Strategy note - UPDATED for concurrent processing
         self.logger.info("📝 STRATEGY: Processing MULTIPLE samples concurrently with optimal core allocation for maximum throughput")
 
+    def check_amrfinder_installed(self) -> bool:
+        """Check if bundled AMRfinderPlus is available"""
+        try:
+            if not os.path.exists(self.bundled_amrfinder):
+                self.logger.error(f"Bundled AMRfinderPlus not found at: {self.bundled_amrfinder}")
+                return False
+            
+            if not os.access(self.bundled_amrfinder, os.X_OK):
+                self.logger.warning(f"Bundled AMRfinderPlus not executable, fixing permissions...")
+                os.chmod(self.bundled_amrfinder, 0o755)
+            
+            # Test the bundled version
+            result = subprocess.run(
+                [self.bundled_amrfinder, '--version'], 
+                capture_output=True, 
+                text=True, 
+                check=True
+            )
+            
+            version_line = result.stdout.strip()
+            self.logger.info(f"Bundled AMRfinderPlus version: {version_line}")
+            
+            # Check database
+            if os.path.exists(self.bundled_database):
+                self.logger.info(f"✅ Bundled database found: {self.bundled_database}")
+                # Find the latest database version
+                db_versions = []
+                for item in os.listdir(self.bundled_database):
+                    item_path = os.path.join(self.bundled_database, item)
+                    if os.path.isdir(item_path) and re.match(r'\d{4}-\d{2}-\d{2}\.\d+', item):
+                        db_versions.append(item)
+                
+                if db_versions:
+                    db_versions.sort(reverse=True)
+                    latest_db = db_versions[0]
+                    self.logger.info(f"✅ Latest database version: {latest_db}")
+            else:
+                self.logger.warning(f"⚠️ Bundled database not found at: {self.bundled_database}")
+            
+            return True
+            
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            self.logger.error(f"Bundled AMRfinderPlus check failed: {e}")
+            return False
+
     def run_amrfinder_single_genome(self, genome_file: str, output_dir: str) -> Dict[str, Any]:
-        """Run AMRfinderPlus on a single E. coli genome - MAXIMUM SPEED WITH ALL CORES"""
+        """Run AMRfinderPlus on a single E. coli genome - USING BUNDLED BINARY"""
         genome_name = Path(genome_file).stem
         output_file = os.path.join(output_dir, f"{genome_name}_amrfinder.txt")
+        
+        # Check if bundled binary exists
+        if not os.path.exists(self.bundled_amrfinder):
+            self.logger.error(f"Bundled AMRfinderPlus not found at: {self.bundled_amrfinder}")
+            return {
+                'genome': genome_name,
+                'output_file': output_file,
+                'hits': [],
+                'hit_count': 0,
+                'status': 'failed',
+                'error': 'AMRfinder binary not found'
+            }
         
         # AMRfinderPlus uses THREADS - allocate ALL available cores for maximum speed
         # Since we're processing one sample at a time, we can use all system resources
         run_threads = self.cpus
         
+        # Build command with BUNDLED resources
         cmd = [
-            'amrfinder',
-            '--nucleotide', genome_file,
+            self.bundled_amrfinder,
+            '-n', genome_file,  # Nucleotide mode
+            '-O', 'Escherichia',  # Organism (E. coli)
             '--output', output_file,
-            '--threads', str(run_threads),  # Use ALL cores for this single sample
             '--plus'
         ]
+        
+        # Add database if available
+        if os.path.exists(self.bundled_database):
+            # Find the latest database version
+            db_versions = []
+            for item in os.listdir(self.bundled_database):
+                item_path = os.path.join(self.bundled_database, item)
+                if os.path.isdir(item_path) and re.match(r'\d{4}-\d{2}-\d{2}\.\d+', item):
+                    db_versions.append(item)
+            
+            if db_versions:
+                db_versions.sort(reverse=True)
+                latest_db = os.path.join(self.bundled_database, db_versions[0])
+                cmd.extend(['--database', latest_db])
+                self.logger.info(f"Using bundled database: {latest_db}")
         
         self.logger.info("🚀 MAXIMUM SPEED: Running AMRfinderPlus on %s (using ALL %d CORES)", genome_name, run_threads)
         
@@ -206,6 +287,9 @@ class EcoliAMRfinderPlus:
             
             # Create individual HTML report
             self._create_amrfinder_html_report(genome_name, hits, output_dir)
+            
+            # Create individual JSON report
+            self._create_amrfinder_json_report(genome_name, hits, output_dir)
             
             return {
                 'genome': genome_name,
@@ -226,7 +310,7 @@ class EcoliAMRfinderPlus:
             }
     
     def _parse_amrfinder_output(self, amrfinder_file: str) -> List[Dict]:
-        """Parse AMRfinderPlus output file into structured data"""
+        """Parse AMRfinderPlus 4.2.4 output file into structured data - KEEPING OLD HEADERS"""
         hits = []
         try:
             with open(amrfinder_file, 'r') as f:
@@ -235,7 +319,7 @@ class EcoliAMRfinderPlus:
             if not lines or len(lines) < 2:
                 return hits
                 
-            # Parse header
+            # Parse header - AMRfinderPlus 4.2.4 uses new headers
             headers = lines[0].strip().split('\t')
             
             # Parse data lines
@@ -246,6 +330,7 @@ class EcoliAMRfinderPlus:
                     
                 parts = line.split('\t')
                 if len(parts) >= len(headers):
+                    # Create hit with original headers
                     hit = {}
                     for i, header in enumerate(headers):
                         if i < len(parts):
@@ -253,30 +338,59 @@ class EcoliAMRfinderPlus:
                         else:
                             hit[header] = ''
                     
-                    # Map to consistent field names
+                    # Map to consistent field names - BOTH OLD AND NEW HEADERS
                     processed_hit = {
-                        'protein_id': hit.get('Protein identifier', ''),
+                        # NEW headers from AMRFinderPlus 4.2.4
+                        'Protein id': hit.get('Protein id', ''),
+                        'Contig id': hit.get('Contig id', ''),
+                        'Start': hit.get('Start', ''),
+                        'Stop': hit.get('Stop', ''),
+                        'Strand': hit.get('Strand', ''),
+                        'Element symbol': hit.get('Element symbol', ''),  # NEW: Element symbol
+                        'Element name': hit.get('Element name', ''),      # NEW: Element name
+                        'Scope': hit.get('Scope', ''),
+                        'Type': hit.get('Type', ''),                      # NEW: Type
+                        'Subtype': hit.get('Subtype', ''),                # NEW: Subtype
+                        'Class': hit.get('Class', ''),
+                        'Subclass': hit.get('Subclass', ''),
+                        'Method': hit.get('Method', ''),
+                        'Target length': hit.get('Target length', ''),
+                        'Reference sequence length': hit.get('Reference sequence length', ''),
+                        '% Coverage of reference': hit.get('% Coverage of reference', ''),
+                        '% Identity to reference': hit.get('% Identity to reference', ''),
+                        'Alignment length': hit.get('Alignment length', ''),
+                        'Closest reference accession': hit.get('Closest reference accession', ''),
+                        'Closest reference name': hit.get('Closest reference name', ''),
+                        'HMM accession': hit.get('HMM accession', ''),
+                        'HMM description': hit.get('HMM description', ''),
+                        
+                        # KEEP OLD HEADERS FOR BACKWARD COMPATIBILITY
+                        'protein_id': hit.get('Protein id', ''),
                         'contig_id': hit.get('Contig id', ''),
                         'start': hit.get('Start', ''),
                         'stop': hit.get('Stop', ''),
                         'strand': hit.get('Strand', ''),
-                        'gene_symbol': hit.get('Gene symbol', ''),
-                        'sequence_name': hit.get('Sequence name', ''),
+                        'gene_symbol': hit.get('Element symbol', ''),  # Map new to old
+                        'sequence_name': hit.get('Element name', ''),   # Map new to old
                         'scope': hit.get('Scope', ''),
-                        'element_type': hit.get('Element type', ''),
-                        'element_subtype': hit.get('Element subtype', ''),
+                        'element_type': hit.get('Type', ''),           # Map new to old
+                        'element_subtype': hit.get('Subtype', ''),     # Map new to old
                         'class': hit.get('Class', ''),
                         'subclass': hit.get('Subclass', ''),
                         'method': hit.get('Method', ''),
                         'target_length': hit.get('Target length', ''),
                         'ref_length': hit.get('Reference sequence length', ''),
-                        'coverage': hit.get('% Coverage of reference sequence', ''),
-                        'identity': hit.get('% Identity to reference sequence', ''),
+                        'coverage': hit.get('% Coverage of reference', '').replace('%', ''),
+                        'identity': hit.get('% Identity to reference', '').replace('%', ''),
                         'alignment_length': hit.get('Alignment length', ''),
-                        'accession': hit.get('Accession of closest sequence', ''),
-                        'closest_name': hit.get('Name of closest sequence', ''),
-                        'hmm_id': hit.get('HMM id', ''),
-                        'hmm_description': hit.get('HMM description', '')
+                        'accession': hit.get('Closest reference accession', ''),
+                        'closest_name': hit.get('Closest reference name', ''),
+                        'hmm_id': hit.get('HMM accession', ''),
+                        'hmm_description': hit.get('HMM description', ''),
+                        
+                        # Also store original headers for reference
+                        '_original_headers': headers,
+                        '_original_values': parts
                     }
                     hits.append(processed_hit)
                 else:
@@ -497,6 +611,8 @@ class EcoliAMRfinderPlus:
             <p><strong>Genome:</strong> {genome_name}</p>
             <p><strong>Date:</strong> {self.metadata['analysis_date']}</p>
             <p><strong>Tool Version:</strong> {self.metadata['version']}</p>
+            <p><strong>AMRfinderPlus Version:</strong> {self.metadata['amrfinder_version']}</p>
+            <p><strong>Database Version:</strong> {self.metadata['database_version']}</p>
         </div>
 """
         
@@ -619,20 +735,21 @@ class EcoliAMRfinderPlus:
             for hit in hits:
                 # Determine row class based on risk level
                 row_class = "present"
-                if hit['gene_symbol'] in analysis['critical_risk_list']:
+                gene_symbol = hit.get('gene_symbol', '')
+                if gene_symbol in analysis['critical_risk_list']:
                     row_class = "critical-row"
-                elif hit['gene_symbol'] in analysis['high_risk_list']:
+                elif gene_symbol in analysis['high_risk_list']:
                     row_class = "high-risk-row"
                 
                 html_content += f"""
                     <tr class="{row_class}">
-                        <td><strong>{hit['gene_symbol']}</strong></td>
-                        <td title="{hit['sequence_name']}">{hit['sequence_name'][:80]}{'...' if len(hit['sequence_name']) > 80 else ''}</td>
-                        <td>{hit['class']}</td>
-                        <td>{hit['subclass']}</td>
-                        <td>{hit['coverage']}%</td>
-                        <td>{hit['identity']}%</td>
-                        <td>{hit['scope']}</td>
+                        <td><strong>{gene_symbol}</strong></td>
+                        <td title="{hit.get('sequence_name', '')}">{hit.get('sequence_name', '')[:1000]}{'...' if len(hit.get('sequence_name', '')) > 1000 else ''}</td>
+                        <td>{hit.get('class', '')}</td>
+                        <td>{hit.get('subclass', '')}</td>
+                        <td>{hit.get('coverage', '')}%</td>
+                        <td>{hit.get('identity', '')}%</td>
+                        <td>{hit.get('scope', '')}</td>
                     </tr>
 """
             
@@ -658,7 +775,8 @@ class EcoliAMRfinderPlus:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper AMRfinderPlus v3.12.8
+                Analysis performed using EcoliTyper AMRfinderPlus v4.2.4
+                with bundled AMRfinderPlus 2025-12-03.1
             </p>
         </div>
     </div>
@@ -672,6 +790,37 @@ class EcoliAMRfinderPlus:
             f.write(html_content)
         
         self.logger.info("E. coli AMRfinderPlus HTML report generated: %s", html_file)
+    
+    def _create_amrfinder_json_report(self, genome_name: str, hits: List[Dict], output_dir: str):
+        """Create JSON report for AMRfinderPlus results"""
+        analysis = self._analyze_ecoli_amr_results(hits)
+        
+        json_data = {
+            'metadata': {
+                'genome': genome_name,
+                'analysis_date': self.metadata['analysis_date'],
+                'tool': self.metadata['tool_name'],
+                'version': self.metadata['version'],
+                'amrfinder_version': self.metadata['amrfinder_version'],
+                'database_version': self.metadata['database_version']
+            },
+            'summary': {
+                'total_genes': analysis['total_genes'],
+                'high_risk_genes': analysis['high_risk_genes'],
+                'critical_risk_genes': analysis['critical_risk_genes'],
+                'high_risk_list': analysis['high_risk_list'],
+                'critical_risk_list': analysis['critical_risk_list'],
+                'resistance_classes': analysis['resistance_classes'],
+                'resistance_mechanisms': analysis['resistance_mechanisms']
+            },
+            'hits': hits
+        }
+        
+        json_file = os.path.join(output_dir, f"{genome_name}_amrfinder_report.json")
+        with open(json_file, 'w') as f:
+            json.dump(json_data, f, indent=2)
+        
+        self.logger.info("E. coli AMRfinderPlus JSON report generated: %s", json_file)
     
     def _analyze_ecoli_amr_results(self, hits: List[Dict]) -> Dict[str, Any]:
         """Analyze AMR results specifically for E. coli with enhanced risk assessment"""
@@ -696,8 +845,8 @@ class EcoliAMRfinderPlus:
         }
         
         for hit in hits:
-            gene_symbol = hit['gene_symbol']
-            resistance_class = hit['class']
+            gene_symbol = hit.get('gene_symbol', '')
+            resistance_class = hit.get('class', '')
             
             # Categorize resistance mechanism
             self._categorize_resistance_mechanism(gene_symbol, resistance_class, analysis)
@@ -771,26 +920,36 @@ class EcoliAMRfinderPlus:
         summary_file = os.path.join(output_base, "ecoli_amrfinder_summary.tsv")
         
         with open(summary_file, 'w') as f:
-            # Write header
-            f.write("Genome\tGene_Symbol\tSequence_Name\tClass\tSubclass\tCoverage\tIdentity\tScope\tElement_Type\tAccession\tContig\tStart\tStop\n")
+            # Write header with NEW headers
+            f.write("Genome\tProtein id\tContig id\tStart\tStop\tStrand\tElement symbol\tElement name\tScope\tType\tSubtype\tClass\tSubclass\tMethod\tTarget length\tReference sequence length\t% Coverage of reference\t% Identity to reference\tAlignment length\tClosest reference accession\tClosest reference name\tHMM accession\tHMM description\n")
             
             # Write data for all genomes
             for genome_name, result in all_results.items():
                 for hit in result['hits']:
                     row = [
                         genome_name,
-                        hit.get('gene_symbol', ''),
-                        hit.get('sequence_name', ''),
-                        hit.get('class', ''),
-                        hit.get('subclass', ''),
-                        hit.get('coverage', ''),
-                        hit.get('identity', ''),
-                        hit.get('scope', ''),
-                        hit.get('element_type', ''),
-                        hit.get('accession', ''),
-                        hit.get('contig_id', ''),
-                        hit.get('start', ''),
-                        hit.get('stop', '')
+                        hit.get('Protein id', ''),
+                        hit.get('Contig id', ''),
+                        hit.get('Start', ''),
+                        hit.get('Stop', ''),
+                        hit.get('Strand', ''),
+                        hit.get('Element symbol', ''),
+                        hit.get('Element name', ''),
+                        hit.get('Scope', ''),
+                        hit.get('Type', ''),
+                        hit.get('Subtype', ''),
+                        hit.get('Class', ''),
+                        hit.get('Subclass', ''),
+                        hit.get('Method', ''),
+                        hit.get('Target length', ''),
+                        hit.get('Reference sequence length', ''),
+                        hit.get('% Coverage of reference', ''),
+                        hit.get('% Identity to reference', ''),
+                        hit.get('Alignment length', ''),
+                        hit.get('Closest reference accession', ''),
+                        hit.get('Closest reference name', ''),
+                        hit.get('HMM accession', ''),
+                        hit.get('HMM description', '')
                     ]
                     f.write('\t'.join(str(x) for x in row) + '\n')
         
@@ -818,11 +977,107 @@ class EcoliAMRfinderPlus:
         
         self.logger.info("✓ E. coli AMR statistics summary created: %s", stats_file)
         
-        # Create comprehensive HTML summary report for ecoli_amrfinder_summary.tsv
+        # Create JSON summaries
+        self.create_json_summaries(all_results, output_base)
+        
+        # Create comprehensive HTML summary report
         self._create_summary_html_report(all_results, output_base)
     
+    def create_json_summaries(self, all_results: Dict[str, Any], output_base: str):
+        """Create JSON summary files"""
+        self.logger.info("Creating JSON summaries...")
+        
+        # Create master JSON summary
+        master_summary = {
+            'metadata': {
+                'tool': self.metadata['tool_name'],
+                'version': self.metadata['version'],
+                'amrfinder_version': self.metadata['amrfinder_version'],
+                'database_version': self.metadata['database_version'],
+                'analysis_date': self.metadata['analysis_date'],
+                'total_genomes': len(all_results)
+            },
+            'genome_summaries': {},
+            'cross_genome_patterns': {}
+        }
+        
+        # Collect all data for cross-genome analysis
+        all_hits_by_gene = defaultdict(lambda: {'count': 0, 'genomes': set()})
+        genomes_with_critical = 0
+        genomes_with_high_risk = 0
+        
+        for genome_name, result in all_results.items():
+            # Create genome-specific summary
+            hits = result['hits']
+            genes = [hit.get('gene_symbol', '') for hit in hits if hit.get('gene_symbol', '')]
+            unique_genes = set(genes)
+            
+            critical_genes = [g for g in unique_genes if g in self.critical_risk_genes]
+            high_risk_genes = [g for g in unique_genes if g in self.high_risk_genes and g not in self.critical_risk_genes]
+            
+            if critical_genes:
+                genomes_with_critical += 1
+            if high_risk_genes:
+                genomes_with_high_risk += 1
+            
+            # Add to genome summaries
+            master_summary['genome_summaries'][genome_name] = {
+                'total_hits': result['hit_count'],
+                'unique_genes': len(unique_genes),
+                'critical_genes': critical_genes,
+                'high_risk_genes': high_risk_genes,
+                'genes': list(unique_genes),
+                'status': result['status']
+            }
+            
+            # Update gene frequency
+            for gene in unique_genes:
+                all_hits_by_gene[gene]['count'] += 1
+                all_hits_by_gene[gene]['genomes'].add(genome_name)
+        
+        # Prepare cross-genome patterns
+        cross_genome_data = {}
+        for gene, data in all_hits_by_gene.items():
+            cross_genome_data[gene] = {
+                'frequency': data['count'],
+                'genomes': list(data['genomes']),
+                'risk_level': 'CRITICAL' if gene in self.critical_risk_genes else 'HIGH' if gene in self.high_risk_genes else 'STANDARD'
+            }
+        
+        master_summary['cross_genome_patterns'] = {
+            'total_unique_genes': len(all_hits_by_gene),
+            'genomes_with_critical': genomes_with_critical,
+            'genomes_with_high_risk': genomes_with_high_risk,
+            'gene_frequency': cross_genome_data
+        }
+        
+        # Write master JSON
+        master_json_file = os.path.join(output_base, "ecoli_amrfinder_master_summary.json")
+        with open(master_json_file, 'w') as f:
+            json.dump(master_summary, f, indent=2)
+        
+        self.logger.info("✓ Master JSON summary created: %s", master_json_file)
+        
+        # Create individual genome JSON files in their directories
+        for genome_name, result in all_results.items():
+            genome_dir = os.path.join(output_base, genome_name)
+            if os.path.exists(genome_dir):
+                json_file = os.path.join(genome_dir, f"{genome_name}_amrfinder_summary.json")
+                with open(json_file, 'w') as f:
+                    json.dump({
+                        'metadata': {
+                            'genome': genome_name,
+                            'analysis_date': self.metadata['analysis_date']
+                        },
+                        'summary': {
+                            'total_hits': result['hit_count'],
+                            'genes': list(set(hit.get('gene_symbol', '') for hit in result['hits'] if hit.get('gene_symbol', '')))
+                        },
+                        'hits': result['hits'][:10000]  # Limit to first 10000 hits to keep file manageable
+                    }, f, indent=2)
+    
     def _create_summary_html_report(self, all_results: Dict[str, Any], output_base: str):
-        """Create comprehensive HTML summary report with pattern discovery"""
+        """Create comprehensive HTML summary report with pattern discovery - UPDATED STYLING"""
         
         # Collect all data for pattern analysis
         all_hits = []
@@ -939,7 +1194,7 @@ class EcoliAMRfinderPlus:
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }}
         .gene-table th, .gene-table td {{ 
-            padding: 12px; 
+            padding: 15px; 
             text-align: left; 
             border-bottom: 1px solid #e0e0e0; 
         }}
@@ -1001,7 +1256,7 @@ class EcoliAMRfinderPlus:
         .footer a:hover {{
             text-decoration: underline;
         }}
-        .resistance-badge {{
+        .risk-badge {{
             display: inline-block;
             background: #dc3545;
             color: white;
@@ -1009,16 +1264,6 @@ class EcoliAMRfinderPlus:
             border-radius: 15px;
             margin: 2px;
             font-size: 0.9em;
-        }}
-        .critical-resistance-badge {{
-            display: inline-block;
-            background: #8b0000;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 15px;
-            margin: 2px;
-            font-size: 0.9em;
-            font-weight: bold;
         }}
         .warning-badge {{
             display: inline-block;
@@ -1029,7 +1274,7 @@ class EcoliAMRfinderPlus:
             margin: 2px;
             font-size: 0.9em;
         }}
-        .success-badge {{
+        .safe-badge {{
             display: inline-block;
             background: #28a745;
             color: white;
@@ -1038,12 +1283,22 @@ class EcoliAMRfinderPlus:
             margin: 2px;
             font-size: 0.9em;
         }}
-        /* IMPROVED GENE FREQUENCY COLOR SCHEME */
-        .frequency-high {{ background-color: #f8d7da; font-weight: bold; border-left: 4px solid #dc3545; }}
-        .frequency-medium-high {{ background-color: #ffeaa7; border-left: 4px solid #fdcb6e; }}
-        .frequency-medium {{ background-color: #fff3cd; border-left: 4px solid #ffc107; }}
-        .frequency-low-medium {{ background-color: #d1ecf1; border-left: 4px solid #17a2b8; }}
-        .frequency-low {{ background-color: #d4edda; border-left: 4px solid #28a745; }}
+        /* EXACT ABRICATE STYLING - Keep your functionality, match ABRICATE style */
+        .present {{ background-color: #d4edda; }}
+        .critical {{ background-color: #f8d7da; font-weight: bold; }}
+        .high-risk {{ background-color: #fff3cd; }}
+        /* SIMPLIFIED GENE LIST - Matches ABRICATE exactly */
+        .gene-list-container {{
+            font-size: 0.9em;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }}
+        /* REMOVE special genome-cell styling - Use simple comma-separated list like ABRICATE */
+        .genome-list-simple {{
+            font-size: 0.9em;
+            line-height: 1.4;
+            white-space: normal;
+        }}
     </style>
     {quotes_js}
 </head>
@@ -1052,6 +1307,7 @@ class EcoliAMRfinderPlus:
         <div class="header">
             <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper AMRfinderPlus - Summary Report</h1>
             <p style="color: #666; font-size: 1.2em;">Comprehensive E. coli Antimicrobial Resistance Analysis Across All Genomes</p>
+            <p style="color: #666; font-size: 1.1em;">AMRfinderPlus 4.2.4 | Database: 2025-12-03.1</p>
         </div>
         
         <div class="quote-container">
@@ -1071,7 +1327,7 @@ class EcoliAMRfinderPlus:
                 </p>
 """
             for gene in sorted(critical_genes_found):
-                html_content += f'<span class="critical-resistance-badge">🚨 {gene}</span>'
+                html_content += f'<span class="risk-badge">🚨 {gene}</span>'
             html_content += """
             </div>
         </div>
@@ -1090,12 +1346,14 @@ class EcoliAMRfinderPlus:
                     <p style="font-size: 2em; margin: 0;">{total_hits}</p>
                 </div>
                 <div class="critical-stat-card">
-                    <h3>Critical Risk Genomes</h3>
-                    <p style="font-size: 2em; margin: 0;">{genomes_with_critical}</p>
+                    <h3>High-Risk Genomes</h3>
+                    <p style="font-size: 2em; margin: 0;">{genomes_with_high_risk}</p>
                 </div>
             </div>
             <p><strong>Date:</strong> {self.metadata['analysis_date']}</p>
             <p><strong>Tool Version:</strong> {self.metadata['version']}</p>
+            <p><strong>AMRfinderPlus:</strong> {self.metadata['amrfinder_version']}</p>
+            <p><strong>Database:</strong> {self.metadata['database_version']}</p>
         </div>
 """
         
@@ -1108,13 +1366,13 @@ class EcoliAMRfinderPlus:
             <div style="margin: 10px 0;">
 """
             for gene in sorted(high_risk_genes_found):
-                html_content += f'<span class="resistance-badge">{gene}</span>'
+                html_content += f'<span class="warning-badge">{gene}</span>'
             html_content += """
             </div>
         </div>
 """
         
-        # Genes by Genome table (Pattern Discovery)
+        # Enhanced Genes by Genome table (Showing ALL genes)
         html_content += """
         <div class="card">
             <h2 style="color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px;">🔍 Genes by Genome</h2>
@@ -1123,30 +1381,30 @@ class EcoliAMRfinderPlus:
                     <tr>
                         <th>Genome</th>
                         <th>Gene Count</th>
-                        <th>Critical Genes</th>
-                        <th>High Risk Genes</th>
+                        <th>Genes Detected</th>
                     </tr>
                 </thead>
                 <tbody>
 """
         
         for genome in sorted(genes_per_genome.keys()):
-            genes = genes_per_genome.get(genome, set())
-            critical_genes = [g for g in genes if g in self.critical_risk_genes]
-            high_risk_genes = [g for g in genes if g in self.high_risk_genes and g not in self.critical_risk_genes]
+            genes = sorted(genes_per_genome.get(genome, set()))
             
-            critical_display = ", ".join(critical_genes) if critical_genes else "None"
-            high_risk_display = ", ".join(high_risk_genes) if high_risk_genes else "None"
+            # Create simple comma-separated gene list
+            gene_list = ", ".join(genes)
             
-            # Highlight rows with critical genes
-            row_class = "critical-row" if critical_genes else "high-risk-row" if high_risk_genes else ""
+            # Determine row class based on risk level
+            row_class = "present"
+            if any(gene in genes for gene in self.critical_risk_genes):
+                row_class = "critical"
+            elif any(gene in genes for gene in self.high_risk_genes):
+                row_class = "high-risk"
             
             html_content += f"""
                     <tr class="{row_class}">
                         <td><strong>{genome}</strong></td>
                         <td>{len(genes)}</td>
-                        <td>{critical_display}</td>
-                        <td>{high_risk_display}</td>
+                        <td>{gene_list}</td>
                     </tr>
 """
         
@@ -1170,44 +1428,42 @@ class EcoliAMRfinderPlus:
                 <tbody>
 """
         
-        # Calculate gene frequency with IMPROVED color highlighting
+        # Calculate gene frequency with SIMPLIFIED STYLING
         for gene, genomes in sorted(gene_frequency.items(), key=lambda x: len(x[1]), reverse=True):
             frequency = len(genomes)
             genome_list = ", ".join(sorted(genomes))
-            frequency_percent = (frequency / total_genomes) * 100
+            frequency_percent = (frequency / total_genomes) * 100 if total_genomes > 0 else 0
             
-            # Determine risk level
+            # Determine risk level - KEEP YOUR LOGIC
             if gene in self.critical_risk_genes:
-                risk_level = '<span class="critical-resistance-badge">CRITICAL</span>'
+                risk_level = '<span class="risk-badge">CRITICAL</span>'
+                row_class = "critical"
             elif gene in self.high_risk_genes:
-                risk_level = '<span class="resistance-badge">HIGH</span>'
+                risk_level = '<span class="warning-badge">HIGH</span>'
+                row_class = "high-risk"
             else:
-                risk_level = '<span class="success-badge">Standard</span>'
+                risk_level = '<span class="safe-badge">Standard</span>'
+                row_class = "present"
             
-            # IMPROVED COLOR SCHEME: Better visual distinction
+            # Determine prevalence badge
             if frequency_percent >= 75:
-                frequency_class = "frequency-high"
-                prevalence_badge = '<span class="resistance-badge">Very High</span>'
+                prevalence_badge = '<span class="risk-badge">Very High</span>'
             elif frequency_percent >= 50:
-                frequency_class = "frequency-medium-high"
                 prevalence_badge = '<span class="warning-badge">High</span>'
             elif frequency_percent >= 25:
-                frequency_class = "frequency-medium"
                 prevalence_badge = '<span class="warning-badge">Medium</span>'
             elif frequency_percent >= 10:
-                frequency_class = "frequency-low-medium"
-                prevalence_badge = '<span class="success-badge">Low</span>'
+                prevalence_badge = '<span class="safe-badge">Low</span>'
             else:
-                frequency_class = "frequency-low"
-                prevalence_badge = '<span class="success-badge">Rare</span>'
+                prevalence_badge = '<span class="safe-badge">Rare</span>'
             
             html_content += f"""
-                    <tr class="{frequency_class}">
+                    <tr class="{row_class}">
                         <td><strong>{gene}</strong></td>
                         <td>{frequency} ({frequency_percent:.1f}%)</td>
                         <td>{prevalence_badge}</td>
                         <td>{risk_level}</td>
-                        <td>{genome_list}</td>
+                        <td class="genome-list-simple">{genome_list}</td>
                     </tr>
 """
         
@@ -1221,7 +1477,9 @@ class EcoliAMRfinderPlus:
             <ul style="color: #666; font-size: 1.1em;">
                 <li><strong>ecoli_amrfinder_summary.tsv</strong> - Complete AMR data for all genomes</li>
                 <li><strong>ecoli_amrfinder_statistics_summary.tsv</strong> - Statistical summary</li>
+                <li><strong>ecoli_amrfinder_master_summary.json</strong> - Master JSON summary</li>
                 <li><strong>Individual genome HTML reports</strong> - Detailed analysis per genome</li>
+                <li><strong>Individual genome JSON reports</strong> - JSON data per genome</li>
                 <li><strong>This summary report</strong> - Cross-genome analysis with pattern discovery</li>
             </ul>
         </div>
@@ -1233,7 +1491,8 @@ class EcoliAMRfinderPlus:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper AMRfinderPlus v3.12.8
+                Analysis performed using EcoliTyper AMRfinderPlus v4.2.4
+                with bundled AMRfinderPlus 2025-12-03.1 database
             </p>
         </div>
     </div>
@@ -1246,7 +1505,7 @@ class EcoliAMRfinderPlus:
         with open(html_file, 'w') as f:
             f.write(html_content)
         
-        self.logger.info("✓ E. coli AMRfinderPlus summary HTML report created: %s", html_file)
+        self.logger.info("✓ E. coli AMRfinderPlus summary HTML report created: %s", html_file)   
     
     def process_single_genome(self, genome_file: str, output_base: str = "ecoli_amrfinder_results") -> Dict[str, Any]:
         """Process a single E. coli genome with AMRfinderPlus"""
@@ -1257,6 +1516,17 @@ class EcoliAMRfinderPlus:
         
         # Create output directory
         os.makedirs(results_dir, exist_ok=True)
+        
+        # Check bundled AMRfinderPlus before running
+        if not self.check_amrfinder_installed():
+            self.logger.error("Bundled AMRfinderPlus not available!")
+            return {
+                'genome': genome_name,
+                'hits': [],
+                'hit_count': 0,
+                'status': 'failed',
+                'error': 'Bundled AMRfinderPlus not available'
+            }
         
         # Run AMRfinderPlus
         result = self.run_amrfinder_single_genome(genome_file, results_dir)
@@ -1296,8 +1566,8 @@ class EcoliAMRfinderPlus:
         max_concurrent = max(1, min(self.cpus, len(genome_files), int(self.available_ram / 2.5)))  # 2.5GB per genome
         
         self.logger.info("🚀 MAXIMUM SPEED: Using %d concurrent genome processing jobs", max_concurrent)
-        self.logger.info("   Each AMRfinderPlus instance uses %d threads internally", self.cpus)
-        self.logger.info("   This provides maximum throughput for multiple genome analysis")
+        self.logger.info("   Using BUNDLED AMRfinderPlus: %s", self.bundled_amrfinder)
+        self.logger.info("   Using BUNDLED database: %s", self.bundled_database)
         
         with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
             # Submit all tasks
@@ -1328,6 +1598,8 @@ class EcoliAMRfinderPlus:
         self.logger.info("=== E. COLI AMR ANALYSIS COMPLETE ===")
         self.logger.info("Processed %d genomes", len(all_results))
         self.logger.info("Results saved to: %s", output_base)
+        self.logger.info("Bundled AMRfinderPlus used: %s", self.bundled_amrfinder)
+        self.logger.info("Bundled database used: %s", self.bundled_database)
         
         return all_results
 
@@ -1402,7 +1674,9 @@ Supported FASTA extensions: .fasta, .fa, .fna, .faa
         executor.logger.info("\n📁 SUMMARY FILES CREATED:")
         executor.logger.info("   Comprehensive AMR data: %s/ecoli_amrfinder_summary.tsv", args.output)
         executor.logger.info("   Statistics summary: %s/ecoli_amrfinder_statistics_summary.tsv", args.output)
+        executor.logger.info("   Master JSON summary: %s/ecoli_amrfinder_master_summary.json", args.output)
         executor.logger.info("   Summary HTML report: %s/ecoli_amrfinder_summary_report.html", args.output)
+        executor.logger.info("   Individual genome reports in: %s/*/", args.output)
         
         # Performance summary
         executor.logger.info("\n⚡ MAXIMUM SPEED PERFORMANCE SUMMARY:")
@@ -1410,6 +1684,8 @@ Supported FASTA extensions: .fasta, .fa, .fna, .faa
         executor.logger.info("   Available RAM: %.1f GB", executor.available_ram)
         executor.logger.info("   Processing mode: MAXIMUM SPEED CONCURRENT MODE 🚀")
         executor.logger.info("   Strategy: Process multiple genomes concurrently with optimal core allocation")
+        executor.logger.info("   Bundled AMRfinderPlus: %s", executor.metadata['amrfinder_version'])
+        executor.logger.info("   Bundled database: %s", executor.metadata['database_version'])
         
         # Critical risk warning if detected
         if critical_risk_count > 0:

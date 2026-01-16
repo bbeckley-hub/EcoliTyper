@@ -4,7 +4,7 @@ EcoliDB Comprehensive Reference - Complete Database HTML Generator
 Captures ALL data from the comprehensive E. coli database
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025
+Date: 2025-09-13
 Send a quick mail for any issues or further explanations.
 """
 
