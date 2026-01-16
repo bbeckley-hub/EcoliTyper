@@ -13,7 +13,7 @@
 **A species-optimized computational pipeline for comprehensive genotyping and surveillance of *Escherichia coli***
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.8-3.14](https://img.shields.io/badge/Python-3.8--3.12-blue.svg)](https://www.python.org/)
+[![Python 3.8-3.14](https://img.shields.io/badge/Python-3.8--3.14-blue.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/bbeckley-hub/EcoliTyper)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17761775.svg)](https://doi.org/10.5281/zenodo.17761775)
 [![GitHub stars](https://img.shields.io/github/stars/bbeckley-hub/EcoliTyper)](https://github.com/bbeckley-hub/EcoliTyper/stargazers)
