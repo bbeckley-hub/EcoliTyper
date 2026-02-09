@@ -8,7 +8,7 @@
 ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
 ```
 </div>
-# 🧬 EcoliTyper v1.0.0
+🧬 EcoliTyper v1.0.0
 
 **A species-optimized computational pipeline for comprehensive genotyping and surveillance of *Escherichia coli***
 
