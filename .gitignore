@@ -51,3 +51,7 @@ usage
 
 # Exclude personal test directories but KEEP the bundled database
 # NOTE: The database/ directory should be COMMITTED as it contains bundled tools
+ecoliTyper/modules/CHTyper_module/
+ecoliTyper/modules/mlst_module/
+ecoliTyper/modules/Amrfinder_module/bin/
+ecoliTyper/modules/Amrfinder_module/data/
