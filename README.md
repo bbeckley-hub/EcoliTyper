@@ -411,7 +411,7 @@ EcoliTyper integrates several third-party tools. Please cite them when using cor
   journal = {Journal of Clinical Microbiology},
   year = {2018}
 }
-
+```
 **ABRicate (Torsten Seemann)**
 ```bibtex
 
@@ -422,7 +422,8 @@ EcoliTyper integrates several third-party tools. Please cite them when using cor
   publisher = {GitHub},
   url = {https://github.com/tseemann/abricate}
 }
-**AMR**
+```
+**AMR (NCBI)**
 ```bibtex
 @article{feldgarden2019validating,
   author = {Feldgarden, M. et al.},
