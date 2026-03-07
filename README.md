@@ -76,7 +76,7 @@
 ## ✨ **Core Features**
 
 ### 🧩 **Comprehensive *E. coli* Typing Suite**
-- **🧬 Multi-Locus Sequence Typing (MLST)** – Achtman scheme with PubMedST database
+- **🧬 Multi-Locus Sequence Typing (MLST)** – Achtman scheme with PubMLST database
 - **🔍 In silico Serotyping** – O and H antigen determination via SerotypeFinder (≥90% coverage/identity)
 - **🎯 CH Typing** – High-resolution *fumC/fimH* typing for fine-scale discrimination
 - **🌳 Clermont Phylogrouping** – Evolutionary context with 2013 scheme (8 phylogroups)
