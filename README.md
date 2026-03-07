@@ -414,7 +414,6 @@ EcoliTyper integrates several third-party tools. Please cite them when using cor
 ```
 **ABRicate (Torsten Seemann)**
 ```bibtex
-
 @software{seemann_abricate_2018,
   author = {Seemann, T.},
   title = {ABRicate: Mass screening of contigs for antimicrobial resistance and virulence genes},
@@ -422,6 +421,14 @@ EcoliTyper integrates several third-party tools. Please cite them when using cor
   publisher = {GitHub},
   url = {https://github.com/tseemann/abricate}
 }
+@software{seemann_mlst_2025,
+  author = {Seemann, T.},
+  title = {MLST: Scan contig files against traditional PubMLST typing schemes},
+  year = {2025},
+  publisher = {GitHub},
+  url = {https://github.com/tseemann/mlst}
+}
+
 ```
 **AMR (NCBI)**
 ```bibtex
