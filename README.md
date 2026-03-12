@@ -36,6 +36,7 @@
 - [📊 Output Structure](#-output-structure)
 - [🎨 Interactive Report Features](#-interactive-report-features)
 - [🔗 Integrated External Tools & Dependencies](#-integrated-external-tools--dependencies)
+- [🤖 AI Integration Guide](#-ai-integration-guide)
 - [🌍 EcoliDB Lineage Database](#-ecolityper-ecolidb-lineage-database)
 - [⚡ Performance Benchmarks](#-performance-benchmarks)
 - [🆚 Competitive Comparison](#-competitive-comparison)
@@ -291,6 +292,50 @@ EcoliTyper integrates several powerful open-source tools and databases. These ar
 | **EcoH** | *E. coli* hemolysins | Free for research |
 | **Ecoli_VF** | *E. coli* virulence factors | Free for research |
 | **PlasmidFinder** | Plasmid replicons | Free for research |
+
+---
+## 🤖 **AI Integration Guide**
+
+EcoliTyper generates comprehensive HTML reports that are **perfect for AI analysis**. Here's how to use AI tools to get more from your data.
+
+### 🚀 Quick Start
+1. **Install any AI browser extension** (ChatGPT, Claude, Gemini)
+2. **Open your report**: `genius_ultimate_report.html`
+3. **Select text** in any section (AMR Genes, MLST Analysis,Serotype analysis, CH type etc.)
+4. **Right-click → Ask AI** with your question
+
+### 💡 Example Questions
+
+**For MLST Analysis:**
+- "What is the clinical significance of ST21 vs ST10?"
+- "Which ST-Serotype-Phylogrouping-CH types combinations are hypervirulent?"
+
+**For AMR Genes:**
+- "Explain the OmpA gene and its importance"
+- "Which samples have multiple resistance genes?"
+- "What treatment implications do these genes have?"
+
+**For Virulence Factors:**
+- "Which samples carry espK?"
+- "Are there any high-risk virulence combinations?"
+
+**For Pattern Discovery:**
+- "Are there correlations between ST and specific genes?"
+- "Identify any concerning patterns in this dataset"
+- 
+**For Publication & Manuscript Summary:**
+- Select the sample overview section and ask AI "Summarize the population overview for my E. coli results"
+
+### 📊 Pro Tips
+- **Provide context**: "I'm analyzing *E. coli* genomics data..."
+- **Be specific**: Instead of "tell me about this", ask "what does ST21 	O26:H11-B1-fumC4:fimH440 combination indicate?"
+- **Ask for interpretations**: "What are the clinical implications of these findings?"
+- **Request summaries**: "Summarize the resistance profile of sample XYZ"
+
+### ⚡ Why This Works
+EcoliTyper reports are structured with clear tables and organized data that AI can easily understand. Each gene is shown with all genomes that contain it, making pattern analysis straightforward.
+
+> *"AI provides powerful insights but always verify critical findings with domain experts."*
 
 ---
 
