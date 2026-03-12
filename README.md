@@ -328,7 +328,7 @@ EcoliTyper generates comprehensive HTML reports that are **perfect for AI analys
 
 **SUPER-TRICK FOR CHATGPT USERS:**
 - Upload the `genius_ultimate_report.html` reporter and ask any question in any section.
-- From interaction to insights in minutes....
+- From interaction to insights in minutes...."Summarize the Sample overview section as the First results for my Manuscript"
 
 ### 📊 Pro Tips
 - **Provide context**: "I'm analyzing *E. coli* genomics data..."
