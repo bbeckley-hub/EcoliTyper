@@ -283,7 +283,7 @@ EcoliTyper integrates several powerful open-source tools and databases. These ar
 ### **AMR & Virulence Databases (via ABRicate)**
 | Database | Purpose | License |
 |----------|---------|---------|
-| **CARD** | Comprehensive antibiotic resistance | ODbL |
+| **CARD** | Comprehensive antibiotic resistance | Free for research |
 | **ResFinder** | Acquired antimicrobial resistance | Free for research |
 | **NCBI** | NCBI bacterial AMR reference | Public Domain |
 | **ARG-ANNOT** | Antibiotic resistance gene annotation | Free for research |
