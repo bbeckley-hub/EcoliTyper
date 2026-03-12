@@ -326,6 +326,10 @@ EcoliTyper generates comprehensive HTML reports that are **perfect for AI analys
 **For Publication & Manuscript Summary:**
 - Select the sample overview section and ask AI "Summarize the population overview for my E. coli results"
 
+**SUPER-TRICK FOR CHATGPT USERS:**
+- Upload the `genius_ultimate_report.html` reporter and ask any question in any section.
+- From interaction to insights in minutes....
+
 ### 📊 Pro Tips
 - **Provide context**: "I'm analyzing *E. coli* genomics data..."
 - **Be specific**: Instead of "tell me about this", ask "what does ST21 	O26:H11-B1-fumC4:fimH440 combination indicate?"
