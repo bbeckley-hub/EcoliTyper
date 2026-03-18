@@ -4,9 +4,7 @@
 
 <div align="center">
 
-# 🧬 **EcoliTyper v1.0.0**
-
-### A species-optimized computational pipeline for comprehensive genotyping and surveillance of **_Escherichia coli_**
+### 🧬 A species-optimized computational pipeline for comprehensive genotyping and surveillance of **_Escherichia coli_**
 
 **Complete *E. coli* genomic analysis in minutes — not hours**
 
