@@ -13,7 +13,15 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/bbeckley-hub/EcoliTyper)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17761775.svg)](https://doi.org/10.5281/zenodo.17761775)
 [![GitHub stars](https://img.shields.io/github/stars/bbeckley-hub/EcoliTyper)](https://github.com/bbeckley-hub/EcoliTyper/stargazers)
+
 [![Docker Pulls](https://img.shields.io/docker/pulls/bbeckleyhub/ecolityper)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
+[![Docker Image Size](https://img.shields.io/docker/image-size/bbeckleyhub/ecolityper/latest)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
+[![Docker Version](https://img.shields.io/docker/v/bbeckleyhub/ecolityper?sort=semver)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
+
+[![Conda](https://img.shields.io/badge/conda-✓-green.svg)](https://docs.conda.io/en/latest/)
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![GitHub Issues](https://img.shields.io/github/issues/bbeckley-hub/EcoliTyper)](https://github.com/bbeckley-hub/EcoliTyper/issues)
+
 
 **Perfect for clinical microbiology, outbreak investigations, and genomic research.**
 
