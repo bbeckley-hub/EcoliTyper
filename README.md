@@ -1,3 +1,6 @@
+Here is the **fully merged README.md** with the new Docker section, badge, and instructions. You can replace your existing README with this content.
+
+```markdown
 <p align="center">
   <img src="https://raw.githubusercontent.com/bbeckley-hub/ecoliTyper/main/ecolityper_banner.png" alt="ecoliTyper Banner" width="100%">
 </p>
@@ -13,6 +16,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/bbeckley-hub/EcoliTyper)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17761775.svg)](https://doi.org/10.5281/zenodo.17761775)
 [![GitHub stars](https://img.shields.io/github/stars/bbeckley-hub/EcoliTyper)](https://github.com/bbeckley-hub/EcoliTyper/stargazers)
+[![Docker Pulls](https://img.shields.io/docker/pulls/bbeckleyhub/ecolityper)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 
 **Perfect for clinical microbiology, outbreak investigations, and genomic research.**
 
@@ -100,6 +104,42 @@
 conda create -n ecolityper -c conda-forge -c bioconda -c bbeckley-hub ecolityper -y
 conda activate ecolityper
 ```
+
+### 🐳 Docker Installation (Alternative)
+
+If you prefer a containerized environment or cannot install Conda, use our Docker image. It includes all dependencies and pre‑configured databases – **no setup required**.
+
+#### Pull the Docker image
+
+```bash
+docker pull bbeckleyhub/ecolityper:latest
+```
+
+#### Run EcoliTyper (output files owned by root)
+
+```bash
+docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest -i "/data/*.fna" -o /data/output
+```
+
+> **Note:** Inside the container, files are written as `root`. To take ownership of the results on your host, run:
+> ```bash
+> sudo chown -R $USER:$USER ./output
+> ```
+> (If you don’t have `sudo`, see the Singularity alternative below.)
+
+#### Run with Singularity (HPC‑friendly, no `sudo` needed)
+
+On HPC systems that support [Singularity/Apptainer](https://sylabs.io/singularity/), convert the Docker image and run – the output files will automatically belong to your user.
+
+```bash
+singularity pull ecolityper.sif docker://bbeckleyhub/ecolityper:latest
+singularity run --pwd $(pwd) -B $(pwd):/data ecolityper.sif -i "/data/*.fna" -o /data/output
+```
+
+#### Docker Hub Repository
+
+All releases are available at:  
+[https://hub.docker.com/r/bbeckleyhub/ecolityper](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 
 ### From Source
 ```bash
@@ -609,4 +649,3 @@ Antimicrobial resistance (AMR) represents one of the most significant global hea
 **Together, we can enhance global AMR monitoring and develop more effective treatment strategies.**
 
 </div>
-
