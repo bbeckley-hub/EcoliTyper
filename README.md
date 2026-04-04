@@ -1,6 +1,3 @@
-Here is the **fully merged README.md** with the new Docker section, badge, and instructions. You can replace your existing README with this content.
-
-```markdown
 <p align="center">
   <img src="https://raw.githubusercontent.com/bbeckley-hub/ecoliTyper/main/ecolityper_banner.png" alt="ecoliTyper Banner" width="100%">
 </p>
