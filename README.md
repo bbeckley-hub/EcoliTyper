@@ -112,34 +112,162 @@ conda activate ecolityper
 
 ### 🐳 Docker Installation (Alternative)
 
-If you prefer a containerized environment or cannot install Conda, use our Docker image. It includes all dependencies and pre‑configured databases – **no setup required**.
+If you prefer a containerized environment or cannot install Conda, use our Docker image. It includes all dependencies and pre‑configured databases – **no setup required**. Run the complete E. coli typing pipeline with zero installation – just Docker.
 
-#### Pull the Docker image
+---
+
+## 🚀 Quick Start
+
+### Pull the image
 
 ```bash
 docker pull bbeckleyhub/ecolityper:latest
 ```
 
-#### Run EcoliTyper (output files owned by root)
+### Run on a single FASTA file
+
+```bash
+docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest -i "/data/genome.fna" -o /data/output
+```
+
+After the run, output files are owned by `root` on your host. To reclaim ownership:
+
+```bash
+sudo chown -R $USER:$USER ./output
+```
+
+### Run on all FASTA files in the current directory
 
 ```bash
 docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest -i "/data/*.fna" -o /data/output
 ```
 
-> **Note:** Inside the container, files are written as `root`. To take ownership of the results on your host, run:
-> ```bash
-> sudo chown -R $USER:$USER ./output
-> ```
-> (If you don’t have `sudo`, see the Singularity alternative below.)
+---
 
-#### Run with Singularity (HPC‑friendly, no `sudo` needed)
+## 📖 Detailed Usage
 
-On HPC systems that support [Singularity/Apptainer](https://sylabs.io/singularity/), convert the Docker image and run – the output files will automatically belong to your user.
+### Basic syntax
+
+```bash
+docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest [ECOLITYPER_OPTIONS]
+```
+
+- `--rm` : remove container after exit
+- `-v $(pwd):/data` : mount current directory to `/data` inside container
+- Input files must be under `/data` (e.g., `/data/*.fna`)
+- Output directory must also be under `/data` (e.g., `/data/output`)
+
+### All EcoliTyper options work
+
+```bash
+docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest \
+  -i "/data/*.fna" -o /data/output \
+  --threads 8 --skip-visualization
+```
+
+### Using custom threads
+
+```bash
+docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest \
+  -i "/data/*.fna" -o /data/output -t 16
+```
+
+---
+
+## 🔧 Handling File Permissions (The “Padlock” Issue)
+
+By default, Docker runs as `root` inside the container. Any files written to your mounted directory will be owned by `root:root`.  
+You have three options:
+
+### 1. Change ownership after the run (easiest)
+
+```bash
+sudo chown -R $USER:$USER ./output
+```
+
+### 2. Run with your host user ID (requires a small code fix – coming soon)
+
+Currently not fully supported because EcoliTyper needs to write to its own installation directory. A future update will fix this.
+
+### 3. Use Singularity (recommended for HPC, no `sudo` needed)
+
+See the [Singularity section](#singularity-for-hpc-no-sudo) below.
+
+---
+
+## 🧪 Testing Your Docker Setup
+
+### Check help message
+
+```bash
+docker run --rm bbeckleyhub/ecolityper:latest -h
+```
+
+### Verify ABRicate databases are installed
+
+```bash
+docker run --rm --entrypoint /bin/bash bbeckleyhub/ecolityper:latest -c "abricate --list | head -5"
+```
+
+Expected output: list of databases (ncbi, card, vfdb, etc.)
+
+---
+
+## 🖥️ Singularity for HPC (no `sudo`, correct ownership)
+
+On HPC clusters that support [Singularity/Apptainer](https://sylabs.io/singularity/), you can run EcoliTyper **without `sudo`** and output files will be owned by your user automatically.
+
+> **Important:** EcoliTyper writes temporary files inside its own installation directory (e.g., `/opt/ecolityper/...`). Singularity mounts containers as read‑only by default, so you **must** add the `--writable-tmpfs` flag to allow these writes. The flag creates an ephemeral, writable overlay in memory – no permanent changes are made to the container.
+
+### Option A: Direct pull (if network allows)
 
 ```bash
 singularity pull ecolityper.sif docker://bbeckleyhub/ecolityper:latest
-singularity run --pwd $(pwd) -B $(pwd):/data ecolityper.sif -i "/data/*.fna" -o /data/output
+singularity run --writable-tmpfs -B $(pwd):/data ecolityper.sif -i "/data/*.fna" -o /data/output
 ```
+
+### Option B: Convert from a local Docker image (when `singularity pull` fails)
+
+If you encounter TLS timeouts or other network errors (common on some HPCs), convert an existing Docker image to a Singularity SIF file on a machine with Docker, then transfer the `.sif` file to the HPC.
+
+**Step 1 – on a machine with Docker (e.g., your laptop):**
+
+```bash
+docker pull bbeckleyhub/ecolityper:latest
+docker save bbeckleyhub/ecolityper:latest -o ecolityper.tar
+singularity build ecolityper.sif docker-archive://ecolityper.tar
+```
+
+Now copy `ecolityper.sif` to your HPC home or project directory (e.g., using `scp`).
+
+**Step 2 – on the HPC (no sudo needed):**
+
+```bash
+singularity run --writable-tmpfs -B $(pwd):/data ecolityper.sif -i "/data/*.fna" -o /data/output
+```
+
+### Explanation of flags
+
+| Flag | Purpose |
+|------|---------|
+| `--writable-tmpfs` | Creates a temporary writable overlay – **required** for EcoliTyper to write intermediate files to `/opt/...` |
+| `-B $(pwd):/data` | Binds your current directory to `/data` inside the container (input files are read from here, output is written here) |
+| `-i "/data/*.fna"` | Input pattern – use quotes to prevent shell expansion on the host |
+| `-o /data/output` | Output directory (will appear as `./output` on your host) |
+
+### Additional options
+
+You can use any EcoliTyper flag, e.g.:
+
+```bash
+singularity run --writable-tmpfs -B $(pwd):/data ecolityper.sif \
+    -i "/data/*.fna" -o /data/output --threads 8 --skip-visualization
+```
+
+### Verify it works
+
+After a successful run, you will see output indicating each module completed. All result files in `./output` will be owned by **your HPC user** – no `sudo chown` needed.
+
 
 #### Docker Hub Repository
 
