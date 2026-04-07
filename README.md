@@ -274,6 +274,8 @@ After a successful run, you will see output indicating each module completed. Al
 All releases are available at:  
 [https://hub.docker.com/r/bbeckleyhub/ecolityper](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 
+---
+
 ### From Source
 ```bash
 git clone https://github.com/bbeckley-hub/EcoliTyper.git
