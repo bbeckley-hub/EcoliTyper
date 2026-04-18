@@ -41,7 +41,7 @@ class EcoliAbricateExecutor:
         # E. coli specific databases
         self.required_databases = [
             'ncbi', 'card', 'resfinder', 'vfdb', 'argannot', 
-            'plasmidfinder', 'megares', 'ecoh', 'ecoli_vf'
+            'plasmidfinder', 'megares', 'ecoh', 'ecoli_vf', 'bacmet2'
         ]
         
         # COMPREHENSIVE E. coli high-risk resistance genes
@@ -145,7 +145,7 @@ class EcoliAbricateExecutor:
         
         self.metadata = {
             "tool_name": "EcoliTyper ABRicate",
-            "version": "1.0.0", 
+            "version": "1.1.0", 
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -244,7 +244,7 @@ class EcoliAbricateExecutor:
             version_match = re.search(r'(\d+\.\d+\.\d+)', version_line)
             if version_match:
                 version_str = version_match.group(1)
-                if version_str >= "1.0.1":
+                if version_str >= "1.2.0":
                     self.logger.info("✓ ABRicate version meets requirement (>=1.2.0)")
                     return True
                 else:
@@ -637,7 +637,6 @@ class EcoliAbricateExecutor:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper ABRicate v1.2.0
             </p>
         </div>
     </div>
@@ -1234,7 +1233,6 @@ class EcoliAbricateExecutor:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper ABRicate v1.2.0
             </p>
         </div>
     </div>
@@ -1823,7 +1821,6 @@ class EcoliAbricateExecutor:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper ABRicate v1.2.0
             </p>
         </div>
     </div>

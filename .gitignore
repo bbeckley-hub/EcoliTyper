@@ -56,3 +56,12 @@ ecoliTyper/modules/mlst_module/
 ecoliTyper/modules/Amrfinder_module/bin/
 ecoliTyper/modules/Amrfinder_module/data/
 ecoliTyper/modules/serotypefinder_module/
+
+# Excluded data folders
+ecoliTyper/modules/Amrfinder_module/data/
+ecoliTyper/modules/mlst_module/bin/
+ecoliTyper/modules/mlst_module/db/
+ecoliTyper/modules/mlst_module/perl5/
+ecoliTyper/modules/mlst_module/scripts/
+ecoliTyper/modules/CHTyper_module/chtyper_db/
+ecoliTyper/modules/serotypefinder_module/serotypefinder_db/

@@ -28,7 +28,7 @@ class EnhancedSerotypeFinder:
         self.results = []
         self.metadata = {
             "tool_name": "EcoliTyper SerotypeFinder",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -93,9 +93,14 @@ class EnhancedSerotypeFinder:
             
             print(f"🔬 Analyzing {sample_name}...")
             
-            # Build serotypefinder command
+            # Get the absolute path to serotypefinder.py (located in the same directory)
+            script_dir = os.path.dirname(__file__)
+            serotypefinder_script = os.path.join(script_dir, "serotypefinder.py")
+            
+            # Build serotypefinder command using the same Python interpreter
             cmd = [
-                "python3", "serotypefinder.py",
+                sys.executable,                 # Use current environment's Python
+                serotypefinder_script,
                 "-i", str(fasta_file),
                 "-o", str(sample_output_dir),
                 "-p", str(self.db_path),
@@ -580,7 +585,6 @@ class EnhancedSerotypeFinder:
                     <p><strong>GitHub:</strong> <a href="{self.metadata['github']}" target="_blank">{self.metadata['github']}</a></p>
                     <p><strong>Affiliation:</strong> {self.metadata['affiliation']}</p>
                     <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                        Analysis performed using EcoliTyper CGE SerotypeFinder v2.0.1
                     </p>
                 </div>
             </div>

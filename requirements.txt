@@ -6,3 +6,5 @@ requests
 tqdm
 click
 ezclermont
+tabulate
+cgecore

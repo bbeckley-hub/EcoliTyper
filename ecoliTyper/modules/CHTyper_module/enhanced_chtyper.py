@@ -29,7 +29,7 @@ class EnhancedCHTyper:
         self.results = []
         self.metadata = {
             "tool_name": "EcoliTyper CHTyper",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -119,14 +119,14 @@ class EnhancedCHTyper:
             
             # Build CHTyper command with auto-detected BLAST path
             cmd = [
-                "python3", chyper_script,
+                sys.executable, chyper_script,
                 "-i", str(sample_fasta),
                 "-o", str(sample_output_dir),
                 "-p", str(self.db_path),
                 "-b", self.blast_path,
-                "-l", "0.6",  # Minimum coverage
-                "-t", "0.9"   # Threshold
-            ]
+                "-l", "0.6",
+                "-t", "0.9"
+            ]           
             
             # Run CHTyper
             result = subprocess.run(cmd, capture_output=True, text=True)
@@ -624,7 +624,6 @@ class EnhancedCHTyper:
                     <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
                     <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
                     <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                        Analysis performed using EcoliTyper CGE CHTyper v1.0.0
                     </p>
                 </div>
             </div>

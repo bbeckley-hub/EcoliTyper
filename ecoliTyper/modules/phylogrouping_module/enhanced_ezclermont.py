@@ -29,7 +29,7 @@ class EnhancedEzClermont:
         self.results = []
         self.metadata = {
             "tool_name": "EcoliTyper Phylogrouping",
-            "version": "1.0.0", 
+            "version": "1.1.0", 
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -653,7 +653,6 @@ class EnhancedEzClermont:
                     <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
                     <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
                     <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                        Analysis performed using EcoliTyper ezClermont V0.7.0
                     </p>
                 </div>
             </div>

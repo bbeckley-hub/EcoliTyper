@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-EcoliTyper AMRfinderPlus - E. coli AMR Analysis
+EcoliTyper AMRfinderPlus - E. coli AMR Analysis with Dynamic Database
 Comprehensive AMR analysis for E. coli with beautiful HTML reporting - MAXIMUM SPEED VERSION
 Author: Beckley Brown <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025
+Date: 2025 / Updated 2026
 Send a quick mail for any issues or further explanations.
 """
 
@@ -15,7 +15,7 @@ import glob
 import logging
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import argparse
 import re
 from datetime import datetime
@@ -25,7 +25,7 @@ import json
 from collections import defaultdict
 
 class EcoliAMRfinderPlus:
-    """AMRfinderPlus executor for E. coli with comprehensive HTML reporting - MAXIMUM SPEED"""
+    """AMRfinderPlus executor for E. coli with DYNAMIC database detection and update capability"""
     
     def __init__(self, cpus: int = None):
         # Setup logging FIRST
@@ -34,7 +34,7 @@ class EcoliAMRfinderPlus:
         # Get module directory and set bundled paths
         self.module_dir = os.path.dirname(os.path.abspath(__file__))
         self.bundled_amrfinder = os.path.join(self.module_dir, "bin", "amrfinder")
-        self.bundled_database = os.path.join(self.module_dir, "data", "amrfinder_db")
+        self.bundled_update = os.path.join(self.module_dir, "bin", "amrfinder_update")
         
         # Initialize available_ram before calculating cpus
         self.available_ram = self._get_available_ram()
@@ -42,16 +42,26 @@ class EcoliAMRfinderPlus:
         # Then calculate resources - MAXIMUM SPEED MODE
         self.cpus = self._calculate_optimal_cpus(cpus)
         
+        # DYNAMIC DATABASE: find the latest dated folder (starts with 20)
+        self.bundled_database = self._get_latest_database()
+        
+        # If no database found, log warning but do not raise (analysis will be skipped later)
+        if self.bundled_database is None:
+            self.logger.warning("No AMRfinderPlus database found. Please run with --update-db to download.")
+        
+        # Read database version or set to Unknown
+        db_version = self._get_database_version() if self.bundled_database else "Unknown"
+        
         self.metadata = {
-            "tool_name": "EcoliTyper AMRfinderPlus",
-            "version": "1.0.0", 
+            "tool_name": "EcoliTyper AMRfinderPlus (BUNDLED)",
+            "version": "1.1.0",   # Updated version to reflect dynamic DB
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
             "affiliation": "University of Ghana Medical School",
             "analysis_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "amrfinder_version": "4.2.4",
-            "database_version": "2025-12-03.1"
+            "amrfinder_version": "4.2.7",
+            "database_version": db_version
         }
         
         # Comprehensive high-risk and critical gene sets
@@ -186,9 +196,70 @@ class EcoliAMRfinderPlus:
         
         # Strategy note - UPDATED for concurrent processing
         self.logger.info("📝 STRATEGY: Processing MULTIPLE samples concurrently with optimal core allocation for maximum throughput")
+    
+    def _get_latest_database(self) -> Optional[str]:
+        """Find the latest dated database folder in data/amrfinder_db/ (starts with 20)"""
+        db_root = os.path.join(self.module_dir, "data", "amrfinder_db")
+        if not os.path.exists(db_root):
+            self.logger.warning(f"Database root directory not found: {db_root}")
+            return None
+        # Find all subdirectories starting with '20'
+        candidates = []
+        for item in os.listdir(db_root):
+            full_path = os.path.join(db_root, item)
+            if os.path.isdir(full_path) and item.startswith('20'):
+                candidates.append(item)
+        if not candidates:
+            self.logger.warning("No database folder starting with '20' found.")
+            return None
+        # Sort lexicographically (YYYY-MM-DD works) and take the latest
+        latest = sorted(candidates)[-1]
+        latest_path = os.path.join(db_root, latest)
+        self.logger.info(f"Using latest database: {latest_path}")
+        return latest_path
+    
+    def _get_database_version(self) -> str:
+        """Read version.txt from the database folder or fallback to folder name"""
+        if not self.bundled_database:
+            return "Unknown"
+        version_file = os.path.join(self.bundled_database, "version.txt")
+        if os.path.exists(version_file):
+            with open(version_file, 'r') as f:
+                return f.read().strip()
+        # Fallback to folder name
+        return os.path.basename(self.bundled_database)
+    
+    def update_database(self) -> bool:
+        """Download the latest AMRfinderPlus database using bundled amrfinder_update"""
+        if not os.path.exists(self.bundled_update):
+            self.logger.error(f"amrfinder_update not found at {self.bundled_update}")
+            return False
+        if not os.access(self.bundled_update, os.X_OK):
+            self.logger.warning("amrfinder_update not executable, fixing permissions...")
+            os.chmod(self.bundled_update, 0o755)
+        db_dir = os.path.join(self.module_dir, "data", "amrfinder_db")
+        os.makedirs(db_dir, exist_ok=True)
+        self.logger.info("Updating AMRfinderPlus database...")
+        try:
+            cmd = [self.bundled_update, "--database", db_dir]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            self.logger.info("Database update completed successfully.")
+            # Re‑detect latest database
+            self.bundled_database = self._get_latest_database()
+            if self.bundled_database:
+                self.metadata['database_version'] = self._get_database_version()
+                self.logger.info(f"New database version: {self.metadata['database_version']}")
+                return True
+            else:
+                self.logger.error("Database update succeeded but no database folder found.")
+                return False
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Database update failed: {e}")
+            self.logger.error(f"STDERR: {e.stderr}")
+            return False
 
     def check_amrfinder_installed(self) -> bool:
-        """Check if bundled AMRfinderPlus is available"""
+        """Check if bundled AMRfinderPlus is available and database exists"""
         try:
             if not os.path.exists(self.bundled_amrfinder):
                 self.logger.error(f"Bundled AMRfinderPlus not found at: {self.bundled_amrfinder}")
@@ -205,35 +276,31 @@ class EcoliAMRfinderPlus:
                 text=True, 
                 check=True
             )
-            
             version_line = result.stdout.strip()
             self.logger.info(f"Bundled AMRfinderPlus version: {version_line}")
             
             # Check database
-            if os.path.exists(self.bundled_database):
+            if self.bundled_database and os.path.exists(self.bundled_database):
                 self.logger.info(f"✅ Bundled database found: {self.bundled_database}")
-                # Find the latest database version
-                db_versions = []
-                for item in os.listdir(self.bundled_database):
-                    item_path = os.path.join(self.bundled_database, item)
-                    if os.path.isdir(item_path) and re.match(r'\d{4}-\d{2}-\d{2}\.\d+', item):
-                        db_versions.append(item)
-                
-                if db_versions:
-                    db_versions.sort(reverse=True)
-                    latest_db = db_versions[0]
-                    self.logger.info(f"✅ Latest database version: {latest_db}")
+                db_version_file = os.path.join(self.bundled_database, "version.txt")
+                if os.path.exists(db_version_file):
+                    with open(db_version_file, 'r') as f:
+                        db_version = f.read().strip()
+                        self.logger.info(f"✅ Database version: {db_version}")
+                else:
+                    self.logger.info(f"✅ Database folder: {os.path.basename(self.bundled_database)}")
+                return True
             else:
-                self.logger.warning(f"⚠️ Bundled database not found at: {self.bundled_database}")
-            
-            return True
+                self.logger.warning(f"⚠️ Bundled database not found at expected location.")
+                self.logger.info("Please run with --update-db to download the latest database.")
+                return False
             
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             self.logger.error(f"Bundled AMRfinderPlus check failed: {e}")
             return False
 
     def run_amrfinder_single_genome(self, genome_file: str, output_dir: str) -> Dict[str, Any]:
-        """Run AMRfinderPlus on a single E. coli genome - USING BUNDLED BINARY"""
+        """Run AMRfinderPlus on a single E. coli genome - USING BUNDLED BINARY with dynamic DB"""
         genome_name = Path(genome_file).stem
         output_file = os.path.join(output_dir, f"{genome_name}_amrfinder.txt")
         
@@ -250,7 +317,6 @@ class EcoliAMRfinderPlus:
             }
         
         # AMRfinderPlus uses THREADS - allocate ALL available cores for maximum speed
-        # Since we're processing one sample at a time, we can use all system resources
         run_threads = self.cpus
         
         # Build command with BUNDLED resources
@@ -262,20 +328,12 @@ class EcoliAMRfinderPlus:
             '--plus'
         ]
         
-        # Add database if available
-        if os.path.exists(self.bundled_database):
-            # Find the latest database version
-            db_versions = []
-            for item in os.listdir(self.bundled_database):
-                item_path = os.path.join(self.bundled_database, item)
-                if os.path.isdir(item_path) and re.match(r'\d{4}-\d{2}-\d{2}\.\d+', item):
-                    db_versions.append(item)
-            
-            if db_versions:
-                db_versions.sort(reverse=True)
-                latest_db = os.path.join(self.bundled_database, db_versions[0])
-                cmd.extend(['--database', latest_db])
-                self.logger.info(f"Using bundled database: {latest_db}")
+        # Add dynamic database if available
+        if self.bundled_database and os.path.exists(self.bundled_database):
+            cmd.extend(['--database', self.bundled_database])
+            self.logger.info(f"Using bundled database: {self.bundled_database}")
+        else:
+            self.logger.warning("Using default AMRfinderPlus database location")
         
         self.logger.info("🚀 MAXIMUM SPEED: Running AMRfinderPlus on %s (using ALL %d CORES)", genome_name, run_threads)
         
@@ -775,8 +833,7 @@ class EcoliAMRfinderPlus:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper AMRfinderPlus v4.2.4
-                with bundled AMRfinderPlus 2025-12-03.1
+                with bundled AMRfinderPlus database
             </p>
         </div>
     </div>
@@ -1307,7 +1364,7 @@ class EcoliAMRfinderPlus:
         <div class="header">
             <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper AMRfinderPlus - Summary Report</h1>
             <p style="color: #666; font-size: 1.2em;">Comprehensive E. coli Antimicrobial Resistance Analysis Across All Genomes</p>
-            <p style="color: #666; font-size: 1.1em;">AMRfinderPlus 4.2.4 | Database: 2025-12-03.1</p>
+            <p style="color: #666; font-size: 1.1em;">AMRfinderPlus {self.metadata['amrfinder_version']} | Database: {self.metadata['database_version']}</p>
         </div>
         
         <div class="quote-container">
@@ -1491,8 +1548,6 @@ class EcoliAMRfinderPlus:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper AMRfinderPlus v4.2.4
-                with bundled AMRfinderPlus 2025-12-03.1 database
             </p>
         </div>
     </div>
@@ -1620,6 +1675,12 @@ Examples:
   # Force specific number of CPU cores
   python ecoli_amrfinder.py "*.fa" --cpus 16
 
+  # Update database only
+  python ecoli_amrfinder.py --update-db
+
+  # Show current database version
+  python ecoli_amrfinder.py --db-version
+
 MAXIMUM SPEED RESOURCE MANAGEMENT:
   • 1-4 cores: Uses ALL CPU cores (100% utilization)
   • 5-8 cores: Uses (cores-1) for optimal performance  
@@ -1631,13 +1692,38 @@ Supported FASTA extensions: .fasta, .fa, .fna, .faa
         """
     )
     
-    parser.add_argument('pattern', help='File pattern for E. coli genomes (e.g., "*.fasta", "genomes/*.fna")')
+    # Make pattern optional (nargs='?') so that --update-db and --db-version work without it
+    parser.add_argument('pattern', nargs='?', help='File pattern for E. coli genomes (e.g., "*.fasta", "genomes/*.fna")')
     parser.add_argument('--cpus', '-c', type=int, default=None, 
                        help='Number of CPU cores to use (default: auto-detect optimal for MAXIMUM SPEED)')
     parser.add_argument('--output', '-o', default='ecoli_amrfinder_results', 
                        help='Output directory (default: ecoli_amrfinder_results)')
+    parser.add_argument('--update-db', action='store_true', 
+                       help='Update AMRfinderPlus database to latest version and exit')
+    parser.add_argument('--db-version', action='store_true', 
+                       help='Show current database version and exit')
     
     args = parser.parse_args()
+    
+    # Handle database operations without requiring pattern
+    if args.update_db or args.db_version:
+        executor = EcoliAMRfinderPlus(cpus=args.cpus)
+        if args.update_db:
+            print("Updating AMRfinderPlus database...")
+            success = executor.update_database()
+            if success:
+                print("Database updated successfully.")
+            else:
+                print("Database update failed.")
+            sys.exit(0)
+        if args.db_version:
+            print(f"Database version: {executor.metadata['database_version']}")
+            print(f"Database path: {executor.bundled_database or 'Not found'}")
+            sys.exit(0)
+    
+    # For analysis, pattern is required
+    if not args.pattern:
+        parser.error("Please provide a file pattern for genomes (or use --update-db / --db-version)")
     
     executor = EcoliAMRfinderPlus(cpus=args.cpus)
     

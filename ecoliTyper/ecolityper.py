@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 EcoliTyper Main Orchestrator - Complete E. coli Typing Pipeline
-Comprehensive E. coli analysis: MLST, Serotyping, CH Typing, Phylogrouping, Abricate, AMRfinderPlus
+Comprehensive E. coli analysis: FASTA QC, MLST, Serotyping, CH Typing, Phylogrouping, Abricate, AMRfinderPlus
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025
+Date: 2025 / Updated 2026
+Version: 1.1.0
 Send a quick mail for any issues or further explanations.
 """
 
@@ -19,7 +20,7 @@ import threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional
 import time
 
 # Color definitions - ONLY FOR CONSOLE OUTPUT, NOT FOR HELP TEXT
@@ -68,6 +69,7 @@ class EcoliTyperOrchestrator:
         
         # Dictionary of HTML files that summary/visualization modules need
         self.required_html_files = {
+            'fasta_qc': ["FASTA_QC_summary.html"],   # ADDED for ultimate reporter
             'mlst': ["mlst_summary.html"],
             'serotyping': ["serotype_analysis_report.html"],
             'chtyper': ["chtyper_results.html"],
@@ -121,10 +123,10 @@ class EcoliTyperOrchestrator:
         try:
             # Clean all module directories
             modules = [
-                "mlst_module", "serotypefinder_module", 
+                "fasta_qc_module", "mlst_module", "serotypefinder_module", 
                 "CHTyper_module", "phylogrouping_module",
                 "Abricate_module", "Amrfinder_module",
-                "Summary_module", "Visualization_module"  # ADDED
+                "Summary_module", "Visualization_module"
             ]
             
             for module in modules:
@@ -136,6 +138,57 @@ class EcoliTyperOrchestrator:
         except Exception as e:
             self.banner.display_error(f"Emergency cleanup failed: {str(e)}")
     
+    # =========================================================================
+    # AMR Database Update Methods (dynamic database support)
+    # =========================================================================
+    def update_amr_database(self) -> bool:
+        """Run the AMR module's database update and return success."""
+        amr_module_path = self.base_dir / "modules" / "Amrfinder_module"
+        amr_script = amr_module_path / "ecoli_amrfinder.py"
+        
+        if not amr_script.exists():
+            self.banner.display_error(f"AMR script not found at: {amr_script}")
+            return False
+        
+        self.banner.display_info("Updating AMRfinderPlus database...")
+        cmd = [sys.executable, str(amr_script), "--update-db"]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=amr_module_path)
+        
+        if result.returncode == 0:
+            self.banner.display_success("AMR database updated successfully.")
+            # Show the new version
+            version_cmd = [sys.executable, str(amr_script), "--db-version"]
+            version_result = subprocess.run(version_cmd, capture_output=True, text=True, cwd=amr_module_path)
+            if version_result.returncode == 0:
+                self.banner.display_info(f"New database version: {version_result.stdout.strip()}")
+            return True
+        else:
+            self.banner.display_error("AMR database update failed.")
+            if result.stderr:
+                print(result.stderr)
+            return False
+    
+    def ensure_amr_database(self) -> bool:
+        """Check if AMR database exists; if not, attempt to update."""
+        amr_module_path = self.base_dir / "modules" / "Amrfinder_module"
+        amr_script = amr_module_path / "ecoli_amrfinder.py"
+        if not amr_script.exists():
+            self.banner.display_error("AMR script not found, cannot check database.")
+            return False
+        
+        # Run --db-version to see if database is present
+        cmd = [sys.executable, str(amr_script), "--db-version"]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=amr_module_path)
+        if result.returncode == 0 and "Unknown" not in result.stdout and "No database" not in result.stdout:
+            self.banner.display_success(f"AMR database already present: {result.stdout.strip()}")
+            return True
+        else:
+            self.banner.display_warning("AMR database not found or outdated. Attempting automatic update...")
+            return self.update_amr_database()
+    
+    # =========================================================================
+    # File finding and helper methods
+    # =========================================================================
     def find_fasta_files(self, input_path: str) -> List[Path]:
         """Find all FASTA files using glob patterns - SAME LOGIC AS YOUR MODULES"""
         self.banner.display_info(f"Searching for files with pattern: {input_path}")
@@ -209,7 +262,8 @@ class EcoliTyperOrchestrator:
                 "mlst_results", "results", "SerotypeFinder_results",
                 "chtyper_results", "phylogrouping_results",
                 "ecoli_abricate_results", "ecoli_amrfinder_results",
-                "GENIUS_ULTIMATE_REPORTS", "ECOLI_VISUALIZATIONS"  
+                "GENIUS_ULTIMATE_REPORTS", "ECOLI_VISUALIZATIONS",
+                "ecolityper_qc_results"   # ADDED for FASTA QC
             ]
             for output_dir in output_dirs:
                 dir_path = module_path / output_dir
@@ -225,8 +279,88 @@ class EcoliTyperOrchestrator:
             
         except Exception as e:
             with self.output_lock:
-                self.banner.display_warning(f"⚠️  Partial cleanup issue in {module_path.name}: {str(e)}")    
+                self.banner.display_warning(f"⚠️  Partial cleanup issue in {module_path.name}: {str(e)}")
+    
+    # =========================================================================
+    # FASTA QC Analysis Module (NEW)
+    # =========================================================================
+    def run_fasta_qc_analysis(self, fasta_files: List[Path], output_dir: Path, threads: int) -> bool:
+        """Run FASTA QC analysis using ecolityper_fasta_qc.py"""
+        qc_module_path = self.base_dir / "modules" / "fasta_qc_module"
+        qc_script = qc_module_path / "ecolityper_fasta_qc.py"
+        
+        if not qc_script.exists():
+            with self.output_lock:
+                self.banner.display_error(f"FASTA QC script not found at: {qc_script}")
+            return False
+        
+        try:
+            with self.output_lock:
+                self.banner.start_analysis_timer("fasta_qc")
+                self.banner.display_module_header("FASTA QC Analysis", "Sequence Quality Control & Statistics")
+            
+            # Copy files to QC module
+            for fasta_file in fasta_files:
+                target_file = qc_module_path / fasta_file.name
+                shutil.copy2(fasta_file, target_file)
+            
+            with self.output_lock:
+                self.banner.display_info(f"Copied {len(fasta_files)} files to FASTA QC module")
+            
+            file_pattern = self.get_file_pattern(fasta_files)
+            
+            # Build command – avoid shell=True for better error capture
+            cmd = [
+                sys.executable, str(qc_script),
+                file_pattern,
+                "-o", "ecolityper_qc_results",
+                "-c", str(threads)
+            ]
+            
+            with self.output_lock:
+                self.banner.display_info(f"Running FASTA QC analysis with pattern: {file_pattern}")
+            
+            # Run with capture – do NOT use shell=True
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=qc_module_path)
+            
+            # Check for expected output
+            qc_output_dir = qc_module_path / "ecolityper_qc_results"
+            expected_summary = qc_output_dir / "FASTA_QC_summary.html"
+            
+            if result.returncode != 0 or not expected_summary.exists():
+                with self.output_lock:
+                    self.banner.display_error("FASTA QC analysis FAILED")
+                    if result.stderr:
+                        self.banner.display_error(f"Error output:\n{result.stderr}")
+                    if result.stdout:
+                        self.banner.display_info(f"Standard output:\n{result.stdout}")
+                return False
+            
+            # Success
+            with self.output_lock:
+                self.banner.stop_analysis_timer("fasta_qc")
+                self.banner.display_success("FASTA QC analysis completed!")
+            
+            # Copy results to output directory
+            qc_target = output_dir / "fasta_qc_results"
+            if qc_target.exists():
+                shutil.rmtree(qc_target)
+            shutil.copytree(qc_output_dir, qc_target)
+            
+            with self.output_lock:
+                self.banner.display_success(f"FASTA QC results copied to: {qc_target}")
+            return True
+            
+        except Exception as e:
+            with self.output_lock:
+                self.banner.display_error(f"FASTA QC analysis failed: {str(e)}")
+            return False
+        finally:
+            self.cleanup_module_directory(qc_module_path, fasta_files)
 
+    # =========================================================================
+    # Original Analysis Modules (unchanged except minor tweaks)
+    # =========================================================================
     def run_mlst_analysis(self, fasta_files: List[Path], output_dir: Path, threads: int) -> bool:
         """Run MLST analysis - PRODUCTION VERSION"""
         mlst_module_path = self.base_dir / "modules" / "mlst_module"
@@ -622,13 +756,20 @@ class EcoliTyperOrchestrator:
             self.cleanup_module_directory(abricate_module_path, fasta_files)
 
     def run_amrfinder_analysis(self, fasta_files: List[Path], output_dir: Path, threads: int) -> bool:
-        """Run AMRfinderPlus analysis - WITH CLEANUP (ALWAYS LAST)"""
+        """Run AMRfinderPlus analysis - WITH CLEANUP and automatic database check"""
         amr_module_path = self.base_dir / "modules" / "Amrfinder_module"
         
         try:
             with self.output_lock:
                 self.banner.start_analysis_timer("amrfinder")
                 self.banner.display_module_header("AMRfinderPlus Analysis", "NCBI AMR gene detection")
+            
+            # Ensure database is present before running
+            if not self.ensure_amr_database():
+                with self.output_lock:
+                    self.banner.display_error("AMR database is missing and could not be updated automatically.")
+                    self.banner.display_info("Please run manually: python ecoli_amrfinder.py --update-db")
+                return False
             
             amr_script = amr_module_path / "ecoli_amrfinder.py"
             
@@ -986,10 +1127,16 @@ class EcoliTyperOrchestrator:
         return results
 
     def run_complete_analysis(self, input_path: str, output_dir: str, threads: int = 1, 
-                            skip_modules: Dict[str, bool] = None):
+                            skip_modules: Dict[str, bool] = None,
+                            update_amr_db_only: bool = False):
         """Run complete EcoliTyper analysis pipeline"""
         if skip_modules is None:
             skip_modules = {}
+        
+        # If only updating AMR database, do that and exit
+        if update_amr_db_only:
+            self.update_amr_database()
+            return
         
         self.start_time = time.time()
         
@@ -1014,9 +1161,9 @@ class EcoliTyperOrchestrator:
             self.banner.display_success(f"Starting analysis of {len(self.fasta_files)} E. coli genomes")
             self.banner.display_info(f"File formats detected: {', '.join(extensions)}")
             
-            # Create output structure
+            # Create output structure (including fasta_qc_results)
             subdirs = [
-                "mlst_results", "serotyping_results", "chtyper_results",
+                "fasta_qc_results", "mlst_results", "serotyping_results", "chtyper_results",
                 "phylogrouping_results", "abricate_results", "amrfinder_results", 
                 "lineage_results", "summary_results", "visualization_results"
             ]
@@ -1026,6 +1173,7 @@ class EcoliTyperOrchestrator:
             # Display analysis plan
             self.banner.display_module_header("Analysis Plan", "Modules to be executed")
             analyses_to_run = [
+                ("FASTA QC", not skip_modules.get('fasta_qc', False)),
                 ("MLST", not skip_modules.get('mlst', False)),
                 ("Serotyping", not skip_modules.get('serotyping', False)),
                 ("CH Typing", not skip_modules.get('chtyper', False)),
@@ -1041,10 +1189,17 @@ class EcoliTyperOrchestrator:
                 status = "✅ ENABLED" if enabled else "⏸️  SKIPPED"
                 print(f"   {status} - {analysis}")
             
-            # Run main analyses in parallel (except AMRfinder) - OLD WORKING LOGIC
+            # Run FASTA QC first (sequential, not parallel)
+            if not skip_modules.get('fasta_qc', False) and not self.interrupted:
+                fasta_qc_success = self.run_fasta_qc_analysis(self.fasta_files, output_path, threads)
+                # We don't add to results dict yet, just proceed
+            else:
+                fasta_qc_success = True  # skipped is considered success for pipeline
+            
+            # Run main analyses in parallel (except AMRfinder)
             analysis_results = self.run_parallel_analyses(self.fasta_files, output_path, threads, skip_modules)
             
-            # Run AMRfinderPlus analysis LAST (always sequential due to resource usage) - OLD WORKING LOGIC
+            # Run AMRfinderPlus analysis LAST (always sequential due to resource usage)
             if not skip_modules.get('amrfinder', False) and not self.interrupted:
                 amr_success = self.run_amrfinder_analysis(self.fasta_files, output_path, threads)
                 analysis_results["AMRfinderPlus"] = amr_success
@@ -1096,7 +1251,7 @@ class EcoliTyperOrchestrator:
 def display_help_banner():
     """Display a clean, formatted help banner without colors interfering"""
     print("=" * 100)
-    print("🧬 EcoliTyper: Complete E. coli Typing Pipeline 🧬")
+    print("🧬 EcoliTyper: Complete E. coli Typing Pipeline (v1.1.0) 🧬")
     print("=" * 100)
     print()
 
@@ -1115,10 +1270,12 @@ EXAMPLES:
   ecolityper -i "*.fna" -o batch_results --threads 8
   ecolityper -i "*.fasta" -o analysis --threads 16 --skip-lineage
   ecolityper -i "genome*.fa" -o results/ --threads 4
+  ecolityper --update-amr-db          # Update AMR database only
 
 SUPPORTED FASTA FORMATS: .fna, .fasta, .fa, .fsa
 
 ANALYSIS MODULES:
+  • FASTA QC (Sequence Quality Control & Statistics)
   • MLST (Multi-Locus Sequence Typing)
   • Serotyping (O and H antigen determination)
   • CH Typing (FumC and FimH typing)  
@@ -1143,18 +1300,22 @@ CONTACT:
 """
     )
     
-    # Required arguments
-    parser.add_argument('-i', '--input', required=True,
-                       help='Input FASTA file(s) - can use glob patterns like "*.fna" or "*.fasta"')
-    parser.add_argument('-o', '--output', required=True,
-                       help='Output directory for all results')
+    # Required arguments (except when --update-amr-db is used)
+    parser.add_argument('-i', '--input', help='Input FASTA file(s) - can use glob patterns like "*.fna" or "*.fasta"')
+    parser.add_argument('-o', '--output', help='Output directory for all results')
     
     # Optional arguments
     parser.add_argument('-t', '--threads', type=int, default=2,
                        help='Number of threads (default: 2)')
     
+    # AMR database update flag
+    parser.add_argument('--update-amr-db', action='store_true',
+                       help='Update AMRfinderPlus database to latest version and exit')
+    
     # Skip options
     skip_group = parser.add_argument_group('Skip Options (disable specific analyses)')
+    skip_group.add_argument('--skip-fasta-qc', action='store_true',
+                           help='Skip FASTA QC analysis')
     skip_group.add_argument('--skip-amrfinder', action='store_true', 
                            help='Skip AMRfinderPlus analysis')
     skip_group.add_argument('--skip-abricate', action='store_true',
@@ -1176,8 +1337,19 @@ CONTACT:
     
     args = parser.parse_args()
     
+    # Handle AMR database update only
+    if args.update_amr_db:
+        orchestrator = EcoliTyperOrchestrator()
+        orchestrator.update_amr_database()
+        sys.exit(0)
+    
+    # For normal analysis, input and output are required
+    if not args.input or not args.output:
+        parser.error("Both -i/--input and -o/--output are required for analysis (or use --update-amr-db)")
+    
     # Create skip modules dictionary
     skip_modules = {
+        'fasta_qc': args.skip_fasta_qc,
         'amrfinder': args.skip_amrfinder,
         'abricate': args.skip_abricate,
         'mlst': args.skip_mlst,
