@@ -54,7 +54,7 @@ class EcoliAMRfinderPlus:
         
         self.metadata = {
             "tool_name": "EcoliTyper AMRfinderPlus (BUNDLED)",
-            "version": "1.1.0",   # Updated version to reflect dynamic DB
+            "version": "1.1.1",   # Updated version to reflect dynamic DB
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",

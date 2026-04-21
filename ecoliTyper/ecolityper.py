@@ -5,7 +5,7 @@ Comprehensive E. coli analysis: FASTA QC, MLST, Serotyping, CH Typing, Phylogrou
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
 Date: 2025 / Updated 2026
-Version: 1.1.0
+Version: 1.1.1
 Send a quick mail for any issues or further explanations.
 """
 

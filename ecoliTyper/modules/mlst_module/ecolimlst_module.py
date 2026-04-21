@@ -28,7 +28,7 @@ class EcoliTyper:
         
         self.metadata = {
             "tool_name": "EcoliTyper MLST Analysis",
-            "version": "1.1.0", 
+            "version": "1.1.1", 
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",

@@ -145,7 +145,7 @@ class EcoliAbricateExecutor:
         
         self.metadata = {
             "tool_name": "EcoliTyper ABRicate",
-            "version": "1.1.0", 
+            "version": "1.1.1", 
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
