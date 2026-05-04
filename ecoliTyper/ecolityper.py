@@ -1251,7 +1251,7 @@ class EcoliTyperOrchestrator:
 def display_help_banner():
     """Display a clean, formatted help banner without colors interfering"""
     print("=" * 100)
-    print("🧬 EcoliTyper: Complete E. coli Typing Pipeline (v1.1.0) 🧬")
+    print("🧬 EcoliTyper: Complete E. coli Typing Pipeline (v1.1.1) 🧬")
     print("=" * 100)
     print()
 

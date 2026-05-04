@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 from tabulate import tabulate
 from cgecore.blaster import Blaster
 from cgecore.cgefinder import CGEFinder
-from distutils.spawn import find_executable
+from shutil import which
 import sys, os, time, re, subprocess
 import json, gzip, pprint
 
@@ -245,7 +245,7 @@ file_format = get_file_format(infile)
 if file_format == "fastq":
    if not method_path:
       method_path = "kma"
-   if find_executable(method_path) == None:
+   if which(method_path) is None:
       sys.exit("No valid path to a kma program was provided. Use the -mp flag to provide the path.")
    # Check the number of files
    if len(infile) == 1:
@@ -270,7 +270,7 @@ if file_format == "fastq":
 elif file_format == "fasta":
    if not method_path:
       method_path = "blastn"
-   if find_executable(method_path) == None:
+   if which(method_path) is None:
       sys.exit("No valid path to a blastn program was provided. Use the -mp flag to provide the path.")
    # Assert that only one fasta file is inputted
    assert len(infile) == 1, "Only one input file accepted for assembled data"
