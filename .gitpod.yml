@@ -1,0 +1,32 @@
+# .gitpod.yml
+image: gitpod/workspace-full
+
+tasks:
+  - name: Setup EcoliTyper
+    init: |
+      conda config --add channels conda-forge
+      conda config --add channels bioconda
+      conda config --add channels bbeckley-hub  
+      conda create -n ecolityper -c bbeckley-hub -c conda-forge -c bioconda ecolityper python=3.9 -y
+      eval "$(conda shell.bash hook)"
+      conda activate ecolityper
+      echo "conda activate ecolityper" >> ~/.bashrc
+      echo "✅ ecolityper development environment ready!"
+    command: |
+      echo "Ready to use ecolityper!"
+      echo ""
+      echo "Quick test:"
+      echo "  ecolityper --help"
+      echo ""
+      echo "Remember databases are not installed in Gitpod - run these first:"
+      echo "  abricate --setupdb"
+      echo "  ecolityper --update-amr-db"
+
+ports:
+  - port: 8000
+    onOpen: open-preview
+
+vscode:
+  extensions:
+    - ms-python.python
+    - GitHub.vscode-pull-request-github
