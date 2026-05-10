@@ -146,8 +146,13 @@
 ### Quick Install (Recommended)
 ```bash
 # Create and activate environment
-conda create -n ecolityper -c conda-forge -c bioconda -c bbeckley-hub ecolityper -y
+conda create -n ecolityper -c conda-forge -c bioconda ecolityper -y
 conda activate ecolityper
+
+# Highly recommended prior first analysis (Conda users only)
+1. Run abricate --setupdb
+2. Run pip install ezclermont
+3. Run ecolityper --update-amr-db
 ```
 
 ### 🐳 Docker Installation (Alternative)
