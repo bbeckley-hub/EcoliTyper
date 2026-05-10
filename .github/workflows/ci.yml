@@ -27,13 +27,12 @@ jobs:
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
     
-    - name: Install ecolityper from bbeckley-hub channel
+    - name: Install ecolityper from bioconda channel
       shell: bash -l {0}
       run: |
         conda config --add channels conda-forge
         conda config --add channels bioconda
-        conda config --add channels bbeckley-hub
-        conda create -n ecolityper -c bbeckley-hub -c conda-forge -c bioconda ecolityper python=${{ matrix.python-version }} -y
+        conda create -n ecolityper -c conda-forge -c bioconda ecolityper python=${{ matrix.python-version }} -y
         conda activate ecolityper
     
     - name: Test ecolityper help
