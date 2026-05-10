@@ -151,7 +151,7 @@ conda activate ecolityper
 
 # Highly recommended prior first analysis (Conda users only)
 1. Run abricate --setupdb
-2. Run pip install ezclermont
+2. Run pip install ezclermont (⚠️  WARNING: Phylogrouping analysis had warnings)
 3. Run ecolityper --update-amr-db
 ```
 
