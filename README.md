@@ -18,7 +18,7 @@
 [![Docker Version](https://img.shields.io/docker/v/bbeckleyhub/ecolityper?sort=semver)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 
 
-[![Conda](https://img.shields.io/badge/conda-✓-green.svg)](https://docs.conda.io/en/latest/)
+[![Conda Downloads](https://anaconda.org/bioconda/ecolityper/badges/downloads.svg)](#)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub Issues](https://img.shields.io/github/issues/bbeckley-hub/EcoliTyper)](https://github.com/bbeckley-hub/EcoliTyper/issues)
 ![Latest Release Date](https://anaconda.org/bbeckley-hub/staphscope/badges/latest_release_date.svg)
