@@ -84,7 +84,7 @@ class EcoliTyperOrchestrator:
                 "ecoli_megares_summary_report.html",
                 "ecoli_ncbi_summary_report.html",
                 "ecoli_plasmidfinder_summary_report.html",
-                "ecoli_resfinder_summary_report.html"
+                "ecoli_resfinder_summary_report.html",
                 "ecoli_bacmet2_summary_report.html"
             ],
             'amrfinder': ["ecoli_amrfinder_summary_report.html"]
