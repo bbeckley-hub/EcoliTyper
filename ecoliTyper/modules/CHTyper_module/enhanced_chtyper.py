@@ -4,7 +4,7 @@ EcoliTyper - Enhanced CHTyper Wrapper
 Comprehensive E. coli typing with FumC and FimH with auto BLAST detection
 Email: <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025
+Date: 2025 / Updated 2026-05-15
 Send a quick mail for any issues or further explanations.
 """
 
@@ -29,7 +29,7 @@ class EnhancedCHTyper:
         self.results = []
         self.metadata = {
             "tool_name": "EcoliTyper CHTyper",
-            "version": "1.1.1",
+            "version": "1.2.0",
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -53,12 +53,12 @@ class EnhancedCHTyper:
         ]
         
         self.ascii_art = """
- ██████╗██╗  ██╗████████╗██╗   ██╗██████╗ ███████╗██████╗ 
-██╔════╝██║  ██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
-██║     ███████║   ██║    ╚████╔╝ ██████╔╝█████╗  ██████╔╝
-██║     ██╔══██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗
-╚██████╗██║  ██║   ██║      ██║   ██║     ███████╗██║  ██║
- ╚═════╝╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
+███████╗ ██████╗ ██████╗ ██╗     ██╗████████╗██╗   ██╗██████╗ ███████╗██████╗ 
+██╔════╝██╔════╝██╔═══██╗██║     ██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
+█████╗  ██║     ██║   ██║██║     ██║   ██║    ╚████╔╝ ██████╔╝█████╗  ██████╔╝
+██╔══╝  ██║     ██║   ██║██║     ██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗
+███████╗╚██████╗╚██████╔╝███████╗██║   ██║      ██║   ██║     ███████╗██║  ██║
+╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
         """
     
     def _detect_blast_path(self) -> str:
@@ -380,7 +380,7 @@ class EnhancedCHTyper:
         return str(json_file)
     
     def generate_html_report(self, output_dir: Path) -> str:
-        """Generate comprehensive HTML report with rotating science quotes"""
+        """Generate comprehensive HTML report with ASCII art and rotating science quotes"""
         # JavaScript for rotating quotes
         quotes_js = """
         <script>
@@ -429,6 +429,24 @@ class EnhancedCHTyper:
                     margin-bottom: 30px; 
                     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
                     backdrop-filter: blur(10px);
+                }}
+                .ascii-container {{
+                    background: rgba(0, 0, 0, 0.7);
+                    padding: 20px;
+                    border-radius: 15px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+                    border: 2px solid rgba(0, 255, 0, 0.3);
+                }}
+                .ascii-art {{
+                    font-family: 'Courier New', monospace;
+                    font-size: 12px;
+                    line-height: 1.2;
+                    white-space: pre;
+                    color: #00ff00;
+                    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+                    overflow-x: auto;
                 }}
                 .card {{ 
                     background: rgba(255, 255, 255, 0.95); 
@@ -517,6 +535,11 @@ class EnhancedCHTyper:
         <body>
             <div class="container">
                 <div class="header">
+                    <div class="ascii-container">
+                        <div class="ascii-art">
+{self.ascii_art}
+                        </div>
+                    </div>
                     <h1 style="color: #333; margin: 0; font-size: 2.5em;">🔬 EcoliTyper CHTyper Analysis Report</h1>
                     <p style="color: #666; font-size: 1.2em;">Comprehensive FumC and FimH Typing Results</p>
                 </div>

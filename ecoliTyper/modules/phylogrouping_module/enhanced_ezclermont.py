@@ -5,7 +5,7 @@ E. coli phylogrouping using ezClermont with beautiful reporting
 Author: Brown Beckley
 Email: <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025-12-16
+Date: 2025-12-16 /2026-05-15(Updated with ASCII art in HTML)
 Send a quick mail for any issues or further explanations.
 """
 
@@ -29,7 +29,7 @@ class EnhancedEzClermont:
         self.results = []
         self.metadata = {
             "tool_name": "EcoliTyper Phylogrouping",
-            "version": "1.1.1", 
+            "version": "1.2.0", 
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -47,7 +47,7 @@ class EnhancedEzClermont:
             "“Nothing in life is to be feared, it is only to be understood.” - Marie Curie", 
             "“The microscope opens a new world to the investigator.” - Robert Koch",
             "“In science, the credit goes to the man who convinces the world, not to the man to whom the idea first occurs.” - Francis Darwin",
-            "“The good thing about science is that it's true whether or not you believe in it.” - Neil deGrasse Tyson",
+            "“The good thing about science that it's true whether or not you believe in it.” - Neil deGrasse Tyson",
             "“Science knows no country, because knowledge belongs to humanity.” - Louis Pasteur"
         ]
         
@@ -411,7 +411,7 @@ class EnhancedEzClermont:
         return str(json_file)
     
     def generate_html_report(self, output_dir: Path) -> str:
-        """Generate comprehensive HTML report with rotating science quotes"""
+        """Generate comprehensive HTML report with ASCII art and rotating science quotes"""
         # JavaScript for rotating quotes
         quotes_js = """
         <script>
@@ -460,6 +460,24 @@ class EnhancedEzClermont:
                     margin-bottom: 30px; 
                     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
                     backdrop-filter: blur(10px);
+                }}
+                .ascii-container {{
+                    background: rgba(0, 0, 0, 0.7);
+                    padding: 20px;
+                    border-radius: 15px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+                    border: 2px solid rgba(0, 255, 0, 0.3);
+                }}
+                .ascii-art {{
+                    font-family: 'Courier New', monospace;
+                    font-size: 12px;
+                    line-height: 1.2;
+                    white-space: pre;
+                    color: #00ff00;
+                    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+                    overflow-x: auto;
                 }}
                 .card {{ 
                     background: rgba(255, 255, 255, 0.95); 
@@ -555,6 +573,11 @@ class EnhancedEzClermont:
         <body>
             <div class="container">
                 <div class="header">
+                    <div class="ascii-container">
+                        <div class="ascii-art">
+{self.ascii_art}
+                        </div>
+                    </div>
                     <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper Phylogrouping Analysis Report</h1>
                     <p style="color: #666; font-size: 1.2em;">Comprehensive E. coli Clermont Phylotyping Results</p>
                 </div>

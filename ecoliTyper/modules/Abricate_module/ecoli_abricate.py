@@ -3,8 +3,8 @@
 EcoliTyper ABRicate Standalone Module
 Comprehensive ABRicate analysis for E. coli with HTML reporting - MAXIMUM SPEED VERSION
 Author: Beckley Brown <brownbeckley94@gmail.com>
-Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025
+Affiliation: University of Ghana Medical School - Department of Medical Biochemistry
+Date: 2026-05-15 (Updated with ASCII art and enhanced footer)
 Send a quick mail for any issues or further explanations.
 """
 
@@ -145,7 +145,7 @@ class EcoliAbricateExecutor:
         
         self.metadata = {
             "tool_name": "EcoliTyper ABRicate",
-            "version": "1.1.1", 
+            "version": "1.2.0",
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -199,7 +199,7 @@ class EcoliAbricateExecutor:
             elif total_physical_cores <= 32:
                 optimal_cpus = max(16, total_physical_cores - 2)  # Use 30/32, 29/31, etc.
             else:
-                optimal_cpus = min(32, int(total_physical_cores * 0.90))  # Use 90% on huge systems
+                optimal_cpus = min(32, int(total_physical_cores * 0.95))  # Use 95% on huge systems
             
             # Ensure at least 1 CPU and not more than available cores
             optimal_cpus = max(1, min(optimal_cpus, total_physical_cores))
@@ -421,8 +421,19 @@ class EcoliAbricateExecutor:
         self.logger.info("Parsed %d hits from %s", len(hits), abricate_file)
         return hits
     
+    def _get_ascii_art(self) -> str:
+        """Return the ECOLITYPER ASCII art banner"""
+        return """
+███████╗ ██████╗ ██████╗ ██╗     ██╗████████╗██╗   ██╗██████╗ ███████╗██████╗ 
+██╔════╝██╔════╝██╔═══██╗██║     ██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
+█████╗  ██║     ██║   ██║██║     ██║   ██║    ╚████╔╝ ██████╔╝█████╗  ██████╔╝
+██╔══╝  ██║     ██║   ██║██║     ██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗
+███████╗╚██████╗╚██████╔╝███████╗██║   ██║      ██║   ██║     ███████╗██║  ██║
+╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
+        """
+    
     def _create_database_html_report(self, genome_name: str, database: str, hits: List[Dict], output_dir: str):
-        """Create individual HTML report for each database with beautiful styling"""
+        """Create individual HTML report for each database with ASCII art and footer"""
         
         # JavaScript for rotating quotes
         quotes_js = f"""
@@ -472,6 +483,24 @@ class EcoliAbricateExecutor:
             margin-bottom: 30px; 
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
+        }}
+        .ascii-container {{
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 0, 0.3);
+        }}
+        .ascii-art {{
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            white-space: pre;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            overflow-x: auto;
         }}
         .card {{ 
             background: rgba(255, 255, 255, 0.95); 
@@ -551,6 +580,11 @@ class EcoliAbricateExecutor:
 <body>
     <div class="container">
         <div class="header">
+            <div class="ascii-container">
+                <div class="ascii-art">
+{self._get_ascii_art()}
+                </div>
+            </div>
             <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper ABRicate - {database.upper()} Database</h1>
             <p style="color: #666; font-size: 1.2em;">Genome: {genome_name} | Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
         </div>
@@ -795,7 +829,7 @@ class EcoliAbricateExecutor:
             return 'Other resistance'
     
     def create_comprehensive_html_report(self, genome_name: str, results: Dict, output_dir: str):
-        """Create comprehensive HTML report for E. coli with beautiful styling"""
+        """Create comprehensive HTML report for E. coli with ASCII art and footer"""
         
         # Collect all hits
         all_hits = []
@@ -853,6 +887,24 @@ class EcoliAbricateExecutor:
             margin-bottom: 30px; 
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
+        }}
+        .ascii-container {{
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 0, 0.3);
+        }}
+        .ascii-art {{
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            white-space: pre;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            overflow-x: auto;
         }}
         .card {{ 
             background: rgba(255, 255, 255, 0.95); 
@@ -961,6 +1013,11 @@ class EcoliAbricateExecutor:
 <body>
     <div class="container">
         <div class="header">
+            <div class="ascii-container">
+                <div class="ascii-art">
+{self._get_ascii_art()}
+                </div>
+            </div>
             <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper ABRicate Analysis Report</h1>
             <p style="color: #666; font-size: 1.2em;">Comprehensive E. coli Antimicrobial Resistance & Virulence Analysis</p>
         </div>
@@ -1560,7 +1617,7 @@ class EcoliAbricateExecutor:
         return master_file
     
     def _create_database_summary_html(self, database: str, hits: List[Dict], output_base: str):
-        """Create HTML summary report for a specific database across all genomes"""
+        """Create HTML summary report for a specific database across all genomes with ASCII art and footer"""
         
         # JavaScript for rotating quotes
         quotes_js = f"""
@@ -1622,6 +1679,24 @@ class EcoliAbricateExecutor:
             margin-bottom: 30px; 
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
+        }}
+        .ascii-container {{
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 0, 0.3);
+        }}
+        .ascii-art {{
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            white-space: pre;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            overflow-x: auto;
         }}
         .card {{ 
             background: rgba(255, 255, 255, 0.95); 
@@ -1713,6 +1788,11 @@ class EcoliAbricateExecutor:
 <body>
     <div class="container">
         <div class="header">
+            <div class="ascii-container">
+                <div class="ascii-art">
+{self._get_ascii_art()}
+                </div>
+            </div>
             <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper ABRicate - {database.upper()} Database Summary</h1>
             <p style="color: #666; font-size: 1.2em;">Cross-genome analysis of {database.upper()} database results</p>
         </div>
@@ -1866,6 +1946,13 @@ class EcoliAbricateExecutor:
     
     def process_multiple_genomes(self, genome_pattern: str, output_base: str = "ecoli_abricate_results") -> Dict[str, Any]:
         """Process multiple E. coli genomes using wildcard pattern - MAXIMUM SPEED"""
+        
+        # Print ASCII art banner at start (console)
+        print("\n" + "="*80)
+        print(self._get_ascii_art())
+        print("="*80)
+        print("🧬 EcoliTyper ABRicate - MAXIMUM SPEED MODE")
+        print("="*80)
         
         # Check ABRicate installation
         if not self.check_abricate_installed():

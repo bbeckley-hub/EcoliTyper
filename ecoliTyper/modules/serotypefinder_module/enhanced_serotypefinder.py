@@ -5,7 +5,7 @@ Handles batch processing, automatic directory management, and multi-format repor
 Author: Brown Beckley
 Email: <brownbeckley94@gmail.com>
 Affliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025-12-16
+Date: 2025-12-16/2026-05-15 (Updated with ASCII art in HTML)
 Send a quick mail for any issues or further explanations.
 """
 
@@ -28,7 +28,7 @@ class EnhancedSerotypeFinder:
         self.results = []
         self.metadata = {
             "tool_name": "EcoliTyper SerotypeFinder",
-            "version": "1.1.1",
+            "version": "1.2.0",
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -290,7 +290,7 @@ class EnhancedSerotypeFinder:
         return distribution
     
     def generate_html_report(self, output_dir: Path) -> str:
-        """Generate comprehensive HTML report with rotating science quotes"""
+        """Generate comprehensive HTML report with ASCII art and rotating science quotes"""
         # JavaScript for rotating quotes
         quotes_js = """
         <script>
@@ -339,6 +339,24 @@ class EnhancedSerotypeFinder:
                     margin-bottom: 30px; 
                     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
                     backdrop-filter: blur(10px);
+                }}
+                .ascii-container {{
+                    background: rgba(0, 0, 0, 0.7);
+                    padding: 20px;
+                    border-radius: 15px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+                    border: 2px solid rgba(0, 255, 0, 0.3);
+                }}
+                .ascii-art {{
+                    font-family: 'Courier New', monospace;
+                    font-size: 12px;
+                    line-height: 1.2;
+                    white-space: pre;
+                    color: #00ff00;
+                    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+                    overflow-x: auto;
                 }}
                 .card {{ 
                     background: rgba(255, 255, 255, 0.95); 
@@ -430,6 +448,11 @@ class EnhancedSerotypeFinder:
         <body>
             <div class="container">
                 <div class="header">
+                    <div class="ascii-container">
+                        <div class="ascii-art">
+{self.ascii_art}
+                        </div>
+                    </div>
                     <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper Serotype Analysis Report</h1>
                     <p style="color: #666; font-size: 1.2em;">Comprehensive E. coli Serotyping Results</p>
                 </div>

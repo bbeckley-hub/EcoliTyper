@@ -1,57 +1,81 @@
 #!/usr/bin/env python3
 """
-EcoliDB Comprehensive Reference - Complete Database HTML Generator
-Captures ALL data from the comprehensive E. coli database
+EcoliDB Comprehensive Reference - Full Database HTML Generator
+Captures ALL fields from the comprehensive E. coli database
+Includes 2025-2026 updates: new lineages, serotypes, hybrid pathotypes
 Author: Brown Beckley <brownbeckley94@gmail.com>
-Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025-09-13
-Send a quick mail for any issues or further explanations.
+Affiliation: University of Ghana Medical School - Department of Medical Biochemistry
+Date: 2026-05-15
 """
 
 import os
 import json
 from datetime import datetime
 from ecoli_lineage_database import (
-    LINEAGE_DATABASE, SEROTYPE_DATABASE, PHYLOGROUP_DATABASE, 
+    LINEAGE_DATABASE, SEROTYPE_DATABASE, PHYLOGROUP_DATABASE,
     PATHOTYPE_DATABASE, SPECIALIZED_PROFILES, COMPREHENSIVE_REFERENCES,
     CARBAPENEMASE_PRODUCERS
 )
 
-def generate_comprehensive_reference(output_path="ecoli_comprehensive_reference.html"):
-    """Generate a complete HTML reference covering all database content"""
+def safe_join(lst, max_items=None):
+    """Join list items safely, optionally truncate. If max_items is None, return all."""
+    if not lst:
+        return "None"
+    if max_items is None or len(lst) <= max_items:
+        return ", ".join(str(x) for x in lst)
+    return ", ".join(str(x) for x in lst[:max_items]) + f" (+{len(lst)-max_items} more)"
+
+def format_resistance(profile):
+    """Format resistance profile dictionary into HTML"""
+    if not profile:
+        return "No data"
+    parts = []
+    for key, value in profile.items():
+        if isinstance(value, list):
+            parts.append(f"<strong>{key.replace('_', ' ').title()}:</strong> {safe_join(value, 8)}")
+        elif isinstance(value, str):
+            parts.append(f"<strong>{key.replace('_', ' ').title()}:</strong> {value}")
+    return "<br>".join(parts)
+
+def generate_html():
+    """Generate comprehensive HTML reference"""
     
-    # Calculate statistics - UPDATED WITH NEW COUNTS
+    # Calculate statistics
     stats = {
         'lineages': len(LINEAGE_DATABASE),
         'serotypes': len(SEROTYPE_DATABASE),
         'phylogroups': len(PHYLOGROUP_DATABASE),
         'pathotypes': len(PATHOTYPE_DATABASE),
-        'references_pubmed': sum(len(refs) for refs in COMPREHENSIVE_REFERENCES.get("PUBMED_REFERENCES", {}).values()),
-        'references_doi': sum(len(refs) for refs in COMPREHENSIVE_REFERENCES.get("DOI_REFERENCES", {}).values()),
-        'carbapenemase_profiles': len(CARBAPENEMASE_PRODUCERS)
+        'specialized': len(SPECIALIZED_PROFILES),
+        'carbapenemase': len(CARBAPENEMASE_PRODUCERS),
+        'references_pubmed': sum(len(v) for v in COMPREHENSIVE_REFERENCES.get("PUBMED_REFERENCES", {}).values()),
+        'references_doi': sum(len(v) for v in COMPREHENSIVE_REFERENCES.get("DOI_REFERENCES", {}).values()),
+        'hybrid_pathotypes': sum(1 for pt in PATHOTYPE_DATABASE.values() if pt.get('category') == 'Hybrid')
     }
     
-    # Count categories
-    lineage_categories = {}
+    # Category breakdowns
+    lineage_cats = {}
     for info in LINEAGE_DATABASE.values():
         cat = info.get('category', 'Unknown')
-        lineage_categories[cat] = lineage_categories.get(cat, 0) + 1
+        lineage_cats[cat] = lineage_cats.get(cat, 0) + 1
     
-    pathotype_categories = {}
+    pathotype_cats = {}
     for info in PATHOTYPE_DATABASE.values():
         cat = info.get('category', 'Unknown')
-        pathotype_categories[cat] = pathotype_categories.get(cat, 0) + 1
-
-    html_content = f'''<!DOCTYPE html>
+        pathotype_cats[cat] = pathotype_cats.get(cat, 0) + 1
+    
+    # Start building HTML
+    html_parts = []
+    
+    html_parts.append(f'''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoliDB - Comprehensive E. coli Reference Database</title>
+    <title>EcoliDB v2.0 – Complete E. coli Reference (2025-2026 Update)</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {{
-            /* Professional Color Scheme */
             --primary: #1a365d;
             --primary-light: #2d3748;
             --secondary: #2b6cb0;
@@ -60,8 +84,8 @@ def generate_comprehensive_reference(output_path="ecoli_comprehensive_reference.
             --warning: #d69e2e;
             --danger: #e53e3e;
             --info: #3182ce;
-            
-            /* Neutrals */
+            --new: #9b59b6;
+            --hybrid: #e67e22;
             --gray-50: #f9fafb;
             --gray-100: #f3f4f6;
             --gray-200: #e5e7eb;
@@ -72,1624 +96,478 @@ def generate_comprehensive_reference(output_path="ecoli_comprehensive_reference.
             --gray-700: #374151;
             --gray-800: #1f2937;
             --gray-900: #111827;
-            
-            /* Spacing */
-            --space-xs: 0.25rem;
-            --space-sm: 0.5rem;
-            --space-md: 1rem;
-            --space-lg: 1.5rem;
-            --space-xl: 2rem;
-            --space-2xl: 3rem;
         }}
-        
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
-        
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, var(--primary) 0%, var(--gray-900) 100%);
-            color: var(--gray-800);
             line-height: 1.6;
             min-height: 100vh;
         }}
-        
-        .app-container {{
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: var(--space-md);
-        }}
-        
-        /* Header */
-        .header {{
-            text-align: center;
-            margin-bottom: var(--space-2xl);
-            color: white;
-        }}
-        
-        .logo {{
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: var(--space-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--space-md);
-        }}
-        
-        .logo i {{
-            color: var(--accent);
-        }}
-        
-        .subtitle {{
-            color: var(--gray-300);
-            font-size: 1.2rem;
-            margin-bottom: var(--space-lg);
-        }}
-        
-        /* Stats Overview */
+        .app-container {{ max-width: 1400px; margin: 0 auto; padding: 1rem; }}
+        .header {{ text-align: center; margin-bottom: 2rem; color: white; }}
+        .logo {{ font-size: 2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 1rem; }}
+        .version-badge {{ background: var(--new); padding: 0.2rem 0.8rem; border-radius: 20px; font-size: 0.8rem; }}
+        .update-banner {{ background: linear-gradient(135deg, var(--new), var(--hybrid)); padding: 0.8rem; border-radius: 12px; margin-bottom: 1.5rem; }}
         .stats-overview {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: var(--space-md);
-            margin-bottom: var(--space-2xl);
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;
+            margin-bottom: 2rem;
         }}
-        
-        .stat-card {{
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: var(--space-lg);
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s ease;
-        }}
-        
-        .stat-card:hover {{
-            transform: translateY(-2px);
-        }}
-        
-        .stat-number {{
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--primary);
-            margin-bottom: var(--space-xs);
-        }}
-        
-        .stat-label {{
-            color: var(--gray-600);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }}
-        
-        /* Main Navigation */
-        .main-nav {{
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            margin-bottom: var(--space-2xl);
-        }}
-        
+        .stat-card {{ background: rgba(255,255,255,0.95); padding: 1rem; border-radius: 12px; text-align: center; }}
+        .stat-number {{ font-size: 2rem; font-weight: bold; color: var(--primary); }}
+        .main-nav {{ background: white; border-radius: 16px; overflow: hidden; margin-bottom: 2rem; }}
         .nav-tabs {{
-            display: flex;
-            background: var(--gray-50);
-            border-bottom: 1px solid var(--gray-200);
-            padding: 0 var(--space-md);
-            flex-wrap: wrap;
+            display: flex; flex-wrap: wrap; background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+            padding: 0 1rem;
         }}
-        
         .nav-tab {{
-            padding: var(--space-lg) var(--space-xl);
-            background: none;
-            border: none;
-            color: var(--gray-600);
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border-bottom: 3px solid transparent;
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-            white-space: nowrap;
+            padding: 1rem 1.5rem; background: none; border: none; color: var(--gray-600);
+            font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent;
+            display: flex; align-items: center; gap: 0.5rem;
         }}
-        
-        .nav-tab:hover {{
-            color: var(--primary);
-            background: var(--gray-100);
-        }}
-        
-        .nav-tab.active {{
-            color: var(--primary);
-            border-bottom-color: var(--accent);
-        }}
-        
-        /* Content Sections */
-        .content-section {{
-            display: none;
-            padding: var(--space-2xl);
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
-            margin-bottom: var(--space-2xl);
-        }}
-        
-        .content-section.active {{
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }}
-        
-        @keyframes fadeIn {{
-            from {{ opacity: 0; transform: translateY(10px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
-        }}
-        
-        .section-title {{
-            color: var(--primary);
-            border-bottom: 2px solid var(--gray-200);
-            padding-bottom: var(--space-md);
-            margin-bottom: var(--space-2xl);
-            font-size: 1.8rem;
-            display: flex;
-            align-items: center;
-            gap: var(--space-md);
-        }}
-        
-        /* Search and Filters */
-        .search-section {{
-            background: var(--gray-50);
-            padding: var(--space-lg);
-            border-radius: 12px;
-            margin-bottom: var(--space-xl);
-        }}
-        
-        .search-box {{
-            display: flex;
-            gap: var(--space-md);
-            margin-bottom: var(--space-md);
-        }}
-        
-        .search-input {{
-            flex: 1;
-            padding: var(--space-md);
-            border: 1px solid var(--gray-300);
-            border-radius: 8px;
-            font-size: 1rem;
-        }}
-        
-        .search-input:focus {{
-            outline: none;
-            border-color: var(--secondary);
-            box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.1);
-        }}
-        
-        /* Data Cards */
-        .cards-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: var(--space-lg);
-        }}
-        
-        .data-card {{
-            background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: 12px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        }}
-        
-        .data-card:hover {{
-            transform: translateY(-4px);
-            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
-        }}
-        
+        .nav-tab.active {{ color: var(--primary); border-bottom-color: var(--accent); }}
+        .content-section {{ display: none; padding: 2rem; background: white; border-radius: 16px; margin-bottom: 2rem; }}
+        .content-section.active {{ display: block; animation: fadeIn 0.3s; }}
+        @keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
+        .section-title {{ color: var(--primary); border-bottom: 2px solid var(--gray-200); padding-bottom: 0.5rem; margin-bottom: 1.5rem; font-size: 1.8rem; }}
+        .search-section {{ background: var(--gray-50); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; }}
+        .search-input {{ width: 100%; padding: 0.8rem; border: 1px solid var(--gray-300); border-radius: 8px; }}
+        .cards-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1.5rem; }}
+        .data-card {{ background: white; border: 1px solid var(--gray-200); border-radius: 12px; overflow: hidden; transition: 0.2s; }}
+        .data-card:hover {{ transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }}
         .card-header {{
-            padding: var(--space-lg);
-            border-bottom: 1px solid var(--gray-200);
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            color: white;
+            padding: 1rem; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white;
         }}
-        
-        .card-title {{
-            font-size: 1.4rem;
-            font-weight: bold;
-            margin-bottom: var(--space-xs);
-        }}
-        
-        .card-subtitle {{
-            opacity: 0.9;
-            margin-bottom: var(--space-sm);
-        }}
-        
-        .card-badges {{
-            display: flex;
-            gap: var(--space-xs);
-            flex-wrap: wrap;
-        }}
-        
+        .card-title {{ font-size: 1.3rem; font-weight: bold; }}
+        .card-subtitle {{ opacity: 0.9; font-size: 0.85rem; }}
         .badge {{
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+            margin-right: 0.3rem; margin-top: 0.3rem;
         }}
-        
+        .badge-risk-very-high {{ background: #c53030; }}
         .badge-risk-high {{ background: var(--danger); }}
         .badge-risk-moderate {{ background: var(--warning); }}
         .badge-risk-low {{ background: var(--success); }}
-        .badge-category {{ background: rgba(255, 255, 255, 0.2); }}
-        
-        .card-content {{
-            padding: var(--space-lg);
-        }}
-        
-        .info-group {{
-            margin-bottom: var(--space-md);
-        }}
-        
-        .info-label {{
-            font-weight: 600;
-            color: var(--gray-700);
-            font-size: 0.9rem;
-            margin-bottom: var(--space-xs);
-        }}
-        
-        .info-value {{
-            color: var(--gray-600);
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }}
-        
-        .gene-list {{
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-top: 4px;
-        }}
-        
+        .badge-category {{ background: rgba(255,255,255,0.2); }}
+        .badge-new {{ background: var(--new); }}
+        .badge-hybrid {{ background: var(--hybrid); }}
+        .card-content {{ padding: 1rem; }}
+        .info-group {{ margin-bottom: 0.8rem; }}
+        .info-label {{ font-weight: 600; color: var(--gray-700); font-size: 0.85rem; margin-bottom: 0.2rem; }}
+        .info-value {{ color: var(--gray-600); font-size: 0.85rem; }}
         .gene-tag {{
-            background: var(--gray-100);
-            color: var(--gray-700);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-family: 'Courier New', monospace;
+            display: inline-block; background: var(--gray-100); color: var(--gray-700);
+            padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-family: monospace;
+            margin: 0.1rem;
         }}
-        
-        /* Detailed Sections */
-        .detailed-section {{
-            background: var(--gray-50);
-            padding: var(--space-lg);
-            border-radius: 8px;
-            margin-top: var(--space-md);
-        }}
-        
-        .subsection {{
-            margin-bottom: var(--space-lg);
-        }}
-        
-        .subsection-title {{
-            font-weight: 600;
-            color: var(--primary);
-            margin-bottom: var(--space-md);
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-        }}
-        
-        /* Tables for structured data */
-        .data-table {{
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: var(--space-md);
-        }}
-        
-        .data-table th,
-        .data-table td {{
-            padding: var(--space-sm);
-            text-align: left;
-            border-bottom: 1px solid var(--gray-200);
-        }}
-        
-        .data-table th {{
-            background: var(--gray-100);
-            font-weight: 600;
-            color: var(--gray-700);
-        }}
-        
-        /* Footer */
-        .footer {{
-            text-align: center;
-            margin-top: var(--space-2xl);
-            padding: var(--space-xl);
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            color: white;
-        }}
-        
-        .authorship {{
-            margin-top: var(--space-lg);
-            padding: var(--space-lg);
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-        }}
-        
-        /* NEW STYLES FOR BETTER ORGANIZATION */
-        .overview-grid {{
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: var(--space-xl);
-            margin-bottom: var(--space-2xl);
-        }}
-        
-        .main-content {{
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-xl);
-        }}
-        
-        .sidebar {{
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-lg);
-        }}
-        
-        .category-breakdown {{
-            background: white;
-            border-radius: 12px;
-            padding: var(--space-lg);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }}
-        
-        .category-item {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--space-sm) 0;
-            border-bottom: 1px solid var(--gray-200);
-        }}
-        
-        .category-item:last-child {{
-            border-bottom: none;
-        }}
-        
-        .category-name {{
-            font-weight: 600;
-            color: var(--gray-700);
-            flex: 1;
-        }}
-        
-        .category-count {{
-            background: var(--primary);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }}
-        
-        .feature-card {{
-            background: white;
-            border-radius: 12px;
-            padding: var(--space-xl);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: var(--space-lg);
-        }}
-        
-        .feature-card h3 {{
-            color: var(--primary);
-            margin-bottom: var(--space-md);
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-        }}
-        
-        .database-info {{
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            color: white;
-            border-radius: 12px;
-            padding: var(--space-xl);
-            margin-bottom: var(--space-lg);
-        }}
-        
-        .database-info h3 {{
-            margin-bottom: var(--space-md);
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-        }}
-        
-        .info-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-md);
-        }}
-        
-        .info-item {{
-            text-align: center;
-        }}
-        
-        .info-value-large {{
-            font-size: 1.1rem;
-            font-weight: bold;
-            margin-bottom: var(--space-xs);
-            color: #38a169; /* Green color for database info values */
-        }}
-        
-        .info-label-small {{
-            font-size: 0.8rem;
-            opacity: 0.9;
-            color: white;
-        }}
-        
-        .amr-heading {{
-            color: #e53e3e !important; /* Red color for AMR heading */
-        }}
-        
-        .custom-link {{
-            color: #d69e2e !important; /* Yellow color for links */
-            text-decoration: none;
-            font-weight: 600;
-        }}
-        
-        .custom-link:hover {{
-            text-decoration: underline;
-            color: #ecc94b !important;
-        }}
-        
-        /* Responsive */
-        @media (max-width: 768px) {{
-            .cards-grid {{
-                grid-template-columns: 1fr;
-            }}
-            .nav-tabs {{
-                flex-direction: column;
-            }}
-            .search-box {{
-                flex-direction: column;
-            }}
-            .stats-overview {{
-                grid-template-columns: repeat(2, 1fr);
-            }}
-            .overview-grid {{
-                grid-template-columns: 1fr;
-            }}
-        }}
+        .detailed-section {{ background: var(--gray-50); padding: 0.8rem; border-radius: 8px; margin-top: 0.8rem; }}
+        .subsection {{ margin-bottom: 0.8rem; }}
+        .subsection-title {{ font-weight: 600; color: var(--primary); margin-bottom: 0.3rem; }}
+        .footer {{ text-align: center; margin-top: 2rem; padding: 1.5rem; background: rgba(255,255,255,0.1); border-radius: 16px; color: white; }}
+        .custom-link {{ color: var(--accent) !important; text-decoration: none; }}
+        .custom-link:hover {{ text-decoration: underline; }}
+        .amr-heading {{ color: #e53e3e !important; }}
+        @media (max-width: 768px) {{ .cards-grid {{ grid-template-columns: 1fr; }} }}
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <div class="header">
-            <div class="logo">
-                <i class="fas fa-dna"></i>
-                <span>EcoliDB Comprehensive Reference</span>
+<div class="app-container">
+    <div class="header">
+        <div class="logo"><i class="fas fa-dna"></i> EcoliDB Comprehensive Reference <span class="version-badge">v2.0 2026</span></div>
+        <div class="update-banner"><i class="fas fa-star-of-life"></i> NEW: 6 emerging lineages • 4 serotypes • 4 hybrid pathotypes • Updated carbapenemase profiles</div>
+        <div class="stats-overview">
+            <div class="stat-card"><div class="stat-number">{stats['lineages']}</div><div>Lineages</div></div>
+            <div class="stat-card"><div class="stat-number">{stats['pathotypes']}</div><div>Pathotypes</div></div>
+            <div class="stat-card"><div class="stat-number">{stats['serotypes']}</div><div>Serotypes</div></div>
+            <div class="stat-card"><div class="stat-number">{stats['phylogroups']}</div><div>Phylogroups</div></div>
+            <div class="stat-card"><div class="stat-number">{stats['carbapenemase']}</div><div>Carbapenemase Types</div></div>
+            <div class="stat-card"><div class="stat-number">{stats['references_pubmed']+stats['references_doi']}</div><div>References</div></div>
+        </div>
+    </div>
+    <div class="main-nav">
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('overview')"><i class="fas fa-home"></i> Overview</button>
+            <button class="nav-tab" onclick="switchTab('lineages')"><i class="fas fa-dna"></i> Lineages</button>
+            <button class="nav-tab" onclick="switchTab('pathotypes')"><i class="fas fa-biohazard"></i> Pathotypes</button>
+            <button class="nav-tab" onclick="switchTab('serotypes')"><i class="fas fa-tag"></i> Serotypes</button>
+            <button class="nav-tab" onclick="switchTab('phylogroups')"><i class="fas fa-project-diagram"></i> Phylogroups</button>
+            <button class="nav-tab" onclick="switchTab('carbapenemase')"><i class="fas fa-shield-virus"></i> Carbapenemase</button>
+            <button class="nav-tab" onclick="switchTab('specialized')"><i class="fas fa-star"></i> Specialized</button>
+            <button class="nav-tab" onclick="switchTab('references')"><i class="fas fa-book"></i> References</button>
+        </div>
+    </div>
+    
+    <!-- ========== OVERVIEW TAB (FULL RICH CONTENT) ========== -->
+    <div id="overview" class="content-section active">
+        <h2 class="section-title"><i class="fas fa-database"></i> Database Overview</h2>
+        
+        <!-- Welcome -->
+        <div class="data-card" style="margin-bottom:1.5rem;">
+            <div class="card-header"><div class="card-title">Welcome to EcoliDB Comprehensive Reference</div></div>
+            <div class="card-content">
+                <p>This database represents our ongoing effort to compile and organize comprehensive information on <strong>Escherichia coli</strong> lineages, pathotypes, serotypes, phylogroups, specialized profiles, and carbapenemase producers for global research and diagnostic applications.</p>
             </div>
-            <div class="subtitle">
-                Complete Escherichia coli Lineage, Pathotype, and Epidemiology Database
+        </div>
+        
+        <div class="cards-grid" style="margin-bottom:1.5rem;">
+            <!-- AMR Section -->
+            <div class="data-card" style="background: linear-gradient(135deg, var(--primary-light), var(--secondary)); color: white;">
+                <div class="card-header" style="background: transparent;"><div class="card-title amr-heading"><i class="fas fa-hands-helping"></i> Join the Fight Against Antimicrobial Resistance</div></div>
+                <div class="card-content" style="color: white;">
+                    <p>Antimicrobial resistance (AMR) represents one of the most significant global health threats of our time. We invite researchers, clinicians, and public health professionals to collaborate with us in:</p>
+                    <ul style="margin: 0.5rem 0 0 1.5rem;">
+                        <li>Expanding and validating our E. coli database</li>
+                        <li>Sharing regional epidemiological data</li>
+                        <li>Developing standardized typing methodologies</li>
+                        <li>Advancing AMR surveillance and intervention strategies</li>
+                    </ul>
+                    <p style="margin-top:0.5rem;"><strong>Together, we can enhance global AMR monitoring and develop more effective treatment strategies.</strong></p>
+                </div>
             </div>
             
-            <!-- Statistics - UPDATED WITH NEW COUNTS -->
-            <div class="stats-overview">
-                <div class="stat-card">
-                    <div class="stat-number">{stats['lineages']}</div>
-                    <div class="stat-label">Sequence Types</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{stats['pathotypes']}</div>
-                    <div class="stat-label">Pathotypes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{stats['serotypes']}</div>
-                    <div class="stat-label">Serotypes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{stats['phylogroups']}</div>
-                    <div class="stat-label">Phylogroups</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{stats['carbapenemase_profiles']}</div>
-                    <div class="stat-label">Carbapenemase Types</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{stats['references_pubmed'] + stats['references_doi']}</div>
-                    <div class="stat-label">References</div>
+            <!-- AI Section -->
+            <div class="data-card" style="background: var(--info); color: white;">
+                <div class="card-header" style="background: transparent;"><div class="card-title"><i class="fas fa-robot"></i> Next Generation: AI-Powered E. coli Prediction</div></div>
+                <div class="card-content" style="color: white;">
+                    <p>We are currently developing <strong>machine learning and AI approaches</strong> to integrate results from EcoliTyper and predict complete pattern combinations for rapid E. coli characterization.</p>
+                    <p><strong>Follow our GitHub repository for upcoming releases and contribute to this open-source initiative:</strong></p>
+                    <div style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 6px; margin: 0.5rem 0;">
+                        <i class="fab fa-github"></i> <strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub/EcoliTyper" class="custom-link" target="_blank">https://github.com/bbeckley-hub/EcoliTyper</a>
+                    </div>
+                    <p>Stay tuned for predictive models that will revolutionize E. coli typing and resistance profiling!</p>
                 </div>
             </div>
         </div>
         
-        <!-- Main Navigation - UPDATED WITH NEW SECTION -->
-        <div class="main-nav">
-            <div class="nav-tabs">
-                <button class="nav-tab active" onclick="switchTab('overview')">
-                    <i class="fas fa-chart-bar"></i>
-                    Overview
-                </button>
-                <button class="nav-tab" onclick="switchTab('lineages')">
-                    <i class="fas fa-dna"></i>
-                    Lineages ({stats['lineages']})
-                </button>
-                <button class="nav-tab" onclick="switchTab('pathotypes')">
-                    <i class="fas fa-biohazard"></i>
-                    Pathotypes ({stats['pathotypes']})
-                </button>
-                <button class="nav-tab" onclick="switchTab('serotypes')">
-                    <i class="fas fa-tag"></i>
-                    Serotypes ({stats['serotypes']})
-                </button>
-                <button class="nav-tab" onclick="switchTab('phylogroups')">
-                    <i class="fas fa-project-diagram"></i>
-                    Phylogroups ({stats['phylogroups']})
-                </button>
-                <button class="nav-tab" onclick="switchTab('carbapenemase')">
-                    <i class="fas fa-shield-virus"></i>
-                    Carbapenemase ({stats['carbapenemase_profiles']})
-                </button>
-                <button class="nav-tab" onclick="switchTab('specialized')">
-                    <i class="fas fa-star"></i>
-                    Specialized Profiles
-                </button>
-                <button class="nav-tab" onclick="switchTab('references')">
-                    <i class="fas fa-book"></i>
-                    References ({stats['references_pubmed'] + stats['references_doi']})
-                </button>
-            </div>
-            
-            <!-- Content Sections -->
-            <div class="content-section active" id="overview">
-                <h2 class="section-title">
-                    <i class="fas fa-chart-bar"></i>
-                    Database Overview
-                </h2>
-                
-                <!-- NEW ORGANIZED LAYOUT -->
-                <div class="overview-grid">
-                    <!-- Main Content Column -->
-                    <div class="main-content">
-                        <!-- Welcome Section -->
-                        <div class="feature-card">
-                            <h3><i class="fas fa-database"></i> Welcome to EcoliDB Comprehensive Reference</h3>
-                            <p>This database represents our ongoing effort to compile and organize comprehensive information on <strong>Escherichia coli</strong> lineages, pathotypes, serotypes, phylogroups, specialized profiles, and carbapenemase producers for global research and diagnostic applications.</p>
-                        </div>
-                        
-                        <!-- AMR Section -->
-                        <div class="feature-card" style="background: linear-gradient(135deg, var(--primary-light), var(--secondary)); color: white;">
-                            <h3 class="amr-heading"><i class="fas fa-hands-helping"></i> Join the Fight Against Antimicrobial Resistance</h3>
-                            <p>Antimicrobial resistance (AMR) represents one of the most significant global health threats of our time. We invite researchers, clinicians, and public health professionals to collaborate with us in:</p>
-                            <ul style="margin: var(--space-md) 0; padding-left: var(--space-lg);">
-                                <li>Expanding and validating our E. coli database</li>
-                                <li>Sharing regional epidemiological data</li>
-                                <li>Developing standardized typing methodologies</li>
-                                <li>Advancing AMR surveillance and intervention strategies</li>
-                            </ul>
-                            <p><strong>Together, we can enhance global AMR monitoring and develop more effective treatment strategies.</strong></p>
-                        </div>
-                        
-                        <!-- AI Section -->
-                        <div class="feature-card" style="background: var(--info); color: white;">
-                            <h3><i class="fas fa-robot"></i> Next Generation: AI-Powered E. coli Prediction</h3>
-                            <p>We are currently developing <strong>machine learning and AI approaches</strong> to integrate results from EcoliTyper and predict complete pattern combinations for rapid E. coli characterization.</p>
-                            <p><strong>Follow our GitHub repository for upcoming releases and contribute to this open-source initiative:</strong></p>
-                            <div style="background: rgba(255,255,255,0.2); padding: var(--space-md); border-radius: 6px; margin: var(--space-md) 0;">
-                                <i class="fab fa-github"></i>
-                                <strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub/EcoliTyper" class="custom-link" target="_blank">https://github.com/bbeckley-hub/EcoliTyper</a>
-                            </div>
-                            <p>Stay tuned for predictive models that will revolutionize E. coli typing and resistance profiling!</p>
-                        </div>
-                        
-                        <!-- Feedback Section -->
-                        <div class="feature-card">
-                            <h3><i class="fas fa-comments"></i> We Value Your Input</h3>
-                            <p><strong>Feature Suggestions & Technical Issues:</strong> We welcome feedback to improve this resource. Please contact us with:</p>
-                            <ul style="margin: var(--space-sm) 0; padding-left: var(--space-lg);">
-                                <li>Additional E. coli lineages or pathotypes for inclusion</li>
-                                <li>Updated epidemiological data from your region</li>
-                                <li>Technical issues or data discrepancies</li>
-                                <li>Feature requests for future versions</li>
-                                <li>Collaboration opportunities in AMR research</li>
-                            </ul>
-                            <p><strong>Follow our GitHub for the latest developments in AI-powered E. coli prediction models!</strong></p>
-                        </div>
-                    </div>
-                    
-                    <!-- Sidebar Column -->
-                    <div class="sidebar">
-                        <!-- Database Information Card -->
-                        <div class="database-info">
-                            <h3><i class="fas fa-info-circle"></i> Database Information</h3>
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-value-large">''' + datetime.now().strftime('%Y-%m-%d') + '''</div>
-                                    <div class="info-label-small">Last Updated</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-value-large">''' + str(sum(stats.values())) + '''</div>
-                                    <div class="info-label-small">Total Data Points</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-value-large">Global</div>
-                                    <div class="info-label-small">Coverage</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Lineage Categories -->
-                        <div class="category-breakdown">
-                            <h3 style="color: var(--primary); margin-bottom: var(--space-md);">
-                                <i class="fas fa-sitemap"></i> Lineage Categories
-                            </h3>
-                            '''
-    
-    # Add lineage categories in organized list
-    for category, count in lineage_categories.items():
-        html_content += f'''
-                            <div class="category-item">
-                                <span class="category-name">{category}</span>
-                                <span class="category-count">{count} lineages</span>
-                            </div>
-        '''
-    
-    html_content += '''
-                        </div>
-                        
-                        <!-- Pathotype Categories -->
-                        <div class="category-breakdown">
-                            <h3 style="color: var(--primary); margin-bottom: var(--space-md);">
-                                <i class="fas fa-biohazard"></i> Pathotype Categories
-                            </h3>
-                            '''
-    
-    # Add pathotype categories in organized list
-    for category, count in pathotype_categories.items():
-        html_content += f'''
-                            <div class="category-item">
-                                <span class="category-name">{category}</span>
-                                <span class="category-count">{count} pathotypes</span>
-                            </div>
-        '''
-    
-    html_content += '''
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Scientific Context at Bottom -->
-                <div class="feature-card" style="background: var(--gray-100);">
-                    <h3><i class="fas fa-flask"></i> Scientific Context</h3>
-                    <p><strong>This reference database captures current understanding of E. coli molecular epidemiology. However, bacterial evolution and horizontal gene transfer continuously generate new variants. Users should supplement this information with recent publications, local surveillance data, and confirmatory laboratory testing for clinical decision-making.</strong></p>
-                </div>
-            </div>
-            
-            <!-- Lineages Section - UPDATED WITH MISSING FIELDS -->
-            <div class="content-section" id="lineages">
-                <h2 class="section-title">
-                    <i class="fas fa-dna"></i>
-                    E. coli Lineage Database
-                </h2>
-                
-                <div class="search-section">
-                    <div class="search-box">
-                        <input type="text" class="search-input" id="lineageSearch" placeholder="🔍 Search lineages by ST, name, or characteristics...">
-                        <select class="search-input" id="lineageCategory" style="flex: 0 0 200px;">
-                            <option value="">All Categories</option>
-    '''
-    
-    # Add category options
-    for category in lineage_categories.keys():
-        html_content += f'<option value="{category}">{category}</option>'
-    
-    html_content += '''
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="cards-grid" id="lineagesGrid">
-    '''
-    
-    # Generate lineage cards WITH ALL MISSING FIELDS
-    for st, info in sorted(LINEAGE_DATABASE.items()):
-        risk_level = info.get('risk_level', 'MODERATE').lower().replace(' ', '-')
-        category = info.get('category', 'Unknown')
-        epidemiology = info.get('epidemiology', {})
-        geo_dist = epidemiology.get('geographical_distribution', {})
-        
-        html_content += f'''
-                    <div class="data-card" data-category="{category}" data-risk="{risk_level}">
-                        <div class="card-header">
-                            <div class="card-title">{st}</div>
-                            <div class="card-subtitle">{info.get('primary_name', '')}</div>
-                            <div class="card-badges">
-                                <div class="badge badge-risk-{risk_level}">{info.get('risk_level', 'Unknown')}</div>
-                                <div class="badge badge-category">{category}</div>
-                            </div>
-                        </div>
-                        <div class="card-content">
-                            <div class="info-group">
-                                <div class="info-label">Molecular Typing</div>
-                                <div class="info-value">
-                                    <strong>fumC:</strong> {info.get('fumC', 'Unknown')}<br>
-                                    <strong>fimH:</strong> {info.get('fimH', 'Unknown')}<br>
-                                    <strong>Sublineages:</strong> {', '.join(info.get('sublineages', ['None']))}
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Typing Information</div>
-                                <div class="info-value">
-                                    <strong>Serotype:</strong> {info.get('serotype', 'Unknown')}<br>
-                                    <strong>Phylogroup:</strong> {info.get('phylogroup', 'Unknown')}<br>
-                                    <strong>Clermont Complex:</strong> {info.get('clermont_complex', 'Unknown')}
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Pathotypes</div>
-                                <div class="info-value">{', '.join(info.get('pathotypes', []))}</div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Key Virulence Genes</div>
-                                <div class="gene-list">
-        '''
-        
-        # Add virulence genes
-        for gene in info.get('key_virulence_genes', [])[:8]:
-            html_content += f'<span class="gene-tag">{gene}</span>'
-        
-        html_content += f'''
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Epidemiology</div>
-                                <div class="info-value">
-                                    <strong>Reservoir:</strong> {epidemiology.get('reservoir', 'Unknown')}<br>
-                                    <strong>Distribution:</strong> {epidemiology.get('global_distribution', epidemiology.get('distribution', 'Unknown'))}<br>
-                                    <strong>High Prevalence:</strong> {', '.join(geo_dist.get('high_prevalence', []))}<br>
-                                    <strong>Medium Prevalence:</strong> {', '.join(geo_dist.get('medium_prevalence', []))}
-                                </div>
-                            </div>
-                            
-                            <div class="detailed-section">
-                                <div class="subsection">
-                                    <div class="subsection-title">
-                                        <i class="fas fa-shield-alt"></i>
-                                        Resistance Profile
-                                    </div>
-                                    <div class="info-value">
-        '''
-        
-        # Add resistance information
-        resistance = info.get('resistance_profile', {})
-        for category, data in resistance.items():
-            if isinstance(data, list):
-                html_content += f'<div><strong>{category.title()}:</strong> {", ".join(data)}</div>'
-            elif category in ['notes', 'important_note', 'resistance_notes']:
-                html_content += f'<div><strong>Note:</strong> {data}</div>'
-        
-        html_content += f'''
-                                    </div>
-                                </div>
-                                
-                                <div class="subsection">
-                                    <div class="subsection-title">
-                                        <i class="fas fa-stethoscope"></i>
-                                        Clinical Significance
-                                    </div>
-                                    <div class="info-value">
-        '''
-        
-        # Add clinical significance
-        clinical = info.get('clinical_significance', {})
-        for key, value in clinical.items():
-            if isinstance(value, list):
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {", ".join(value)}</div>'
-            else:
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {value}</div>'
-        
-        html_content += f'''
-                                    </div>
-                                </div>
-                                
-                                <div class="subsection">
-                                    <div class="subsection-title">
-                                        <i class="fas fa-globe-americas"></i>
-                                        Geographical Distribution
-                                    </div>
-                                    <div class="info-value">
-        '''
-        
-        # Add geographical distribution
-        geo = info.get('epidemiology', {}).get('geographical_distribution', {})
-        if geo:
-            if 'high_prevalence' in geo:
-                html_content += f'<div><strong>High Prevalence:</strong> {", ".join(geo["high_prevalence"])}</div>'
-            if 'medium_prevalence' in geo:
-                html_content += f'<div><strong>Medium Prevalence:</strong> {", ".join(geo["medium_prevalence"])}</div>'
-            if 'regional_variants' in geo:
-                html_content += '<div><strong>Regional Variants:</strong> '
-                for region, variant in list(geo['regional_variants'].items())[:2]:
-                    html_content += f'{region}: {variant}; '
-                html_content += '</div>'
-        
-        html_content += f'''
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Key References ({len(info.get('key_references', []))})</div>
-                                <div class="info-value">
-                                    {', '.join(info.get('key_references', []))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-        '''
-    
-    html_content += '''
-                </div>
-            </div>
-            
-            <!-- Pathotypes Section - UPDATED WITH NEW PATHOTYPES -->
-            <div class="content-section" id="pathotypes">
-                <h2 class="section-title">
-                    <i class="fas fa-biohazard"></i>
-                    E. coli Pathotype Database
-                </h2>
-                
-                <div class="cards-grid">
-    '''
-    
-    # Generate pathotype cards
-    for pt, info in sorted(PATHOTYPE_DATABASE.items()):
-        category = info.get('category', 'Unknown')
-        risk_level = info.get('risk_level', 'MODERATE').lower().replace(' ', '-')
-        
-        html_content += f'''
-                    <div class="data-card">
-                        <div class="card-header">
-                            <div class="card-title">{pt}</div>
-                            <div class="card-subtitle">{info.get('primary_name', '')}</div>
-                            <div class="card-badges">
-                                <div class="badge badge-risk-{risk_level}">{info.get('risk_level', 'Unknown')}</div>
-                                <div class="badge badge-category">{category}</div>
-                            </div>
-                        </div>
-                        <div class="card-content">
-                            <div class="info-group">
-                                <div class="info-label">Subtypes</div>
-                                <div class="info-value">{', '.join(info.get('subtypes', []))}</div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Key Virulence Genes</div>
-                                <div class="gene-list">
-        '''
-        
-        # Add virulence genes
-        for gene in info.get('key_virulence_genes', [])[:8]:
-            html_content += f'<span class="gene-tag">{gene}</span>'
-        
-        html_content += f'''
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Pathogenesis</div>
-                                <div class="info-value">
-                                    {info.get('pathogenesis', {}).get('mechanism', 'Unknown')}
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Clinical Manifestations</div>
-                                <div class="info-value">
-        '''
-        
-        clinical = info.get('clinical_manifestations', {})
-        if 'primary' in clinical:
-            html_content += f'{clinical["primary"]}'
-        if 'complications' in clinical:
-            html_content += f'<br><strong>Complications:</strong> {clinical["complications"]}'
-        
-        html_content += f'''
-                                </div>
-                            </div>
-                            
-                            <div class="detailed-section">
-                                <div class="subsection">
-                                    <div class="subsection-title">
-                                        <i class="fas fa-shield-alt"></i>
-                                        Resistance Profile
-                                    </div>
-                                    <div class="info-value">
-        '''
-        
-        # Add resistance information
-        resistance = info.get('resistance_profile', {})
-        for key, value in resistance.items():
-            if isinstance(value, list):
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {", ".join(value)}</div>'
-            elif key in ['notes', 'important_note']:
-                html_content += f'<div><strong>Note:</strong> {value}</div>'
-        
-        html_content += f'''
-                                    </div>
-                                </div>
-                                
-                                <div class="subsection">
-                                    <div class="subsection-title">
-                                        <i class="fas fa-dna"></i>
-                                        Additional Features
-                                    </div>
-                                    <div class="info-value">
-        '''
-        
-        # Add additional features
-        if 'serotypes' in info:
-            common_serotypes = info['serotypes'].get('common', [])[:3]
-            html_content += f'<div><strong>Common Serotypes:</strong> {", ".join(common_serotypes)}</div>'
-        
-        if 'subtype_markers' in info:
-            html_content += '<div><strong>Subtype Markers:</strong> '
-            for subtype, markers in list(info['subtype_markers'].items())[:2]:
-                html_content += f'{subtype}: {", ".join(markers)}; '
-            html_content += '</div>'
-        
-        html_content += f'''
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Outbreak Potential</div>
-                                <div class="info-value">{info.get('outbreak_potential', 'Unknown')}</div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Key References ({len(info.get('key_references', []))})</div>
-                                <div class="info-value">
-                                    {', '.join(info.get('key_references', []))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-        '''
-    
-    html_content += '''
-                </div>
-            </div>
-            
-            <!-- Serotypes Section - UPDATED WITH TOXIN PROFILES AND REFERENCES -->
-            <div class="content-section" id="serotypes">
-                <h2 class="section-title">
-                    <i class="fas fa-tag"></i>
-                    Serotype Database
-                </h2>
-                
-                <div class="cards-grid">
-    '''
-    
-    # Generate serotype cards WITH TOXIN PROFILES AND REFERENCES
-    for serotype, info in sorted(SEROTYPE_DATABASE.items()):
-        html_content += f'''
-                    <div class="data-card">
-                        <div class="card-header">
-                            <div class="card-title">{serotype}</div>
-                            <div class="card-subtitle">{info.get('primary_pathotype', '')}</div>
-                            <div class="card-badges">
-                                <div class="badge badge-risk-{info.get('h_us_risk', 'moderate').lower().replace(' ', '-')}">
-                                    HUS Risk: {info.get('h_us_risk', 'Unknown')}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-content">
-                            <div class="info-group">
-                                <div class="info-label">Sequence Types</div>
-                                <div class="info-value">
-                                    {', '.join([f'ST{st}' for st in info.get('st', [])])}
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Key Virulence Factors</div>
-                                <div class="gene-list">
-        '''
-        
-        # Add virulence factors
-        for gene in info.get('key_virulence', [])[:8]:
-            html_content += f'<span class="gene-tag">{gene}</span>'
-        
-        html_content += f'''
-                                </div>
-                            </div>
-        '''
-        
-        # ADD SHIGA TOXIN PROFILE IF AVAILABLE
-        if 'shiga_toxin_profile' in info:
-            html_content += f'''
-                            <div class="detailed-section">
-                                <div class="subsection">
-                                    <div class="subsection-title">
-                                        <i class="fas fa-skull-crossbones"></i>
-                                        Shiga Toxin Profile
-                                    </div>
-                                    <div class="info-value">
-            '''
-            
-            toxin_profile = info['shiga_toxin_profile']
-            html_content += f'<div><strong>Primary Toxin:</strong> {toxin_profile.get("primary", "Unknown")}</div>'
-            html_content += f'<div><strong>Secondary Toxin:</strong> {toxin_profile.get("secondary", "None")}</div>'
-            html_content += f'<div><strong>Stx1 Presence:</strong> {toxin_profile.get("stx1", "Unknown")}</div>'
-            html_content += f'<div><strong>Risk Notes:</strong> {toxin_profile.get("toxin_notes", "None")}</div>'
-            
-            html_content += '''
-                                    </div>
-                                </div>
-                            </div>
-            '''
-        
-        html_content += f'''
-                            <div class="info-group">
-                                <div class="info-label">Outbreak Association</div>
-                                <div class="info-value">{info.get('outbreak_association', 'Unknown')}</div>
-                            </div>
-                            
-                            <div class="detailed-section">
-                                <div class="subsection">
-                                    <div class="subsection-title">
-                                        <i class="fas fa-globe-americas"></i>
-                                        Geographical Distribution
-                                    </div>
-                                    <div class="info-value">
-        '''
-        
-        # Add geographical distribution
-        geo = info.get('geographical_distribution', {})
-        for key, value in geo.items():
-            if isinstance(value, list):
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {", ".join(value)}</div>'
-            elif isinstance(value, dict):
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> '
-                for subkey, subvalue in list(value.items())[:2]:
-                    html_content += f'{subkey}: {subvalue}; '
-                html_content += '</div>'
-            else:
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {value}</div>'
-        
-        html_content += f'''
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">References</div>
-                                <div class="info-value">
-                                    {', '.join(info.get('references', []))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-        '''
-    
-    html_content += '''
-                </div>
-            </div>
-            
-            <!-- Phylogroups Section -->
-            <div class="content-section" id="phylogroups">
-                <h2 class="section-title">
-                    <i class="fas fa-project-diagram"></i>
-                    Phylogroup Database
-                </h2>
-                
-                <div class="cards-grid">
-    '''
-    
-    # Generate phylogroup cards
-    for phylogroup, info in sorted(PHYLOGROUP_DATABASE.items()):
-        html_content += f'''
-                    <div class="data-card">
-                        <div class="card-header">
-                            <div class="card-title">Phylogroup {phylogroup}</div>
-                            <div class="card-subtitle">{info.get('characteristics', '')}</div>
-                        </div>
-                        <div class="card-content">
-                            <div class="info-group">
-                                <div class="info-label">Pathogenic Potential</div>
-                                <div class="info-value">{info.get('pathogenic_potential', 'Unknown')}</div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Common Sequence Types</div>
-                                <div class="info-value">
-                                    {', '.join([f'ST{st}' for st in info.get('common_st', [])[:5]])}
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Common Serotypes</div>
-                                <div class="info-value">
-                                    {', '.join(info.get('serotypes', [])[:4])}
-                                </div>
-                            </div>
-                            
-                            <div class="info-group">
-                                <div class="info-label">Common Virulence Genes</div>
-                                <div class="gene-list">
-        '''
-        
-        # Add virulence genes
-        for gene in info.get('virulence_genes', [])[:6]:
-            html_content += f'<span class="gene-tag">{gene}</span>'
-        
-        html_content += f'''
-                                </div>
-                            </div>
-                            
-                            {f'<div class="info-group"><div class="info-label">Notes</div><div class="info-value">{info.get("notes", "")}</div></div>' if info.get("notes") else ""}
-                        </div>
-                    </div>
-        '''
-    
-    html_content += '''
-                </div>
-            </div>
-            
-            <!-- NEW CARBAPENEMASE SECTION - UPDATED WITH ALL MISSING FIELDS -->
-            <div class="content-section" id="carbapenemase">
-                <h2 class="section-title">
-                    <i class="fas fa-shield-virus"></i>
-                    Carbapenemase-Producing E. coli
-                </h2>
-                
-                <div class="search-section">
-                    <h3>Global Threat: Carbapenem-Resistant E. coli</h3>
-                    <p>Comprehensive profiles of carbapenemase-producing E. coli strains, including enzyme characteristics, geographical distribution, and treatment options.</p>
-                </div>
-    '''
-    
-    # Generate carbapenemase profiles WITH ALL MISSING FIELDS
-    for profile_type, profile_data in CARBAPENEMASE_PRODUCERS.items():
-        html_content += f'''
-                <div class="subsection" style="margin-bottom: var(--space-2xl);">
-                    <div class="subsection-title">
-                        <i class="fas fa-virus"></i>
-                        {profile_type.replace('_', ' ').title()}
-                    </div>
-                    <div class="cards-grid">
-                        <div class="data-card">
-                            <div class="card-header">
-                                <div class="card-title">{profile_type.replace('_', ' ').title()}</div>
-                            </div>
-                            <div class="card-content">
-                                <div class="info-group">
-                                    <div class="info-label">Pathotype Association</div>
-                                    <div class="info-value">{profile_data.get('pathotype', 'Various')}</div>
-                                </div>
-                                
-                                <div class="info-group">
-                                    <div class="info-label">Sequence Types</div>
-                                    <div class="info-value">
-                                        {', '.join([f'ST{st}' for st in profile_data.get('st', [])])}
-                                    </div>
-                                </div>
-                                
-                                <div class="info-group">
-                                    <div class="info-label">Carbapenemase Genes</div>
-                                    <div class="gene-list">
-        '''
-        
-        # Add carbapenemase genes
-        for gene in profile_data.get('carbapenemase', []):
-            html_content += f'<span class="gene-tag" style="background: var(--danger); color: white;">{gene}</span>'
-        
-        html_content += f'''
-                                    </div>
-                                </div>
-                                
-                                <div class="info-group">
-                                    <div class="info-label">Enzyme Class</div>
-                                    <div class="info-value">{profile_data.get('enzyme_class', 'Unknown')}</div>
-                                </div>
-                                
-                                <div class="info-group">
-                                    <div class="info-label">Hydrolysis Spectrum</div>
-                                    <div class="info-value">
-                                        {', '.join(profile_data.get('hydrolysis_spectrum', []))}
-                                    </div>
-                                </div>
-                                
-                                <div class="info-group">
-                                    <div class="info-label">Inhibitor Profile</div>
-                                    <div class="info-value">
-                                        <strong>Inhibited By:</strong> {', '.join(profile_data.get('inhibitor_profile', {}).get('inhibited_by', []))}<br>
-                                        <strong>Resistant To:</strong> {', '.join(profile_data.get('inhibitor_profile', {}).get('resistant_to', []))}
-                                    </div>
-                                </div>
-                                
-                                <div class="detailed-section">
-                                    <div class="subsection">
-                                        <div class="subsection-title">
-                                            <i class="fas fa-dna"></i>
-                                            Genetic Context
-                                        </div>
-                                        <div class="info-value">
-                                            <div><strong>Gene Location:</strong> {', '.join(profile_data.get('genetic_context', {}).get('gene_location', []))}</div>
-                                            <div><strong>Mobile Element:</strong> {profile_data.get('genetic_context', {}).get('mobile_element', 'Unknown')}</div>
-                                            <div><strong>Co-resistance:</strong> {', '.join(profile_data.get('genetic_context', {}).get('co-resistance', []))}</div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="subsection">
-                                        <div class="subsection-title">
-                                            <i class="fas fa-microscope"></i>
-                                            Detection Methods
-                                        </div>
-                                        <div class="info-value">
-        '''
-        
-        # Add detection methods
-        detection = profile_data.get('detection_methods', {})
-        for key, value in detection.items():
-            if isinstance(value, list):
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {", ".join(value)}</div>'
-            else:
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {value}</div>'
-        
-        html_content += f'''
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="subsection">
-                                        <div class="subsection-title">
-                                            <i class="fas fa-pills"></i>
-                                            Treatment Options
-                                        </div>
-                                        <div class="info-value">
-        '''
-        
-        # Add complete treatment options including combination therapy
-        treatment = profile_data.get('treatment_options', {})
-        if 'first_line' in treatment:
-            html_content += f'<div><strong>First Line:</strong> {", ".join(treatment["first_line"])}</div>'
-        if 'alternative' in treatment:
-            html_content += f'<div><strong>Alternative:</strong> {", ".join(treatment["alternative"])}</div>'
-        if 'combination_therapy' in treatment:
-            html_content += f'<div><strong>Combination Therapy:</strong> {", ".join(treatment["combination_therapy"])}</div>'
-        if 'important_notes' in treatment:
-            html_content += f'<div><strong>Important Notes:</strong> {treatment["important_notes"]}</div>'
-        
-        html_content += f'''
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="subsection">
-                                        <div class="subsection-title">
-                                            <i class="fas fa-shield-alt"></i>
-                                            Infection Control
-                                        </div>
-                                        <div class="info-value">
-        '''
-        
-        # Add infection control measures
-        infection_control = profile_data.get('infection_control', {})
-        for key, value in infection_control.items():
-            if isinstance(value, list):
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {", ".join(value)}</div>'
-            else:
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {value}</div>'
-        
-        html_content += f'''
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="subsection">
-                                        <div class="subsection-title">
-                                            <i class="fas fa-globe-americas"></i>
-                                            Geographical Distribution
-                                        </div>
-                                        <div class="info-value">
-        '''
-        
-        # Add geographical distribution
-        geo = profile_data.get('geographical_distribution', {})
-        if 'endemic_regions' in geo:
-            html_content += f'<div><strong>Endemic Regions:</strong> {", ".join(geo["endemic_regions"])}</div>'
-        if 'hotspots' in geo:
-            html_content += '<div><strong>Hotspots:</strong> '
-            for region, desc in list(geo['hotspots'].items())[:2]:
-                html_content += f'{region}: {desc}; '
-            html_content += '</div>'
-        
-        html_content += f'''
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="subsection">
-                                        <div class="subsection-title">
-                                            <i class="fas fa-stethoscope"></i>
-                                            Clinical Significance
-                                        </div>
-                                        <div class="info-value">
-        '''
-        
-        # Add clinical significance
-        clinical = profile_data.get('clinical_significance', {})
-        for key, value in clinical.items():
-            if isinstance(value, list):
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {", ".join(value)}</div>'
-            else:
-                html_content += f'<div><strong>{key.replace("_", " ").title()}:</strong> {value}</div>'
-        
-        html_content += f'''
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="info-group">
-                                    <div class="info-label">References</div>
-                                    <div class="info-value">
-                                        {', '.join(profile_data.get('references', [])[:3])}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-        '''
-    
-    html_content += '''
-            </div>
-            
-            <!-- Specialized Profiles Section -->
-            <div class="content-section" id="specialized">
-                <h2 class="section-title">
-                    <i class="fas fa-star"></i>
-                    Specialized Pathotype Profiles
-                </h2>
-    '''
-    
-    # Generate specialized profiles
-    for profile_type, profiles in SPECIALIZED_PROFILES.items():
-        html_content += f'''
-                <div class="subsection" style="margin-bottom: var(--space-2xl);">
-                    <div class="subsection-title">
-                        <i class="fas fa-virus"></i>
-                        {profile_type.replace('_', ' ').title()}
-                    </div>
-                    <div class="cards-grid">
-        '''
-        
-        for profile_name, profile_data in profiles.items():
-            html_content += f'''
-                        <div class="data-card">
-                            <div class="card-header">
-                                <div class="card-title">{profile_name}</div>
-                            </div>
-                            <div class="card-content">
-            '''
-            
-            # Add profile data
-            for key, value in profile_data.items():
-                if key == 'virulence' and isinstance(value, list):
-                    html_content += f'''
-                                <div class="info-group">
-                                    <div class="info-label">Virulence Factors</div>
-                                    <div class="gene-list">
-                    '''
-                    for virulence in value[:6]:
-                        html_content += f'<span class="gene-tag">{virulence}</span>'
-                    html_content += '</div></div>'
-                elif isinstance(value, list):
-                    html_content += f'''
-                                <div class="info-group">
-                                    <div class="info-label">{key.replace('_', ' ').title()}</div>
-                                    <div class="info-value">{', '.join(value)}</div>
-                                </div>
-                    '''
-                else:
-                    html_content += f'''
-                                <div class="info-group">
-                                    <div class="info-label">{key.replace('_', ' ').title()}</div>
-                                    <div class="info-value">{value}</div>
-                                </div>
-                    '''
-            
-            html_content += '''
-                            </div>
-                        </div>
-            '''
-        
-        html_content += '''
-                    </div>
-                </div>
-        '''
-    
-    html_content += '''
-            </div>
-            
-            <!-- References Section -->
-            <div class="content-section" id="references">
-                <h2 class="section-title">
-                    <i class="fas fa-book"></i>
-                    Comprehensive Reference Database
-                </h2>
-    '''
-    
-    # Generate PubMed references
-    if "PUBMED_REFERENCES" in COMPREHENSIVE_REFERENCES:
-        html_content += '''
-                <div class="subsection">
-                    <div class="subsection-title">
-                        <i class="fas fa-file-medical"></i>
-                        PubMed References
-                    </div>
-        '''
-        
-        for category, refs in COMPREHENSIVE_REFERENCES["PUBMED_REFERENCES"].items():
-            html_content += f'''
-                    <div class="detailed-section" style="margin-bottom: var(--space-xl);">
-                        <div class="subsection-title" style="font-size: 1rem;">
-                            {category.replace('_', ' ').title()} ({len(refs)} references)
-                        </div>
-                        <div class="info-value">
-            '''
-            
-            for ref in refs:
-                html_content += f'<div style="margin-bottom: var(--space-sm);">{ref}</div>'
-            
-            html_content += '''
-                        </div>
-                    </div>
-            '''
-        
-        html_content += '''
-                </div>
-        '''
-    
-    # Generate DOI references
-    if "DOI_REFERENCES" in COMPREHENSIVE_REFERENCES:
-        html_content += '''
-                <div class="subsection">
-                    <div class="subsection-title">
-                        <i class="fas fa-link"></i>
-                        DOI References
-                    </div>
-        '''
-        
-        for category, refs in COMPREHENSIVE_REFERENCES["DOI_REFERENCES"].items():
-            html_content += f'''
-                    <div class="detailed-section" style="margin-bottom: var(--space-xl);">
-                        <div class="subsection-title" style="font-size: 1rem;">
-                            {category.replace('_', ' ').title()} ({len(refs)} references)
-                        </div>
-                        <div class="info-value">
-            '''
-            
-            for ref in refs:
-                html_content += f'<div style="margin-bottom: var(--space-sm);">{ref}</div>'
-            
-            html_content += '''
-                        </div>
-                    </div>
-            '''
-        
-        html_content += '''
-                </div>
-        '''
-    
-    html_content += '''
+        <!-- Feedback Section -->
+        <div class="data-card" style="margin-bottom:1.5rem;">
+            <div class="card-header"><div class="card-title"><i class="fas fa-comments"></i> We Value Your Input</div></div>
+            <div class="card-content">
+                <p><strong>Feature Suggestions & Technical Issues:</strong> We welcome feedback to improve this resource. Please contact us with:</p>
+                <ul style="margin: 0.5rem 0 0 1.5rem;">
+                    <li>Additional E. coli lineages or pathotypes for inclusion</li>
+                    <li>Updated epidemiological data from your region</li>
+                    <li>Technical issues or data discrepancies</li>
+                    <li>Feature requests for future versions</li>
+                    <li>Collaboration opportunities in AMR research</li>
+                </ul>
+                <p style="margin-top:0.5rem;"><strong>Follow our GitHub for the latest developments in AI-powered E. coli prediction models!</strong></p>
             </div>
         </div>
         
-        <!-- Footer -->
-        <div class="footer">
-            <div class="authorship">
-                <h3>Technical Information & Collaboration</h3>
-                <p><strong>Author:</strong> Brown Beckley</p>
-                <p><strong>Affiliation:</strong> University of Ghana Medical School - Department of Medical Biochemistry</p>
-                <p><strong>Email:</strong> <a href="mailto:brownbeckley94@gmail.com" class="custom-link">brownbeckley94@gmail.com</a></p>
-                <p><strong>Database Version:</strong> 2025 | <a href="https://github.com/bbeckley-hub/EcoliTyper" class="custom-link" target="_blank">Actively Maintained</a></p>
+        <!-- Side-by-side categories -->
+        <div class="cards-grid" style="margin-bottom:1.5rem;">
+            <!-- Database Information Card -->
+            <div class="data-card">
+                <div class="card-header"><div class="card-title"><i class="fas fa-info-circle"></i> Database Information</div></div>
+                <div class="card-content">
+                    <div class="info-group"><div class="info-label">Last Updated</div><div class="info-value">{datetime.now().strftime('%Y-%m-%d')}</div></div>
+                    <div class="info-group"><div class="info-label">Total Data Points</div><div class="info-value">{stats['lineages']+stats['pathotypes']+stats['serotypes']+stats['phylogroups']+stats['carbapenemase']}</div></div>
+                    <div class="info-group"><div class="info-label">Coverage</div><div class="info-value">Global</div></div>
+                </div>
+            </div>
+            
+            <!-- Lineage Categories -->
+            <div class="data-card">
+                <div class="card-header"><div class="card-title"><i class="fas fa-sitemap"></i> Lineage Categories</div></div>
+                <div class="card-content">''')
+    for cat, cnt in lineage_cats.items():
+        html_parts.append(f'<div class="info-group"><div class="info-label">{cat}</div><div class="info-value">{cnt} lineages</div></div>')
+    html_parts.append('</div></div>')
+    
+    # Pathotype Categories
+    html_parts.append('''
+            <div class="data-card">
+                <div class="card-header"><div class="card-title"><i class="fas fa-biohazard"></i> Pathotype Categories</div></div>
+                <div class="card-content">''')
+    for cat, cnt in pathotype_cats.items():
+        html_parts.append(f'<div class="info-group"><div class="info-label">{cat}</div><div class="info-value">{cnt} pathotypes</div></div>')
+    html_parts.append('</div></div></div>')
+    
+    # Scientific Context
+    html_parts.append('''
+        <div class="data-card">
+            <div class="card-header"><div class="card-title"><i class="fas fa-flask"></i> Scientific Context</div></div>
+            <div class="card-content">
+                <p><strong>This reference database captures current understanding of E. coli molecular epidemiology. However, bacterial evolution and horizontal gene transfer continuously generate new variants. Users should supplement this information with recent publications, local surveillance data, and confirmatory laboratory testing for clinical decision-making.</strong></p>
             </div>
         </div>
     </div>
     
-    <script>
-        // Tab navigation
-        function switchTab(tabId) {{
-            // Hide all sections
-            document.querySelectorAll('.content-section').forEach(section => {{
-                section.classList.remove('active');
-            }});
-            
-            // Remove active class from all tabs
-            document.querySelectorAll('.nav-tab').forEach(tab => {{
-                tab.classList.remove('active');
-            }});
-            
-            // Show selected section
-            document.getElementById(tabId).classList.add('active');
-            
-            // Activate clicked tab
-            event.target.classList.add('active');
-        }}
-        
-        // Search and filter functionality for lineages
-        document.addEventListener('DOMContentLoaded', function() {{
-            const searchInput = document.getElementById('lineageSearch');
-            const categoryFilter = document.getElementById('lineageCategory');
-            
-            if (searchInput && categoryFilter) {{
-                searchInput.addEventListener('input', filterLineages);
-                categoryFilter.addEventListener('change', filterLineages);
-            }}
-        }});
-        
-        function filterLineages() {{
-            const searchTerm = document.getElementById('lineageSearch').value.toLowerCase();
-            const categoryFilter = document.getElementById('lineageCategory').value;
-            
-            document.querySelectorAll('#lineagesGrid .data-card').forEach(card => {{
-                const cardText = card.textContent.toLowerCase();
-                const cardCategory = card.dataset.category;
-                
-                const matchesSearch = searchTerm === '' || cardText.includes(searchTerm);
-                const matchesCategory = categoryFilter === '' || cardCategory === categoryFilter;
-                
-                card.style.display = (matchesSearch && matchesCategory) ? 'block' : 'none';
-            }});
-        }}
-        
-        // Simple risk-based filtering
-        function filterByRisk(riskLevel) {{
-            document.querySelectorAll('#lineagesGrid .data-card').forEach(card => {{
-                if (riskLevel === 'all') {{
-                    card.style.display = 'block';
-                }} else {{
-                    card.style.display = card.dataset.risk === riskLevel ? 'block' : 'none';
-                }}
-            }});
-        }}
-    </script>
+    <!-- ========== LINEAGES TAB ========== -->
+    <div id="lineages" class="content-section">
+        <h2 class="section-title"><i class="fas fa-dna"></i> Lineage Database</h2>
+        <div class="search-section"><input type="text" id="lineageSearch" class="search-input" placeholder="Search by ST, name, serotype..."></div>
+        <div class="cards-grid" id="lineagesGrid">''')
+    
+    for st, info in sorted(LINEAGE_DATABASE.items()):
+        first_year = info.get('epidemiology', {}).get('first_identified', 0)
+        is_new = (isinstance(first_year, int) and first_year >= 2020)
+        risk = info.get('risk_level', 'MODERATE').lower().replace(' ', '-')
+        html_parts.append(f'''
+            <div class="data-card" data-name="{st} {info.get('primary_name','')} {info.get('serotype','')}">
+                <div class="card-header">
+                    <div class="card-title">{st} {info.get('primary_name','')}''')
+        if is_new:
+            html_parts.append(' <span class="badge badge-new">NEW 2025-2026</span>')
+        html_parts.append(f'''</div>
+                    <div class="card-subtitle">Serotype: {info.get('serotype','?')} | Phylogroup: {info.get('phylogroup','?')} | Risk: {info.get('risk_level','?')}</div>
+                    <div><span class="badge badge-category">{info.get('category','')}</span>
+                    <span class="badge badge-risk-{risk}">{info.get('risk_level','')}</span></div>
+                </div>
+                <div class="card-content">
+                    <div class="info-group"><div class="info-label">Sublineages</div><div class="info-value">{safe_join(info.get('sublineages', []), 5)}</div></div>
+                    <div class="info-group"><div class="info-label">Molecular typing</div><div class="info-value">fumC: {info.get('fumC','?')} | fimH: {info.get('fimH','?')} | Clermont: {info.get('clermont_complex','?')}</div></div>
+                    <div class="info-group"><div class="info-label">Pathotypes</div><div class="info-value">{safe_join(info.get('pathotypes', []))}</div></div>
+                    <div class="info-group"><div class="info-label">Key virulence genes</div><div class="gene-list">''')
+        for gene in info.get('key_virulence_genes', [])[:12]:
+            html_parts.append(f'<span class="gene-tag">{gene}</span>')
+        html_parts.append('</div></div>')
+        if info.get('resistance_profile'):
+            html_parts.append(f'''<div class="detailed-section">
+                <div class="subsection-title"><i class="fas fa-shield-alt"></i> Resistance Profile</div>
+                <div class="info-value">{format_resistance(info['resistance_profile'])}</div></div>''')
+        epi = info.get('epidemiology', {})
+        if epi:
+            html_parts.append(f'''<div class="detailed-section">
+                <div class="subsection-title"><i class="fas fa-globe"></i> Epidemiology</div>
+                <div class="info-value"><strong>First identified:</strong> {epi.get('first_identified','?')}<br>
+                <strong>Global distribution:</strong> {epi.get('global_distribution', epi.get('distribution','?'))}<br>
+                <strong>Transmission:</strong> {epi.get('transmission','?')}<br>
+                <strong>Reservoir:</strong> {epi.get('reservoir','?')}<br>''')
+            geo = epi.get('geographical_distribution', {})
+            if geo:
+                html_parts.append(f'<strong>High prevalence:</strong> {safe_join(geo.get("high_prevalence",[]))}<br>')
+                html_parts.append(f'<strong>Medium prevalence:</strong> {safe_join(geo.get("medium_prevalence",[]))}')
+            html_parts.append('</div></div>')
+        clin = info.get('clinical_significance', {})
+        if clin:
+            html_parts.append(f'''<div class="detailed-section">
+                <div class="subsection-title"><i class="fas fa-stethoscope"></i> Clinical Significance</div>
+                <div class="info-value"><strong>Primary infections:</strong> {safe_join(clin.get('primary_infections',[]))}<br>''')
+            if clin.get('mortality'):
+                html_parts.append(f'<strong>Mortality:</strong> {clin["mortality"]}<br>')
+            if clin.get('treatment_challenges'):
+                html_parts.append(f'<strong>Treatment challenges:</strong> {clin["treatment_challenges"]}')
+            html_parts.append('</div></div>')
+        refs = info.get('key_references', [])
+        if refs:
+            html_parts.append(f'<div class="info-group"><div class="info-label">References</div><div class="info-value">{safe_join(refs, None)}</div></div>')
+        html_parts.append('</div></div>')
+    
+    html_parts.append('''</div></div>
+    
+    <!-- ========== PATHOTYPES TAB ========== -->
+    <div id="pathotypes" class="content-section">
+        <h2 class="section-title"><i class="fas fa-biohazard"></i> Pathotype Database</h2>
+        <div class="cards-grid">''')
+    
+    for pt, info in sorted(PATHOTYPE_DATABASE.items()):
+        is_hybrid = info.get('category') == 'Hybrid'
+        risk = info.get('risk_level', 'MODERATE').lower().replace(' ', '-')
+        html_parts.append(f'''
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">{pt} {info.get('primary_name','')}''')
+        if is_hybrid:
+            html_parts.append(' <span class="badge badge-hybrid">HYBRID</span>')
+        html_parts.append(f'''</div>
+                    <div><span class="badge badge-category">{info.get('category','')}</span>
+                    <span class="badge badge-risk-{risk}">{info.get('risk_level','')}</span></div>
+                </div>
+                <div class="card-content">
+                    <div class="info-group"><div class="info-label">Subtypes</div><div class="info-value">{safe_join(info.get('subtypes', []))}</div></div>
+                    <div class="info-group"><div class="info-label">Key virulence genes</div><div class="gene-list">''')
+        for gene in info.get('key_virulence_genes', [])[:12]:
+            html_parts.append(f'<span class="gene-tag">{gene}</span>')
+        html_parts.append('</div></div>')
+        path = info.get('pathogenesis', {})
+        if path:
+            html_parts.append(f'<div class="info-group"><div class="info-label">Pathogenesis</div><div class="info-value">{path.get("mechanism","")}</div></div>')
+        clin = info.get('clinical_manifestations', {})
+        if clin:
+            html_parts.append(f'<div class="info-group"><div class="info-label">Clinical</div><div class="info-value">{clin.get("primary","")}<br>')
+            if clin.get('complications'):
+                html_parts.append(f'<strong>Complications:</strong> {clin["complications"]}')
+            html_parts.append('</div></div>')
+        if info.get('resistance_profile'):
+            html_parts.append(f'<div class="detailed-section"><div class="subsection-title">Resistance</div><div class="info-value">{format_resistance(info["resistance_profile"])}</div></div>')
+        if 'serotypes' in info:
+            sero = info['serotypes']
+            html_parts.append(f'<div class="info-group"><div class="info-label">Common serotypes</div><div class="info-value">{safe_join(sero.get("common", []), 6)}</div></div>')
+        html_parts.append(f'<div class="info-group"><div class="info-label">Outbreak potential</div><div class="info-value">{info.get("outbreak_potential","?")}</div></div>')
+        refs = info.get('key_references', [])
+        if refs:
+            html_parts.append(f'<div class="info-group"><div class="info-label">References</div><div class="info-value">{safe_join(refs, None)}</div></div>')
+        html_parts.append('</div></div>')
+    
+    html_parts.append('''</div></div>
+    
+    <!-- ========== SEROTYPES TAB ========== -->
+    <div id="serotypes" class="content-section">
+        <h2 class="section-title"><i class="fas fa-tag"></i> Serotype Database</h2>
+        <div class="cards-grid">''')
+    
+    for sero, info in sorted(SEROTYPE_DATABASE.items()):
+        risk = info.get('h_us_risk', 'MODERATE').lower().replace(' ', '-')
+        html_parts.append(f'''
+            <div class="data-card">
+                <div class="card-header"><div class="card-title">{sero}</div>
+                <div class="card-subtitle">{info.get('primary_pathotype','')}</div>
+                <div><span class="badge badge-risk-{risk}">HUS Risk: {info.get('h_us_risk','?')}</span></div></div>
+                <div class="card-content">
+                    <div class="info-group"><div class="info-label">Sequence Types</div><div class="info-value">{safe_join([f'ST{s}' for s in info.get('st', []) if s], 8)}</div></div>
+                    <div class="info-group"><div class="info-label">Key virulence</div><div class="gene-list">''')
+        for gene in info.get('key_virulence', [])[:8]:
+            html_parts.append(f'<span class="gene-tag">{gene}</span>')
+        html_parts.append('</div></div>')
+        if 'shiga_toxin_profile' in info:
+            stx = info['shiga_toxin_profile']
+            html_parts.append(f'<div class="info-group"><div class="info-label">Shiga toxin profile</div><div class="info-value">{stx if isinstance(stx,str) else str(stx)}</div></div>')
+        html_parts.append(f'<div class="info-group"><div class="info-label">Outbreak association</div><div class="info-value">{info.get("outbreak_association","?")}</div></div>')
+        geo = info.get('geographical_distribution', {})
+        if geo:
+            html_parts.append(f'<div class="detailed-section"><div class="subsection-title">Geography</div><div class="info-value">')
+            for k,v in geo.items():
+                if isinstance(v, list):
+                    html_parts.append(f'<strong>{k}:</strong> {safe_join(v,5)}<br>')
+                elif isinstance(v, dict):
+                    html_parts.append(f'<strong>{k}:</strong> {str(v)[:100]}<br>')
+                else:
+                    html_parts.append(f'<strong>{k}:</strong> {v}<br>')
+            html_parts.append('</div></div>')
+        refs = info.get('references', [])
+        if refs:
+            html_parts.append(f'<div class="info-group"><div class="info-label">References</div><div class="info-value">{safe_join(refs, None)}</div></div>')
+        html_parts.append('</div></div>')
+    
+    html_parts.append('''</div></div>
+    
+    <!-- ========== PHYLOGROUPS TAB ========== -->
+    <div id="phylogroups" class="content-section">
+        <h2 class="section-title"><i class="fas fa-project-diagram"></i> Phylogroups</h2>
+        <div class="cards-grid">''')
+    for pg, info in sorted(PHYLOGROUP_DATABASE.items()):
+        html_parts.append(f'''
+            <div class="data-card">
+                <div class="card-header"><div class="card-title">Phylogroup {pg}</div><div class="card-subtitle">{info.get('characteristics','')}</div></div>
+                <div class="card-content">
+                    <div class="info-group"><div class="info-label">Pathogenic potential</div><div class="info-value">{info.get('pathogenic_potential','')}</div></div>
+                    <div class="info-group"><div class="info-label">Common STs</div><div class="info-value">{safe_join([f'ST{s}' for s in info.get('common_st',[])], 10)}</div></div>
+                    <div class="info-group"><div class="info-label">Common serotypes</div><div class="info-value">{safe_join(info.get('serotypes',[]), 6)}</div></div>
+                    <div class="info-group"><div class="info-label">Virulence genes</div><div class="gene-list">''')
+        for gene in info.get('virulence_genes', [])[:8]:
+            html_parts.append(f'<span class="gene-tag">{gene}</span>')
+        html_parts.append('</div></div>')
+        if info.get('notes'):
+            html_parts.append(f'<div class="info-group"><div class="info-label">Notes</div><div class="info-value">{info["notes"]}</div></div>')
+        html_parts.append('</div></div>')
+    
+    html_parts.append('''</div></div>
+    
+    <!-- ========== CARBAPENEMASE PRODUCERS TAB ========== -->
+    <div id="carbapenemase" class="content-section">
+        <h2 class="section-title"><i class="fas fa-shield-virus"></i> Carbapenemase-Producing E. coli</h2>
+        <div class="cards-grid">''')
+    for cp, data in CARBAPENEMASE_PRODUCERS.items():
+        html_parts.append(f'''
+            <div class="data-card">
+                <div class="card-header"><div class="card-title">{cp.replace('_',' ').title()}</div></div>
+                <div class="card-content">
+                    <div class="info-group"><div class="info-label">Associated STs</div><div class="info-value">{safe_join([f'ST{s}' for s in data.get('st',[])], 12)}</div></div>
+                    <div class="info-group"><div class="info-label">Carbapenemase genes</div><div class="gene-list">''')
+        for gene in data.get('carbapenemase', []):
+            html_parts.append(f'<span class="gene-tag">{gene}</span>')
+        html_parts.append('</div></div>')
+        html_parts.append(f'<div class="info-group"><div class="info-label">Enzyme class</div><div class="info-value">{data.get("enzyme_class","")}</div></div>')
+        html_parts.append(f'<div class="info-group"><div class="info-label">Hydrolysis spectrum</div><div class="info-value">{safe_join(data.get("hydrolysis_spectrum",[]))}</div></div>')
+        inhib = data.get('inhibitor_profile', {})
+        if inhib:
+            html_parts.append(f'<div class="info-group"><div class="info-label">Inhibitors</div><div class="info-value"><strong>Inhibited by:</strong> {safe_join(inhib.get("inhibited_by",[]))}<br><strong>Resistant to:</strong> {safe_join(inhib.get("resistant_to",[]))}</div></div>')
+        treat = data.get('treatment_options', {})
+        if treat:
+            html_parts.append(f'<div class="detailed-section"><div class="subsection-title">Treatment</div><div class="info-value"><strong>First line:</strong> {safe_join(treat.get("first_line",[]))}<br><strong>Alternatives:</strong> {safe_join(treat.get("alternative",[]),5)}<br><strong>Notes:</strong> {treat.get("important_notes","")}</div></div>')
+        geo_cp = data.get('geographical_distribution', {})
+        if geo_cp:
+            html_parts.append(f'<div class="info-group"><div class="info-label">Geography</div><div class="info-value"><strong>Endemic regions:</strong> {safe_join(geo_cp.get("endemic_regions",[]))}</div></div>')
+        refs = data.get('references', [])
+        if refs:
+            html_parts.append(f'<div class="info-group"><div class="info-label">References</div><div class="info-value">{safe_join(refs, None)}</div></div>')
+        html_parts.append('</div></div>')
+    
+    html_parts.append('''</div></div>
+    
+    <!-- ========== SPECIALIZED PROFILES TAB ========== -->
+    <div id="specialized" class="content-section">
+        <h2 class="section-title"><i class="fas fa-star"></i> Specialized Profiles</h2>''')
+    for sp_type, profiles in SPECIALIZED_PROFILES.items():
+        html_parts.append(f'<h3 style="margin-top:1rem;">{sp_type.replace("_"," ").title()}</h3><div class="cards-grid">')
+        for name, data in profiles.items():
+            html_parts.append(f'''
+                <div class="data-card"><div class="card-header"><div class="card-title">{name}</div></div>
+                <div class="card-content">''')
+            for k,v in data.items():
+                if isinstance(v, list):
+                    html_parts.append(f'<div class="info-group"><div class="info-label">{k.replace("_"," ").title()}</div><div class="gene-list">')
+                    for item in v[:6]:
+                        html_parts.append(f'<span class="gene-tag">{item}</span>')
+                    html_parts.append('</div></div>')
+                else:
+                    html_parts.append(f'<div class="info-group"><div class="info-label">{k.replace("_"," ").title()}</div><div class="info-value">{v}</div></div>')
+            html_parts.append('</div></div>')
+        html_parts.append('</div>')
+    
+    html_parts.append('''</div>
+    
+    <!-- ========== REFERENCES TAB ========== -->
+    <div id="references" class="content-section">
+        <h2 class="section-title"><i class="fas fa-book"></i> References</h2>
+        <div class="cards-grid">
+            <div class="data-card"><div class="card-header"><div class="card-title">PubMed References</div></div>
+            <div class="card-content">''')
+    for cat, refs in COMPREHENSIVE_REFERENCES.get("PUBMED_REFERENCES", {}).items():
+        html_parts.append(f'<div class="info-group"><div class="info-label">{cat.replace("_"," ").title()}</div><div class="info-value">{safe_join(refs, None)}</div></div>')
+    html_parts.append('</div></div>')
+    html_parts.append(f'''<div class="data-card"><div class="card-header"><div class="card-title">DOI References</div></div>
+            <div class="card-content">''')
+    for cat, refs in COMPREHENSIVE_REFERENCES.get("DOI_REFERENCES", {}).items():
+        html_parts.append(f'<div class="info-group"><div class="info-label">{cat.replace("_"," ").title()}</div><div class="info-value">{safe_join(refs, None)}</div></div>')
+    html_parts.append('</div></div></div></div>')
+    
+    # Footer
+    html_parts.append(f'''
+    <div class="footer">
+        <p><strong>Author:</strong> Brown Beckley | University of Ghana Medical School | <a href="mailto:brownbeckley94@gmail.com" class="custom-link">brownbeckley94@gmail.com</a></p>
+        <p>Version 2.0 (2025-2026 update) | Generated {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        <p><i class="fab fa-github"></i> <a href="https://github.com/bbeckley-hub/EcoliTyper" class="custom-link" target="_blank">GitHub Repository</a></p>
+    </div>
+</div>
+<script>
+function switchTab(tabId) {{
+    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.target.classList.add('active');
+}}
+document.getElementById('lineageSearch').addEventListener('input', function() {{
+    let term = this.value.toLowerCase();
+    document.querySelectorAll('#lineagesGrid .data-card').forEach(card => {{
+        let text = card.getAttribute('data-name') || card.innerText.toLowerCase();
+        card.style.display = text.includes(term) ? 'block' : 'none';
+    }});
+}});
+</script>
 </body>
-</html>
-'''
+</html>''')
     
-    # Save the file
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    
-    print(f"✅ COMPREHENSIVE E. coli reference generated: {output_path}")
-    print(f"📊 UPDATED Database Statistics:")
-    print(f"   - Lineages: {stats['lineages']} (includes ST1193, ST405)")
-    print(f"   - Pathotypes: {stats['pathotypes']} (includes MAEC, AIEC)")
-    print(f"   - Serotypes: {stats['serotypes']} (includes O45:H2, O103:H2)")
-    print(f"   - Phylogroups: {stats['phylogroups']}")
-    print(f"   - Carbapenemase Types: {stats['carbapenemase_profiles']}")
-    print(f"   - References: {stats['references_pubmed'] + stats['references_doi']}")
-    print(f"🎯 NEW FEATURES ADDED:")
-    print(f"   - Complete molecular typing data (fumC, fimH, sublineages)")
-    print(f"   - Enhanced epidemiology with reservoir and prevalence data")
-    print(f"   - Full reference lists (no truncation)")
-    print(f"   - Shiga toxin profiles for serotypes")
-    print(f"   - NEW Carbapenemase Producers section")
-    print(f"   - COMPLETE carbapenemase data (hydrolysis, inhibitors, genetic context, detection, treatment, infection control)")
-    print(f"🎨 IMPROVED ORGANIZATION:")
-    print(f"   - Green text for Database Information values")
-    print(f"   - Red heading for AMR section")
-    print(f"   - Hyperlinked GitHub repository")
-    print(f"   - Yellow hyperlinks in footer with mailto")
-    print(f"   - Reverted to original font sizes for data cards")
-    
-    return output_path
+    output = ''.join(html_parts)
+    out_file = "ecoli_comprehensive_reference.html"
+    with open(out_file, 'w', encoding='utf-8') as f:
+        f.write(output)
+    print(f"✅ Comprehensive HTML reference generated: {out_file}")
+    print(f"📊 Statistics: {stats['lineages']} lineages, {stats['pathotypes']} pathotypes, {stats['serotypes']} serotypes, {stats['carbapenemase']} carbapenemase profiles")
+    print(f"🔗 Open {out_file} in your browser")
+    return out_file
 
-# Test the generator
 if __name__ == "__main__":
-    generate_comprehensive_reference()
+    generate_html()

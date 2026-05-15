@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """
-GENIUS E. COLI ULTIMATE REPORTER 
+GENIUS E. COLI ULTIMATE REPORTER (Enhanced)
 ================================================================================
 Advanced HTML parser and gene-centric report generator for E. coli genomic data.
 Processes outputs from EcoliTyper pipeline (MLST, serotype, CHTyper, phylogrouping,
 AMRfinder, ABRicate databases) and creates an interactive HTML report with:
 - Gene-centric tables (genes shown with all genomes that carry them)
-- Sortable, searchable tables
-- Combination tables (ST-O, ST-H, ST-O:H, ST-Phylogroup, ST-FimH, ST-FumC, ST-CH, full 5-way)
-- FASTA QC metrics integration
-- AI assistant guide
-- Filter buttons for AMR and virulence genes
-- CSV exports for all major tables
+- Sortable, searchable tables with genome highlighting
+- Pathotype classification and prevalence analysis
+- Separate PlasmidFinder and Bacmet2 tabs
+- Educational descriptions for each section
+- Call to Action for community engagement
 
 Author: Beckley Brown <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School, Department of Medical Biochemistry
-Version: 2.0.0
-Date: 2026-04-17
+Version: 3.0.0 (Enhanced)
+Date: 2026-05-14
 License: MIT
 ================================================================================
 """
@@ -38,7 +37,7 @@ warnings.filterwarnings('ignore')
 from bs4 import BeautifulSoup
 
 # =============================================================================
-# HTML PARSER CLASS
+# HTML PARSER CLASS (unchanged from original, but includes all database handling)
 # =============================================================================
 class UltimateHTMLParser:
     """
@@ -335,12 +334,12 @@ class UltimateHTMLParser:
             print(f"    ❌ Error parsing Phylogrouping: {e}")
             return {}
     
-    def parse_amrfinder_report(self, file_path: Path) -> Tuple[Dict[str, List], Dict[str, Dict]]:
+    def parse_amrfinder_report(self, file_path: Path, total_samples: int = 0) -> Tuple[Dict[str, List], Dict[str, Dict]]:
         """
         Parse AMRfinder HTML report.
         Returns:
             - genes_by_genome: {sample: [list of gene names]}
-            - gene_frequencies: {gene: {'frequency': str, 'count': int, 'genomes': [samples], 'database': str}}
+            - gene_frequencies: {gene: {'count': int, 'percentage': float, 'frequency_display': str, 'genomes': [samples], 'database': str}}
         """
         print(f"  🧬 Parsing AMRfinder: {file_path.name}")
         try:
@@ -365,9 +364,11 @@ class UltimateHTMLParser:
                     match = re.search(r'(\d+)', frequency)
                     if match:
                         count = int(match.group(1))
+                    percentage = (count / total_samples) * 100 if total_samples > 0 else 0
                     gene_frequencies[gene] = {
-                        'frequency': frequency,
                         'count': count,
+                        'percentage': round(percentage, 2),
+                        'frequency_display': f"{count} ({percentage:.1f}%)",
                         'genomes': genomes,
                         'database': 'amrfinder'
                     }
@@ -388,12 +389,12 @@ class UltimateHTMLParser:
             print(f"    ❌ Error parsing AMRfinder: {e}")
             return {}, {}
     
-    def parse_abricate_database_report(self, file_path: Path) -> Tuple[Dict[str, List], Dict[str, Dict]]:
+    def parse_abricate_database_report(self, file_path: Path, total_samples: int = 0) -> Tuple[Dict[str, List], Dict[str, Dict]]:
         """
         Parse any ABRicate database HTML report.
         Returns:
             - genes_by_genome: {sample: [list of gene names]}
-            - gene_frequencies: {gene: {'frequency': str, 'count': int, 'genomes': [samples], 'database': str}}
+            - gene_frequencies: {gene: {'count': int, 'percentage': float, 'frequency_display': str, 'genomes': [samples], 'database': str}}
         """
         print(f"  🧬 Parsing ABRicate: {file_path.name}")
         try:
@@ -428,9 +429,11 @@ class UltimateHTMLParser:
                     match = re.search(r'(\d+)', frequency)
                     if match:
                         count = int(match.group(1))
+                    percentage = (count / total_samples) * 100 if total_samples > 0 else 0
                     gene_frequencies[gene] = {
-                        'frequency': frequency,
                         'count': count,
+                        'percentage': round(percentage, 2),
+                        'frequency_display': f"{count} ({percentage:.1f}%)",
                         'genomes': genomes,
                         'database': db_name
                     }
@@ -466,27 +469,124 @@ class UltimateHTMLParser:
 
 
 # =============================================================================
-# DATA ANALYZER CLASS
+# DATA ANALYZER CLASS (enhanced with pathotype classification and categories)
 # =============================================================================
 class UltimateDataAnalyzer:
     """
-    Processes integrated data to create gene-centric tables and cross-genome patterns.
+    Processes integrated data to create gene-centric tables, cross-genome patterns,
+    and E. coli pathotype classification.
     """
     
     def __init__(self):
-        # Critical AMR genes for E. coli (ESBL, carbapenemases, mcr, qnr, etc.)
+        # Critical AMR genes for E. coli (ESBL, carbapenemases, colistin, high-risk PMQR, high-level aminoglycoside, etc.)
         self.critical_amr_genes = {
-            'blaCTX-M', 'blaSHV', 'blaTEM', 'blaKPC', 'blaNDM', 'blaOXA', 'blaVIM', 'blaIMP',
-            'mcr-1', 'mcr-2', 'mcr-3', 'mcr-4', 'mcr-5', 'mcr-6', 'mcr-7', 'mcr-8', 'mcr-9', 'mcr-10',
-            'qnrA', 'qnrB', 'qnrC', 'qnrD', 'qnrS', 'aac(6\')-Ib-cr'
+            # ---------- ESBLs (Extended-Spectrum Beta-Lactamases) ----------
+            'blaCTX-M', 'blaCTX-M-1', 'blaCTX-M-2', 'blaCTX-M-3', 'blaCTX-M-14', 'blaCTX-M-15', 'blaCTX-M-27', 'blaCTX-M-55',
+            'blaSHV', 'blaSHV-2', 'blaSHV-5', 'blaSHV-12',
+            'blaTEM', 'blaTEM-3', 'blaTEM-4', 'blaTEM-10', 'blaTEM-20', 'blaTEM-52',
+            'blaPER', 'blaPER-1', 'blaPER-2', 'blaVEB', 'blaVEB-1', 'blaVEB-2', 'blaBEL', 'blaBEL-1', 'blaGES', 'blaGES-1', 'blaGES-5',
+            # ---------- Carbapenemases ----------
+            'blaKPC', 'blaKPC-2', 'blaKPC-3', 'blaKPC-4',
+            'blaNDM', 'blaNDM-1', 'blaNDM-2', 'blaNDM-3', 'blaNDM-4', 'blaNDM-5', 'blaNDM-6', 'blaNDM-7', 'blaNDM-8', 'blaNDM-9',
+            'blaOXA', 'blaOXA-23', 'blaOXA-24', 'blaOXA-40', 'blaOXA-48', 'blaOXA-58', 'blaOXA-181', 'blaOXA-232', 'blaOXA-244',
+            'blaVIM', 'blaVIM-1', 'blaVIM-2', 'blaVIM-3', 'blaVIM-4', 'blaVIM-5', 'blaVIM-6', 'blaVIM-7',
+            'blaIMP', 'blaIMP-1', 'blaIMP-2', 'blaIMP-4', 'blaIMP-5', 'blaIMP-6', 'blaIMP-7', 'blaIMP-8', 'blaIMP-9', 'blaIMP-10',
+            'blaSIM', 'blaSPM', 'blaAIM', 'blaDIM', 'blaGIM', 'blaSME', 'blaNMC', 'blaIMI',
+            # ---------- Colistin Resistance ----------
+            'mcr-1', 'mcr-1.1', 'mcr-2', 'mcr-3', 'mcr-4', 'mcr-5', 'mcr-6', 'mcr-7', 'mcr-8', 'mcr-9', 'mcr-10',
+            # ---------- High-Risk Plasmid-Mediated Quinolone Resistance (PMQR) ----------
+            'qnrA', 'qnrA1', 'qnrA2', 'qnrB', 'qnrB1', 'qnrB2', 'qnrB19', 'qnrC', 'qnrD', 'qnrS', 'qnrS1', 'qnrS2', 'qnrVC',
+            'aac(6\')-Ib-cr', 'aac(6\')-Ib-cr1', 'aac(6\')-Ib-cr2',
+            # ---------- High-Level Aminoglycoside Resistance (16S rRNA methylases) ----------
+            'armA', 'rmtA', 'rmtB', 'rmtC', 'rmtD', 'rmtE', 'rmtF', 'rmtG', 'rmtH', 'npmA',
+            # ---------- Rare but Critical Resistance ----------
+            'cfr', 'cfrA', 'cfrB', 'optrA', 'poxtA', 'tetX', 'tetX1', 'tetX2', 'tetX3', 'tetX4',
         }
-        # Critical virulence genes for E. coli (Shiga toxins, intimin, CNF1, hemolysin, etc.)
+
+        # Critical virulence genes for E. coli (toxins, adhesins, immune evasions, iron uptake systems, effectors)
         self.critical_virulence_genes = {
-            'stx1', 'stx2', 'stx1A', 'stx1B', 'stx2A', 'stx2B',
-            'cnf1', 'hlyA', 'hlyB', 'hlyC', 'hlyD', 'eae', 'lt', 'st'
+            # ---------- Shiga toxins (STEC/EHEC) ----------
+            'stx1', 'stx1A', 'stx1B', 'stx2', 'stx2A', 'stx2B', 'stx2c', 'stx2d', 'stx2e', 'stx2f', 'stx2g',
+            # ---------- Other potent toxins ----------
+            'cnf1', 'cnf2',           # Cytotoxic necrotising factors (ExPEC)
+            'hlyA', 'hlyB', 'hlyC', 'hlyD', 'hlyE', 'hlyF',  # α‑hemolysin and related
+            'eltA', 'eltB',           # Heat‑labile enterotoxin (ETEC)
+            'estIa', 'estIb', 'astA', 'east1',  # Heat‑stable enterotoxins (ETEC, EAEC)
+            'clbA', 'clbB', 'clbC', 'clbD', 'clbE', 'clbF', 'clbG', 'clbH', 'clbI', 'clbJ', 'clbK', 'clbL', 'clbM', 'clbN', 'clbO',  # Colibactin (genotoxin)
+            'cdtA', 'cdtB', 'cdtC',   # Cytolethal distending toxin
+            'vtx1', 'vtx2',           # Verotoxins (alternative names for Stx)
+            # ---------- Critical adhesins / intimin / invasins ----------
+            'eae', 'eaeA', 'eaeB', 'eaeH', 'tir', 'paa',        # Intimin and T3SS effectors (EPEC/EHEC)
+            'bfpA', 'bfpB', 'bfpC', 'bfpD', 'bfpE', 'bfpF', 'bfpG', 'bfpH', 'bfpI', 'bfpJ', 'bfpK', 'bfpL',  # Bundle-forming pilus (EPEC)
+            'aggR', 'aaiA', 'aaiB', 'aaiC', 'aaiD', 'aaiE', 'aaiF', 'aaiG', 'aaiH', 'aaiI', 'aaiJ', 'aaiK', 'aaiL', 'aaiM', 'aaiN', 'aaiO', 'aaiP', 'aaiQ', 'aaiR', 'aaiS', 'aaiT', 'aaiU', 'aaiV', 'aaiW', 'aaiX', 'aaiY', 'aaiZ',  # EAEC AggR regulon
+            'aatA', 'aatB', 'aatC', 'aatD', 'aatE', 'aatF', 'aatG', 'aatH', 'aatI', 'aatJ', 'aatK', 'aatL', 'aatM', 'aatN', 'aatO', 'aatP', 'aatQ', 'aatR', 'aatS', 'aatT', 'aatU', 'aatV', 'aatW', 'aatX', 'aatY', 'aatZ',  # EAEC dispersin
+            'ipaH', 'ipaA', 'ipaB', 'ipaC', 'ipaD', 'mxi', 'spa',   # Invasion plasmid antigens (EIEC/Shigella)
+            # ---------- Iron uptake systems (critical for in vivo survival) ----------
+            'fyuA', 'irp1', 'irp2', 'ybtA', 'ybtE', 'ybtP', 'ybtQ', 'ybtS', 'ybtT', 'ybtU', 'ybtX',  # Yersiniabactin
+            'iucA', 'iucB', 'iucC', 'iucD', 'iutA',  # Aerobactin
+            'iroB', 'iroC', 'iroD', 'iroE', 'iroN',  # Salmochelin
+            'chuA', 'chuS', 'chuT', 'chuU', 'chuV', 'chuW', 'chuX', 'chuY',  # Heme uptake
+            'sitA', 'sitB', 'sitC', 'sitD',  # Manganese/iron transport
+            # ---------- Capsule and immune evasion (ExPEC) ----------
+            'kpsD', 'kpsE', 'kpsF', 'kpsM', 'kpsS', 'kpsT', 'kpsU', 'kpsV', 'kpsW', 'kpsX', 'kpsY', 'kpsZ',  # Group II capsule
+            'kpsC', 'kpsK', 'kpsL',  # Additional capsule genes
+            'iss', 'iss2',  # Increased serum survival
+            'traT',          # Serum resistance
+            'ibeA', 'ibeB', 'ibeC',  # Invasion of brain endothelium (neonatal meningitis)
+            # ---------- Type III Secretion System effectors (EHEC/EPEC) ----------
+            'espA', 'espB', 'espD', 'espF', 'espG', 'espH', 'espJ', 'espK', 'espL', 'espM', 'espN', 'espO', 'espP', 'espQ', 'espR', 'espS', 'espT', 'espU', 'espV', 'espW', 'espX', 'espY', 'espZ',
+            'nleA', 'nleB', 'nleC', 'nleD', 'nleE', 'nleF', 'nleG', 'nleH', 'nleI', 'nleJ', 'nleK', 'nleL',
+            'map', 'tccP', 'tccP2', 'cesT', 'cesD', 'cesD2',
         }
     
-    def create_gene_centric_tables(self, integrated_data: Dict[str, Any]) -> Dict[str, Any]:
+    def classify_pathotype(self, virulence_genes: List[str]) -> str:
+        """
+        Classify E. coli pathotype based on VFDB virulence gene list.
+        Returns a string like 'STEC', 'EPEC', 'EHEC', 'EAEC', 'ETEC', 'DAEC', 'EIEC',
+        or combinations separated by '-' (e.g., 'EHEC-EAEC'), or 'none'.
+        """
+        # Normalise gene names to lower case for case‑insensitive matching
+        genes = set(gene.lower() for gene in virulence_genes)
+        
+        # Define markers (after normalisation)
+        stx = any(g in genes for g in ['stx1', 'stx2', 'stx1a', 'stx1b', 'stx2a', 'stx2b'])
+        eae = 'eae' in genes
+        bfp = 'bfpa' in genes
+        agg = any(g in genes for g in ['aggr', 'aaiac', 'aata', 'aaiC', 'aatA'])
+        lt = 'ltca' in genes
+        st = 'sta1' in genes
+        afa = any(g in genes for g in ['afac', 'afae'])
+        ipa = 'ipah' in genes
+        
+        pathotypes = []
+        
+        # STEC: stx present, eae absent
+        if stx and not eae:
+            pathotypes.append('STEC')
+        # EPEC: eae or bfp present, no stx
+        if (eae or bfp) and not stx:
+            pathotypes.append('EPEC')
+        # EHEC: stx and eae both present
+        if stx and eae:
+            pathotypes.append('EHEC')
+        # EAEC: aggR, aaiC or aatA present
+        if agg:
+            pathotypes.append('EAEC')
+        # ETEC: lt or st present
+        if lt or st:
+            pathotypes.append('ETEC')
+        # DAEC: afaC or afaE present
+        if afa:
+            pathotypes.append('DAEC')
+        # EIEC: ipaH present
+        if ipa:
+            pathotypes.append('EIEC')
+        
+        if not pathotypes:
+            return 'none'
+        return '-'.join(pathotypes)
+    
+    def create_gene_centric_tables(self, integrated_data: Dict[str, Any], total_samples: int) -> Dict[str, Any]:
         """
         Convert sample-centric gene lists into gene-centric tables.
         Each gene is shown once with all genomes that contain it.
@@ -494,7 +594,10 @@ class UltimateDataAnalyzer:
         gene_centric = {
             'amr_databases': {},
             'virulence_databases': {},
-            'combined_gene_frequencies': []
+            'bacmet_databases': {},
+            'plasmid_databases': {},
+            'combined_gene_frequencies': [],
+            'database_stats': {}
         }
         
         # Process AMRfinder data
@@ -505,11 +608,14 @@ class UltimateDataAnalyzer:
                 gene_list.append({
                     'gene': gene,
                     'database': 'AMRfinder',
-                    'frequency': data.get('frequency', '0'),
                     'count': data.get('count', 0),
+                    'percentage': data.get('percentage', 0),
+                    'frequency_display': data.get('frequency_display', f"{data.get('count', 0)} ({data.get('percentage', 0):.1f}%)"),
                     'genomes': data.get('genomes', [])
                 })
-            gene_centric['amr_databases']['amrfinder'] = sorted(gene_list, key=lambda x: x['count'], reverse=True)
+            if gene_list:
+                gene_list.sort(key=lambda x: x['count'], reverse=True)
+                gene_centric['amr_databases']['amrfinder'] = gene_list
         
         # Process ABRicate databases
         if 'abricate' in integrated_data.get('gene_frequencies', {}):
@@ -519,32 +625,46 @@ class UltimateDataAnalyzer:
                     gene_list.append({
                         'gene': gene,
                         'database': db_name.upper(),
-                        'frequency': data.get('frequency', '0'),
                         'count': data.get('count', 0),
+                        'percentage': data.get('percentage', 0),
+                        'frequency_display': data.get('frequency_display', f"{data.get('count', 0)} ({data.get('percentage', 0):.1f}%)"),
                         'genomes': data.get('genomes', [])
                     })
                 if gene_list:
                     gene_list.sort(key=lambda x: x['count'], reverse=True)
-                    # Classify as virulence or AMR based on database name
+                    # Classify by database name
                     if db_name in ['vfdb', 'ecoli_vf']:
                         gene_centric['virulence_databases'][db_name] = gene_list
+                    elif db_name == 'bacmet2':
+                        gene_centric['bacmet_databases'][db_name] = gene_list
+                    elif db_name in ['plasmidfinder', 'ecoh']:
+                        gene_centric['plasmid_databases'][db_name] = gene_list
                     else:
                         gene_centric['amr_databases'][db_name] = gene_list
         
         # Combined list for pattern discovery
         all_genes = []
-        for db_type in ['amr_databases', 'virulence_databases']:
-            for genes in gene_centric.get(db_type, {}).values():
+        for db_type in ['amr_databases', 'virulence_databases', 'bacmet_databases', 'plasmid_databases']:
+            for db_name, genes in gene_centric.get(db_type, {}).items():
                 all_genes.extend(genes)
         all_genes.sort(key=lambda x: x['count'], reverse=True)
         gene_centric['combined_gene_frequencies'] = all_genes
+        
+        # Database statistics
+        for db_type in ['amr_databases', 'virulence_databases', 'bacmet_databases', 'plasmid_databases']:
+            for db_name, genes in gene_centric.get(db_type, {}).items():
+                gene_centric['database_stats'][db_name] = {
+                    'total_genes': len(genes),
+                    'total_occurrences': sum(g['count'] for g in genes),
+                }
         return gene_centric
     
     def create_cross_genome_patterns(self, integrated_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate cross-genome patterns including:
-        - Distributions of STs, serotypes, phylogroups, CH types, O/H/FumC/FimH types
+        - Distributions of STs, serotypes, phylogroups, CH types
         - Combination tables (ST-O, ST-H, ST-O:H, ST-Phylogroup, ST-FimH, ST-FumC, ST-CH, full 5-way)
+        - Pathotype prevalence
         - Gene co-occurrence matrix
         - High-risk combinations (critical AMR + critical virulence)
         """
@@ -558,6 +678,8 @@ class UltimateDataAnalyzer:
             'h_type_distribution': Counter(),
             'fumc_type_distribution': Counter(),
             'fimh_type_distribution': Counter(),
+            # Pathotype prevalence
+            'pathotype_distribution': Counter(),
             # Combination tables (sample lists)
             'st_o_combinations': defaultdict(list),
             'st_h_combinations': defaultdict(list),
@@ -577,8 +699,8 @@ class UltimateDataAnalyzer:
         
         # Build sample->genes mapping for co-occurrence
         sample_genes = defaultdict(list)
-        for db_type in ['amr_databases', 'virulence_databases']:
-            for genes in gene_centric.get(db_type, {}).values():
+        for db_type in ['amr_databases', 'virulence_databases', 'bacmet_databases', 'plasmid_databases']:
+            for db_name, genes in gene_centric.get(db_type, {}).items():
                 for gene_data in genes:
                     for genome in gene_data['genomes']:
                         if gene_data['gene'] not in sample_genes[genome]:
@@ -594,6 +716,7 @@ class UltimateDataAnalyzer:
             fumc = data.get('chtyper', {}).get('FumC_Type', 'ND')
             fimh = data.get('chtyper', {}).get('FimH_Type', 'ND')
             ch_type = data.get('chtyper', {}).get('CH_Type', 'ND')
+            pathotype = data.get('pathotype', 'none')
             
             # Update counters (only if not 'ND')
             if st != 'ND':
@@ -612,6 +735,7 @@ class UltimateDataAnalyzer:
                 patterns['fumc_type_distribution'][fumc] += 1
             if fimh != 'ND':
                 patterns['fimh_type_distribution'][fimh] += 1
+            patterns['pathotype_distribution'][pathotype] += 1
             
             # Build combination tables (only when both parts are known)
             if st != 'ND' and o_type != 'ND':
@@ -641,6 +765,7 @@ class UltimateDataAnalyzer:
             # High-risk combinations: sample carries both critical AMR and critical virulence genes
             amr_genes = data.get('amr_genes', [])
             virulence_genes = data.get('virulence_genes', [])
+            # Normalise to lower case for matching
             critical_amr = [g for g in amr_genes if any(crit.lower() in g.lower() for crit in self.critical_amr_genes)]
             critical_vir = [g for g in virulence_genes if any(crit.lower() in g.lower() for crit in self.critical_virulence_genes)]
             if critical_amr and critical_vir:
@@ -656,7 +781,7 @@ class UltimateDataAnalyzer:
 
 
 # =============================================================================
-# HTML GENERATOR CLASS
+# HTML GENERATOR CLASS (enhanced with new tabs, genome search, educational boxes)
 # =============================================================================
 class UltimateHTMLGenerator:
     """
@@ -669,7 +794,7 @@ class UltimateHTMLGenerator:
     
     def generate_main_report(self, integrated_data: Dict[str, Any], output_dir: Path) -> str:
         """Generate the ultimate HTML report and save to file."""
-        print("\n🎨 Generating ULTIMATE HTML report...")
+        print("\n🎨 Generating ULTIMATE HTML report for E. coli...")
         html = self._create_ultimate_html(
             metadata=integrated_data.get('metadata', {}),
             samples_data=integrated_data.get('samples', {}),
@@ -678,7 +803,7 @@ class UltimateHTMLGenerator:
             qc_data=integrated_data.get('qc_data', {}),
             integrated_data=integrated_data
         )
-        output_file = output_dir / "genius_ultimate_report.html"
+        output_file = output_dir / "genius_ecoli_ultimate_report.html"
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(html)
         print(f"    ✅ HTML report saved: {output_file}")
@@ -688,14 +813,16 @@ class UltimateHTMLGenerator:
         """
         Assemble the full HTML document with CSS, JavaScript, and all tab contents.
         """
-        # CSS styles (embedded for portability)
+        # CSS styles (embedded for portability) – enhanced with genome highlighting styles
         css = """
         <style>
         :root {
-            --summary-color: #4CAF50; --samples-color: #2196F3; --mlst-color: #FF9800;
-            --serotype-color: #9C27B0; --chtype-color: #009688; --phylogroup-color: #795548;
-            --amr-color: #F44336; --virulence-color: #E91E63; --patterns-color: #FF5722;
-            --qc-color: #607D8B; --aiguide-color: #3F51B5; --export-color: #3F51B5;
+            --summary-color: #4CAF50; --samples-color: #2196F3; --qc-color: #17a2b8;
+            --mlst-color: #FF9800; --serotype-color: #9C27B0; --chtype-color: #009688;
+            --phylogroup-color: #795548; --pathotype-color: #E91E63; --amr-color: #F44336;
+            --virulence-color: #8BC34A; --plasmid-color: #3F51B5; --bacmet-color: #607D8B;
+            --patterns-color: #FF5722; --databases-color: #9E9E9E; --aiguide-color: #3F51B5;
+            --calltoaction-color: #2E7D32; --export-color: #3F51B5;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; min-width: 1200px; }
@@ -703,24 +830,29 @@ class UltimateHTMLGenerator:
         .main-header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; text-align: center; }
         .main-header h1 { font-size: 2.8em; margin-bottom: 10px; color: white; }
         .metadata-bar { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin: 20px 0; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px; }
-        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .dashboard-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); text-align: center; transition: all 0.3s ease; cursor: pointer; border-left: 5px solid; }
         .dashboard-card:hover { transform: translateY(-10px); }
         .card-number { font-size: 3em; font-weight: bold; margin: 15px 0; background: linear-gradient(90deg, #1e3c72, #2a5298); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .tab-navigation { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; background: white; padding: 15px; border-radius: 12px; position: sticky; top: 10px; z-index: 100; }
-        .tab-button { padding: 12px 25px; background: #f5f5f5; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; color: #666; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; }
+        .tab-button { padding: 12px 25px; background: #f5f5f5; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; }
         .tab-button.active { color: white; }
         .tab-button.summary.active { background: var(--summary-color); }
         .tab-button.samples.active { background: var(--samples-color); }
+        .tab-button.qc.active { background: var(--qc-color); }
         .tab-button.mlst.active { background: var(--mlst-color); }
         .tab-button.serotype.active { background: var(--serotype-color); }
         .tab-button.chtype.active { background: var(--chtype-color); }
         .tab-button.phylogroup.active { background: var(--phylogroup-color); }
+        .tab-button.pathotype.active { background: var(--pathotype-color); }
         .tab-button.amr.active { background: var(--amr-color); }
         .tab-button.virulence.active { background: var(--virulence-color); }
+        .tab-button.plasmid.active { background: var(--plasmid-color); }
+        .tab-button.bacmet.active { background: var(--bacmet-color); }
         .tab-button.patterns.active { background: var(--patterns-color); }
-        .tab-button.qc.active { background: var(--qc-color); }
+        .tab-button.databases.active { background: var(--databases-color); }
         .tab-button.aiguide.active { background: var(--aiguide-color); }
+        .tab-button.calltoaction.active { background: var(--calltoaction-color); }
         .tab-button.export.active { background: var(--export-color); }
         .tab-content { display: none; background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; width: 100%; overflow-x: auto; animation: fadeIn 0.5s ease; }
         .tab-content.active { display: block; }
@@ -741,20 +873,25 @@ class UltimateHTMLGenerator:
         .btn-warning { background: #ffc107; color: black; }
         .btn-info { background: #17a2b8; color: white; }
         .btn-secondary { background: #6c757d; color: white; }
+        .btn-success { background: #28a745; color: white; }
         .btn-light { background: #f8f9fa; color: #212529; border: 1px solid #dee2e6; }
         .badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 0.85em; font-weight: 600; margin: 2px; }
         .badge-mrsa { background: #8B0000; color: white; }
         .alert-box { padding: 20px; border-radius: 10px; margin: 20px 0; display: flex; align-items: center; gap: 20px; border-left: 5px solid; }
         .alert-info { background: #d1ecf1; color: #0c5460; border-left-color: #17a2b8; }
         .alert-danger { background: #f8d7da; color: #721c24; border-left-color: #dc3545; }
-        .genome-list { display: flex; flex-wrap: wrap; gap: 5px; }
-        .genome-tag { background: #e3f2fd; color: #1976d2; padding: 3px 10px; border-radius: 12px; font-size: 0.85em; border: 1px solid #bbdefb; white-space: nowrap; }
+        .genome-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 200px; overflow-y: auto; padding: 5px; background: #f8f9fa; border-radius: 5px; }
+        .genome-tag { background: #e0f2f1; color: #00695c; padding: 3px 10px; border-radius: 12px; font-size: 0.85em; margin: 2px; border: 1px solid #bbdefb; white-space: nowrap; }
+        .genome-tag.highlight { background-color: #ffff99 !important; color: #000 !important; border: 1px solid #ffc107; }
         .footer { text-align: center; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); color: white; border-radius: 15px; margin-top: 40px; }
+        .footer a { color: #ffc107; text-decoration: none; }
+        .info-text { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #17a2b8; }
+        .pathotype-card { background: #fff; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid; }
         @media print { .tab-navigation, .dashboard-grid, .search-box, .action-buttons, .print-section-btn { display: none; } .tab-content.active { display: block; } }
         </style>
         """
         
-        # JavaScript for interactive features
+        # JavaScript for interactive features (includes highlightGenome function)
         js = """
         <script>
         function switchTab(tabName) {
@@ -774,6 +911,18 @@ class UltimateHTMLGenerator:
                 }
                 rows[i].style.display = found ? '' : 'none';
             }
+        }
+        function highlightGenome(tableId, searchId) {
+            const filter = document.getElementById(searchId).value.toUpperCase().trim();
+            const table = document.getElementById(tableId);
+            const allTags = table.querySelectorAll('.genome-tag');
+            allTags.forEach(tag => tag.classList.remove('highlight'));
+            if (filter === '') return;
+            allTags.forEach(tag => {
+                if (tag.textContent.toUpperCase().indexOf(filter) > -1) {
+                    tag.classList.add('highlight');
+                }
+            });
         }
         function sortTable(tableId, colIndex, type) {
             const table = document.getElementById(tableId);
@@ -853,60 +1002,74 @@ class UltimateHTMLGenerator:
         qc_data = kwargs.get('qc_data', {})
         total_amr = sum(len(genes) for genes in gene_centric.get('amr_databases', {}).values())
         total_vir = sum(len(genes) for genes in gene_centric.get('virulence_databases', {}).values())
+        total_bacmet = sum(len(genes) for genes in gene_centric.get('bacmet_databases', {}).values())
+        total_plasmid = sum(len(genes) for genes in gene_centric.get('plasmid_databases', {}).values())
         high_risk_count = len(patterns.get('high_risk_combinations', []))
+        pathotype_counts = patterns.get('pathotype_distribution', Counter())
+        total_samples = len(samples)
         
         # Assemble HTML document
         html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>GENIUS E.coli Ultimate Report</title>
+<html><head><meta charset="UTF-8"><title>GENIUS E.coli Ultimate Report (Enhanced)</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 {css}{js}</head>
 <body><div class="container">
 <div class="main-header"><h1><i class="fas fa-dna"></i> GENIUS E.coli Ultimate Analysis Report</h1>
-<p>Gene-Centric Cross-Genome Analysis with Complete Genome Lists</p>
+<p>Gene-Centric Cross-Genome Analysis with Pathotype Classification & Environmental Co-Selection</p>
 <div class="metadata-bar"><div class="metadata-item"><i class="fas fa-calendar"></i> {metadata.get('analysis_date','Unknown')}</div>
 <div class="metadata-item"><i class="fas fa-database"></i> Samples: {len(samples)}</div>
-<div class="metadata-item"><i class="fas fa-user-md"></i> GENIUS Ultimate v2.0.0</div>
+<div class="metadata-item"><i class="fas fa-user-md"></i> GENIUS Ultimate v3.0.0</div>
 <div class="metadata-item"><i class="fas fa-university"></i> University of Ghana Medical School</div></div></div>
 <div class="dashboard-grid">
     <div class="dashboard-card card-summary" onclick="switchTab('summary')"><div class="card-number">{len(samples)}</div><div class="card-label">Total Samples</div><i class="fas fa-vial fa-2x"></i></div>
     <div class="dashboard-card card-mlst" onclick="switchTab('mlst')"><div class="card-number">{len(patterns.get('st_distribution',{}))}</div><div class="card-label">Unique STs</div><i class="fas fa-code-branch fa-2x"></i></div>
     <div class="dashboard-card card-serotype" onclick="switchTab('serotype')"><div class="card-number">{len(patterns.get('serotype_distribution',{}))}</div><div class="card-label">Serotypes</div><i class="fas fa-tag fa-2x"></i></div>
+    <div class="dashboard-card card-pathotype" onclick="switchTab('pathotype')"><div class="card-number">{len(pathotype_counts)}</div><div class="card-label">Pathotypes</div><i class="fas fa-virus fa-2x"></i></div>
     <div class="dashboard-card card-amr" onclick="switchTab('amr')"><div class="card-number">{total_amr}</div><div class="card-label">AMR Genes</div><i class="fas fa-biohazard fa-2x"></i></div>
-    <div class="dashboard-card card-virulence" onclick="switchTab('virulence')"><div class="card-number">{total_vir}</div><div class="card-label">Virulence Genes</div><i class="fas fa-virus fa-2x"></i></div>
     <div class="dashboard-card card-patterns" onclick="switchTab('patterns')"><div class="card-number">{high_risk_count}</div><div class="card-label">High-Risk Combos</div><i class="fas fa-project-diagram fa-2x"></i></div>
 </div>
 <div class="tab-navigation">
     <button class="tab-button summary active" onclick="switchTab('summary')"><i class="fas fa-chart-pie"></i> Summary</button>
     <button class="tab-button samples" onclick="switchTab('samples')"><i class="fas fa-list-alt"></i> Sample Overview</button>
-    <button class="tab-button mlst" onclick="switchTab('mlst')"><i class="fas fa-code-branch"></i> MLST Analysis</button>
+    <button class="tab-button qc" onclick="switchTab('qc')"><i class="fas fa-chart-line"></i> FASTA QC</button>
+    <button class="tab-button mlst" onclick="switchTab('mlst')"><i class="fas fa-code-branch"></i> MLST</button>
     <button class="tab-button serotype" onclick="switchTab('serotype')"><i class="fas fa-tag"></i> Serotype</button>
     <button class="tab-button chtype" onclick="switchTab('chtype')"><i class="fas fa-project-diagram"></i> CH Type</button>
     <button class="tab-button phylogroup" onclick="switchTab('phylogroup')"><i class="fas fa-sitemap"></i> Phylogroup</button>
-    <button class="tab-button amr" onclick="switchTab('amr')"><i class="fas fa-biohazard"></i> AMR Genes</button>
+    <button class="tab-button pathotype" onclick="switchTab('pathotype')"><i class="fas fa-virus"></i> Pathotype Analysis</button>
+    <button class="tab-button amr" onclick="switchTab('amr')"><i class="fas fa-biohazard"></i> AMR</button>
     <button class="tab-button virulence" onclick="switchTab('virulence')"><i class="fas fa-virus"></i> Virulence</button>
+    <button class="tab-button plasmid" onclick="switchTab('plasmid')"><i class="fas fa-dna"></i> Plasmid & Serotyping Markers</button>
+    <button class="tab-button bacmet" onclick="switchTab('bacmet')"><i class="fas fa-flask"></i> Bacmet</button>
     <button class="tab-button patterns" onclick="switchTab('patterns')"><i class="fas fa-project-diagram"></i> Patterns</button>
-    <button class="tab-button qc" onclick="switchTab('qc')"><i class="fas fa-chart-line"></i> FASTA QC</button>
+    <button class="tab-button databases" onclick="switchTab('databases')"><i class="fas fa-database"></i> Database Metrics</button>
     <button class="tab-button aiguide" onclick="switchTab('aiguide')"><i class="fas fa-robot"></i> AI Guide</button>
+    <button class="tab-button calltoaction" onclick="switchTab('calltoaction')"><i class="fas fa-globe"></i> Call to Action</button>
     <button class="tab-button export" onclick="switchTab('export')"><i class="fas fa-download"></i> Export</button>
 </div>
 <div id="summary-tab" class="tab-content active">{self._summary_section(kwargs)}</div>
 <div id="samples-tab" class="tab-content">{self._samples_section(kwargs)}</div>
+<div id="qc-tab" class="tab-content">{self._qc_section(kwargs)}</div>
 <div id="mlst-tab" class="tab-content">{self._mlst_section(kwargs)}</div>
 <div id="serotype-tab" class="tab-content">{self._serotype_section(kwargs)}</div>
 <div id="chtype-tab" class="tab-content">{self._chtype_section(kwargs)}</div>
 <div id="phylogroup-tab" class="tab-content">{self._phylogroup_section(kwargs)}</div>
+<div id="pathotype-tab" class="tab-content">{self._pathotype_section(kwargs)}</div>
 <div id="amr-tab" class="tab-content">{self._amr_section(kwargs)}</div>
 <div id="virulence-tab" class="tab-content">{self._virulence_section(kwargs)}</div>
+<div id="plasmid-tab" class="tab-content">{self._plasmid_section(kwargs)}</div>
+<div id="bacmet-tab" class="tab-content">{self._bacmet_section(kwargs)}</div>
 <div id="patterns-tab" class="tab-content">{self._patterns_section(kwargs)}</div>
-<div id="qc-tab" class="tab-content">{self._qc_section(kwargs)}</div>
-<div id="aiguide-tab" class="tab-content">{self._aiguide_section(kwargs)}</div>
-<div id="export-tab" class="tab-content">{self._export_section(kwargs)}</div>
-<div class="footer"><h3>GENIUS E.coli Ultimate Reporter v2.0.0</h3><p>University of Ghana Medical School | Brown Beckley &lt;brownbeckley94@gmail.com&gt;</p><p>Generated on {metadata.get('analysis_date','Unknown')}</p></div>
+<div id="databases-tab" class="tab-content">{self._databases_section(kwargs)}</div>
+<div id="aiguide-tab" class="tab-content">{self._aiguide_section()}</div>
+<div id="calltoaction-tab" class="tab-content">{self._calltoaction_section()}</div>
+<div id="export-tab" class="tab-content">{self._export_section()}</div>
+<div class="footer"><h3>GENIUS E.coli Ultimate Reporter v3.0.0 </h3><p>University of Ghana Medical School | Brown Beckley &lt;brownbeckley94@gmail.com&gt;</p><p>If you find this tool helpful, please <a href="https://github.com/bbeckley-hub/ecolityper" target="_blank">⭐ star us on GitHub</a> and share with your network.</p><p>Critical Genes Tracked: ESBLs • Carbapenemases • Colistin Resistance • Pathotype Determinants • Biofilm • Plasmids</p><p>Generated on {metadata.get('analysis_date','Unknown')}</p></div>
 </div></body></html>"""
         return html
     
     # -------------------------------------------------------------------------
-    # Section generators (each returns HTML for a specific tab)
+    # Section generators – each returns HTML for a specific tab
     # -------------------------------------------------------------------------
     
     def _summary_section(self, kwargs):
@@ -920,21 +1083,25 @@ class UltimateHTMLGenerator:
         amr_total = sum(len(genes) for genes in kwargs['gene_centric'].get('amr_databases', {}).values())
         vir_total = sum(len(genes) for genes in kwargs['gene_centric'].get('virulence_databases', {}).values())
         high_risk = len(patterns.get('high_risk_combinations', []))
+        patho_counts = patterns.get('pathotype_distribution', Counter())
         return f"""
-        <div class="alert-box alert-info"><i class="fas fa-info-circle fa-2x"></i><div><h3>Analysis Overview</h3><p>Gene-centric report for <strong>{total}</strong> E. coli genomes. Each gene shown with all genomes containing it.</p></div></div>
+        <div class="alert-box alert-info"><i class="fas fa-info-circle fa-2x"></i><div><h3>Analysis Overview</h3><p>Gene-centric report for <strong>{total}</strong> E. coli genomes. Each gene is shown with all genomes containing it. This version includes pathotype classification (STEC, EPEC, EHEC, EAEC, ETEC, DAEC, EIEC) and separate Plasmid/Bacmet tabs.</p></div></div>
         <div class="action-buttons"><button class="action-btn btn-primary" onclick="switchTab('amr')"><i class="fas fa-biohazard"></i> View AMR Genes</button>
         <button class="action-btn btn-success" onclick="switchTab('virulence')"><i class="fas fa-virus"></i> View Virulence</button>
-        <button class="action-btn btn-danger" onclick="switchTab('patterns')"><i class="fas fa-exclamation-triangle"></i> High-Risk Combos</button></div>
-        <h3>Key Statistics</h3><div class="scrollable-table"><table id="summary-stats" class="data-table"><thead><tr><th data-sort="string">Metric</th><th data-sort="string">Count</th><th>Details</th></tr></thead><tbody>
-        <tr><td>Total Samples</th><td><strong>{total}</strong></th><td>Complete genomic analysis</th></tr>
-        <tr><td>Unique STs</th><td><strong>{st_unique}</strong></th><td>MLST typing</th></tr>
-        <tr><td>Unique Serotypes</th><td><strong>{sero_unique}</strong></th><td>O:H antigens</th></tr>
-        <tr><td>Unique Phylogroups</th><td><strong>{phylo_unique}</strong></th><td>Clermont scheme</th></tr>
-        <tr><td>Unique CH Types</th><td><strong>{ch_unique}</strong></th><td>FumC:FimH</th></tr>
-        <tr><td>AMR Genes</th><td><strong>{amr_total}</strong></th><td>All databases</th></tr>
-        <tr><td>Virulence Genes</th><td><strong>{vir_total}</strong></th><td>VFDB/Ecoli_VF</th></tr>
-        <tr><td>High-Risk Combos</th><td><strong class="badge badge-mrsa">{high_risk}</strong></th><td>Critical AMR + Virulence</th></tr>
+        <button class="action-btn btn-danger" onclick="switchTab('pathotype')"><i class="fas fa-chart-pie"></i> Pathotype Prevalence</button></div>
+        <h3>Key Statistics</h3>
+        <div class="scrollable-table"><table id="summary-stats" class="data-table"><thead><tr><th data-sort="string">Metric</th><th data-sort="string">Count</th><th>Details</th></tr></thead><tbody>
+        <tr><td>Total Samples</td><td><strong>{total}</strong></td><td>Complete genomic analysis</td></tr>
+        <tr><td>Unique STs</td><td><strong>{st_unique}</strong></td><td>MLST typing</td></tr>
+        <tr><td>Unique Serotypes</td><td><strong>{sero_unique}</strong></td><td>O:H antigens</td></tr>
+        <tr><td>Unique Phylogroups</td><td><strong>{phylo_unique}</strong></td><td>Clermont scheme</td></tr>
+        <tr><td>Unique CH Types</td><td><strong>{ch_unique}</strong></td><td>FumC:FimH</td></tr>
+        <tr><td>AMR Genes</td><td><strong>{amr_total}</strong></td><td>All databases</td></tr>
+        <tr><td>Virulence Genes</td><td><strong>{vir_total}</strong></td><td>VFDB/Ecoli_VF</td></tr>
+        <tr><td>Pathotypes Detected</td><td><strong>{len(patho_counts)}</strong></td><td>Including STEC, EPEC, EHEC, etc.</td></tr>
+        <tr><td>High-Risk Combos</td><td><strong class="badge badge-mrsa">{high_risk}</strong></td><td>Critical AMR + Virulence</td></tr>
         </tbody></table></div>
+        <div class="info-text"><i class="fas fa-chart-line"></i> <strong>Why this tab?</strong> The summary provides an executive overview of your dataset, highlighting key resistance threats, population structure, and pathotype diversity. Use the dashboard cards to navigate to specific sections.</div>
         """
     
     def _samples_section(self, kwargs):
@@ -950,29 +1117,59 @@ class UltimateHTMLGenerator:
                     <li><strong>Serotype (O:H)</strong>: Surface antigens used for traditional typing. Specific O:H combinations are associated with pathotypes (e.g., O157:H7 with STEC).</li>
                     <li><strong>Phylogroup (Clermont)</strong>: Deep evolutionary lineages (A, B1, B2, C, D, E, F, G). Phylogroup B2 and D are often extra-intestinal pathogenic (ExPEC), while A and B1 are commensal/environmental.</li>
                     <li><strong>CH Type (FumC:FimH)</strong>: Fine‑scale typing based on housekeeping (FumC) and adhesin (FimH) genes. FimH alleles correlate with tropism and virulence.</li>
+                    <li><strong>Pathotype</strong>: Predicted diarrheagenic or extra‑intestinal pathotype based on VFDB genes.</li>
                 </ul>
             </div>
         </div>
         <input type="text" class="search-box" id="search-samples" onkeyup="searchTable('samples-table','search-samples')" placeholder="🔍 Search...">
         <div class="action-buttons"><button class="action-btn btn-primary" onclick="exportTableToCSV('samples-table','sample_overview.csv')"><i class="fas fa-download"></i> Export CSV</button></div>
-        <div class="scrollable-table"><table id="samples-table" class="data-table"><thead><tr><th data-sort="string">Sample</th><th data-sort="string">ST</th><th data-sort="string">Serotype</th><th data-sort="string">Phylogroup</th><th data-sort="string">CH Type</th><th data-sort="number">Virulence Count</th></tr></thead><tbody>
+        <div class="scrollable-table"><table id="samples-table" class="data-table"><thead><tr><th data-sort="string">Sample</th><th data-sort="string">ST</th><th data-sort="string">Serotype</th><th data-sort="string">Phylogroup</th><th data-sort="string">CH Type</th><th data-sort="string">Pathotype</th><th data-sort="number">Virulence Count</th></tr></thead><tbody>
         """
         for sample, data in samples.items():
             st = data.get('mlst',{}).get('ST','ND')
             sero = data.get('serotype',{}).get('Serotype','ND')
             phylo = data.get('phylogrouping',{}).get('Clermont_Type','ND')
             cht = data.get('chtyper',{}).get('CH_Type','ND')
+            patho = data.get('pathotype', 'none')
             vir_cnt = len(data.get('virulence_genes',[]))
-            html += f'<tr><td><strong>{sample}</strong></td><td>{st}</td><td>{sero}</td><td>{phylo}</td><td>{cht}</td><td>{vir_cnt}</td></tr>'
+            html += f'<tr><td><strong>{sample}</strong></td><td>{st}</td><td>{sero}</td><td>{phylo}</td><td>{cht}</td><td>{patho}</td><td>{vir_cnt}</td></tr>'
+        html += '</tbody></table></div>'
+        return html
+    
+    def _qc_section(self, kwargs):
+        qc_data = kwargs.get('qc_data', {})
+        if not qc_data:
+            return '<div class="alert-box alert-warning"><i class="fas fa-exclamation-circle"></i><div>No FASTA QC data found. Please ensure FASTA_QC_summary.html is present.</div></div>'
+        metrics = set()
+        for d in qc_data.values():
+            metrics.update(d.keys())
+        metrics = sorted(metrics)
+        html = """
+        <div class="alert-box alert-info"><i class="fas fa-chart-line"></i><div><h3>FASTA Quality Control</h3><p>This section provides assembly quality metrics for each genome, including total sequences (contigs), total bases, GC%, N50, and more. High N50 and low contig count indicate better assembly quality. Use these metrics to filter low‑quality assemblies before downstream analyses.</p><p><strong>Surveillance importance:</strong> Poor assembly quality can lead to missing genes or false positives. Always inspect QC metrics before drawing conclusions.</p></div></div>
+        <input type="text" class="search-box" id="search-qc" onkeyup="searchTable('qc-table','search-qc')" placeholder="🔍 Search sample...">
+        <div class="action-buttons"><button class="action-btn btn-primary" onclick="exportTableToCSV('qc-table','fasta_qc.csv')"><i class="fas fa-download"></i> Export CSV</button></div>
+        <div class="scrollable-table"><table id="qc-table" class="data-table"><thead><tr><th data-sort="string">Sample</th>"""
+        for m in metrics:
+            html += f'<th data-sort="number">{m}</th>'
+        html += '</tr></thead><tbody>'
+        for sample, vals in sorted(qc_data.items()):
+            html += f'<tr><td><strong>{sample}</strong></td>'
+            for m in metrics:
+                v = vals.get(m, 'ND')
+                if isinstance(v, float):
+                    v = f"{v:,.0f}" if v > 1000 else f"{v:.2f}"
+                html += f'<td>{v}</td>'
+            html += '</tr>'
         html += '</tbody></table></div>'
         return html
     
     def _mlst_section(self, kwargs):
         patterns = kwargs['patterns']
+        samples = kwargs['samples_data']
         st_dist = patterns.get('st_distribution', Counter())
         total = sum(st_dist.values())
         html = f"""
-        <div class="alert-box alert-info"><i class="fas fa-info-circle"></i><div><h3>MLST Analysis</h3><p>Multi‑Locus Sequence Typing (MLST) uses internal fragments of seven housekeeping genes. It is highly reproducible and defines Sequence Types (STs). Closely related STs belong to the same Clonal Complex (CC).</p><p><strong>{len(st_dist)} unique STs</strong> identified.</p></div></div>
+        <div class="alert-box alert-info"><i class="fas fa-info-circle"></i><div><h3>MLST Analysis</h3><p>Multi‑Locus Sequence Typing (MLST) uses internal fragments of seven housekeeping genes. It is highly reproducible and defines Sequence Types (STs). Closely related STs belong to the same Clonal Complex (CC).</p><p><strong>{len(st_dist)} unique STs</strong> identified. MLST is the gold standard for global epidemiology and outbreak tracking.</p></div></div>
         <div class="scrollable-table"><table id="mlst-table" class="data-table"><thead><tr><th data-sort="string">ST</th><th data-sort="number">Count</th><th data-sort="number">Percentage</th><th data-sort="string">Associated Serotypes</th></tr></thead><tbody>
         """
         for st, cnt in st_dist.most_common():
@@ -984,7 +1181,7 @@ class UltimateHTMLGenerator:
             sero_str = ', '.join(seros) if seros else 'ND'
             html += f'<tr><td><strong>{st}</strong></td><td>{cnt}</td><td>{pct:.1f}%</td><td>{sero_str}</td></tr>'
         html += '</tbody></table></div>'
-        # All combination tables
+        # Combination tables
         combos = [
             ('st_o_combinations', 'ST-O', 'ST - O antigen'),
             ('st_h_combinations', 'ST-H', 'ST - H antigen'),
@@ -1000,16 +1197,16 @@ class UltimateHTMLGenerator:
                 continue
             html += f'<h3 style="margin-top:30px;">{title} Combinations</h3><input type="text" class="search-box" id="search-{key}" onkeyup="searchTable(\'{key}-table\',\'search-{key}\')" placeholder="🔍 Search...">'
             html += f'<div class="scrollable-table"><table id="{key}-table" class="data-table"><thead><tr><th data-sort="string">Combination</th><th data-sort="number">Count</th><th data-sort="string">Samples</th></tr></thead><tbody>'
-            for combo, samples in sorted(combo_dict.items(), key=lambda x: len(x[1]), reverse=True):
-                sample_list = ', '.join(samples)
-                html += f'<tr><td><strong>{combo}</strong></td><td>{len(samples)}</td><td>{sample_list}</td></tr>'
+            for combo, samples_list in sorted(combo_dict.items(), key=lambda x: len(x[1]), reverse=True):
+                sample_list = ', '.join(samples_list)
+                html += f'<tr><td><strong>{combo}</strong></td><td>{len(samples_list)}</td><td>{sample_list}</td></tr>'
             html += '</tbody></table></div>'
         full = patterns.get('st_oh_phylo_fumc_fimh_combinations', {})
         if full:
             html += f'<h3 style="margin-top:30px;">ST - O:H - Phylogroup - FumC:FimH Combinations</h3><input type="text" class="search-box" id="search-full" onkeyup="searchTable(\'full-combo-table\',\'search-full\')" placeholder="🔍 Search...">'
             html += f'<div class="scrollable-table"><table id="full-combo-table" class="data-table"><thead><tr><th data-sort="string">Full Combination</th><th data-sort="number">Count</th><th data-sort="string">Samples</th></tr></thead><tbody>'
-            for combo, samples in sorted(full.items(), key=lambda x: len(x[1]), reverse=True):
-                html += f'<tr><td><strong>{combo}</strong></td><td>{len(samples)}</td><td>{", ".join(samples)}</td></tr>'
+            for combo, samples_list in sorted(full.items(), key=lambda x: len(x[1]), reverse=True):
+                html += f'<tr><td><strong>{combo}</strong></td><td>{len(samples_list)}</td><td>{", ".join(samples_list)}</td></tr>'
             html += '</tbody></table></div>'
         return html
     
@@ -1019,7 +1216,7 @@ class UltimateHTMLGenerator:
         sero_dist = patterns.get('serotype_distribution', Counter())
         total = sum(sero_dist.values())
         html = f"""
-        <div class="alert-box alert-info"><i class="fas fa-info-circle"></i><div><h3>Serotype Analysis (O:H)</h3><p>Serotyping identifies lipopolysaccharide (O) and flagellar (H) antigens. Specific serotypes are associated with clinical syndromes: O157:H7 (STEC), O6:H1 (UPEC), etc.</p><p><strong>{len(sero_dist)} unique serotypes</strong> identified.</p></div></div>
+        <div class="alert-box alert-info"><i class="fas fa-info-circle"></i><div><h3>Serotype Analysis (O:H)</h3><p>Serotyping identifies lipopolysaccharide (O) and flagellar (H) antigens. Specific serotypes are associated with clinical syndromes: O157:H7 (STEC), O6:H1 (UPEC), etc. Serotyping remains important for outbreak surveillance.</p><p><strong>{len(sero_dist)} unique serotypes</strong> identified.</p></div></div>
         <div class="scrollable-table"><table id="serotype-table" class="data-table"><thead><tr><th data-sort="string">Serotype</th><th data-sort="number">Count</th><th data-sort="number">Percentage</th><th data-sort="string">Common STs</th></tr></thead><tbody>
         """
         for sero, cnt in sero_dist.most_common():
@@ -1105,52 +1302,227 @@ class UltimateHTMLGenerator:
         html += '</tbody></table></div>'
         return html
     
+    # ------------------------------ New Pathotype Analysis Tab ------------------------------
+    def _pathotype_section(self, kwargs):
+        samples = kwargs['samples_data']
+        patterns = kwargs['patterns']
+        patho_dist = patterns.get('pathotype_distribution', Counter())
+        total = sum(patho_dist.values())
+        html = """
+        <div class="alert-box alert-info"><i class="fas fa-virus fa-2x"></i><div><h3>Pathotype Classification & Prevalence</h3>
+        <p>E. coli pathotypes are defined by specific combinations of virulence factors. This section shows the prevalence of each pathotype in your dataset and allows you to explore which samples belong to which category.</p>
+        <p><strong>Pathotype definitions based on VFDB. Credit: <a href="https://github.com/kevinsblake/PathotypeR" target="_blank">Kevin Blake, PhD (PathotypeR)</a>.</strong></p>
+        <p><strong>Pathotype definitions:</strong></p>
+        <ul>
+            <li><strong>STEC</strong> (Shiga toxin-producing E. coli): stx1/stx2, <em>eae</em> absent → causes haemorrhagic colitis and HUS.</li>
+            <li><strong>EPEC</strong> (Enteropathogenic E. coli): eae/bfpA, no stx → infant diarrhoea.</li>
+            <li><strong>EHEC</strong> (Enterohaemorrhagic E. coli): stx + eae → severe bloody diarrhoea, HUS.</li>
+            <li><strong>EAEC</strong> (Enteroaggregative E. coli): aggR/aaiC/aatA → persistent diarrhoea.</li>
+            <li><strong>ETEC</strong> (Enterotoxigenic E. coli): lt/sta → traveller's diarrhoea.</li>
+            <li><strong>DAEC</strong> (Diffusely adherent E. coli): afaC/afaE → diarrhoea in children.</li>
+            <li><strong>EIEC</strong> (Enteroinvasive E. coli): ipaH → dysentery-like illness.</li>
+            <li><strong>none</strong>: No markers for the above pathotypes.</li>
+        </ul>
+        <p><strong>Surveillance importance:</strong> Knowing which pathotypes circulate helps guide clinical management, vaccine development, and outbreak response. STEC/EHEC are particularly important for food safety.</p>
+        </div></div>
+        <h3>Pathotype Prevalence</h3>
+        <div class="scrollable-table"><table id="pathotype-prev-table" class="data-table"><thead>
+        <tr><th data-sort="string">Pathotype</th><th data-sort="number">Count</th><th data-sort="number">Percentage</th>
+        </thead><tbody>
+        """
+        for patho, cnt in patho_dist.most_common():
+            pct = cnt/total*100 if total else 0
+            html += f'<tr><td><strong>{patho}</strong></td><td>{cnt}</td><td>{pct:.1f}%</td></tr>'
+        html += '</tbody></table></div>'
+
+        # Sample table with pathotype filter buttons and search
+        html += """
+        <h3>Sample Pathotype Details</h3>
+        <div class="action-buttons">
+            <button class="action-btn btn-danger" onclick="document.getElementById('search-patho-sample').value='STEC'; searchTable('patho-sample-table','search-patho-sample')">🔴 STEC</button>
+            <button class="action-btn btn-warning" onclick="document.getElementById('search-patho-sample').value='EPEC'; searchTable('patho-sample-table','search-patho-sample')">🟠 EPEC</button>
+            <button class="action-btn btn-danger" style="background-color:#8B0000; border-color:#8B0000;" onclick="document.getElementById('search-patho-sample').value='EHEC'; searchTable('patho-sample-table','search-patho-sample')">🔴🔴 EHEC</button>
+            <button class="action-btn btn-secondary" style="background-color:#9C27B0; border-color:#9C27B0;" onclick="document.getElementById('search-patho-sample').value='EAEC'; searchTable('patho-sample-table','search-patho-sample')">🟣 EAEC</button>
+            <button class="action-btn btn-info" style="background-color:#00BCD4; border-color:#00BCD4;" onclick="document.getElementById('search-patho-sample').value='ETEC'; searchTable('patho-sample-table','search-patho-sample')">🔷 ETEC</button>
+            <button class="action-btn btn-success" style="background-color:#FF69B4; border-color:#FF69B4; color:black;" onclick="document.getElementById('search-patho-sample').value='DAEC'; searchTable('patho-sample-table','search-patho-sample')">🌸 DAEC</button>
+            <button class="action-btn btn-secondary" style="background-color:#8D6E63; border-color:#8D6E63;" onclick="document.getElementById('search-patho-sample').value='EIEC'; searchTable('patho-sample-table','search-patho-sample')">🟤 EIEC</button>
+            <button class="action-btn btn-light" onclick="document.getElementById('search-patho-sample').value='none'; searchTable('patho-sample-table','search-patho-sample')">⚪ none</button>
+            <button class="action-btn btn-primary" onclick="document.getElementById('search-patho-sample').value=''; searchTable('patho-sample-table','search-patho-sample')">Clear filter</button>
+        </div>
+        <input type="text" class="search-box" id="search-patho-sample" onkeyup="searchTable('patho-sample-table','search-patho-sample')" placeholder="🔍 Search by sample name, pathotype, ST, or serotype...">
+        <div class="action-buttons"><button class="action-btn btn-primary" onclick="exportTableToCSV('patho-sample-table','pathotype_samples.csv')">Export CSV</button></div>
+        <div class="scrollable-table"><table id="patho-sample-table" class="data-table"><thead>
+        <tr><th data-sort="string">Sample</th><th data-sort="string">Pathotype</th><th data-sort="string">ST</th><th data-sort="string">Serotype</th>
+        </thead><tbody>
+        """
+        for sample, data in samples.items():
+            patho = data.get('pathotype', 'none')
+            st = data.get('mlst', {}).get('ST', 'ND')
+            sero = data.get('serotype', {}).get('Serotype', 'ND')
+            html += f'<tr><td><strong>{sample}</strong></td><td>{patho}</td><td>{st}</td><td>{sero}</td></tr>'
+        html += '</tbody></table></div>'
+        return html
+    
+    # ------------------------------ AMR Tab (with genome search) ------------------------------
     def _amr_section(self, kwargs):
         gene_centric = kwargs['gene_centric']
-        amr_db = gene_centric.get('amr_databases', {})
-        total_samples = len(kwargs['samples_data'])
-        html = '<div class="alert-box alert-info"><i class="fas fa-info-circle"></i><div><h3>AMR Gene Analysis</h3><p>Each gene with all genomes. Filter by important resistance genes. Critical genes (ESBL, carbapenemases, mcr, etc.) are marked ⚠️.</p></div></div>'
-        html += '<input type="text" class="search-box" id="search-amr" onkeyup="searchTable(\'amr-table\',\'search-amr\')" placeholder="🔍 Search AMR genes...">'
-        html += '<div class="action-buttons">'
-        # Individual filter buttons for major drug classes
-        for label, pattern in [
-            ("ESBL (CTX‑M)","blaCTX-M"), ("Carbapenemases (KPC)", "blaKPC"), ("Carbapenemases (NDM)", "blaNDM"), 
-            ("Colistin (mcr)","mcr"), ("Quinolones (qnr)","qnr"), ("Aminoglycosides (aac)","aac"), ("Aminoglycosides (aph)","ant"), ("Trimethoprim (dfr)","dfr"), ("Quinolones (chromosomal mutations) (gyrA_)","gyrA_"),  ("Heavy metal resistance (sil)","sil"),
-            ("Chloramphenicol (cat)","cat"), ("Fosfomycin (fos)","fos"), ("Sulfonamide (sul)","sul"), ("Chromosomal mutations (parC_)","parC_"), ("Chromosomal mutations) (parE_)","parE_"), (" Fosfomycin (uhpT_E350Q)","uhpT_E350Q"),  ("Heavy metal resistance (pco)","pco"),
-            ("Tetracycline (tet)","tet"), ("Macrolides (erm)","erm"), ("Macrolides (mph)","mph"), ("Beta‑lactams (blaTEM)","blaTEM"), ("Beta‑lactams (blaEC)","blaEC"), ("Carbapenemases (OXA)","OXA"), ("Heavy metal resistance (mer)","mer"), ("Plasmid Replicons (plasmid)","plasmidfinder")
-        ]:
-            html += f'<button class="action-btn btn-warning" onclick="document.getElementById(\'search-amr\').value=\'{pattern}\'; searchTable(\'amr-table\',\'search-amr\')">{label}</button>'
-        html += '<button class="action-btn btn-light" onclick="document.getElementById(\'search-amr\').value=\'\'; searchTable(\'amr-table\',\'search-amr\')"><i class="fas fa-sync"></i> Clear</button>'
-        html += '</div><div class="scrollable-table"><table id="amr-table" class="data-table"><thead><tr><th data-sort="string">Gene</th><th data-sort="string">Database</th><th data-sort="number">Count</th><th data-sort="number">%</th><th data-sort="string">Genomes</th></tr></thead><tbody>'
         all_genes = []
-        for db, genes in amr_db.items():
-            all_genes.extend(genes)
+        for db in gene_centric.get('amr_databases', {}).values():
+            all_genes.extend(db)
         all_genes.sort(key=lambda x: x['count'], reverse=True)
+        total_samples = len(kwargs['samples_data'])
+        
+        # Dictionary for tooltips (optional, can be expanded)
+        amr_descriptions = {
+            'blaCTX-M': "ESBL – confers resistance to ceftriaxone, cefotaxime, ceftazidime. Most common ESBL worldwide.",
+            'blaSHV': "ESBL – originally in Klebsiella, now common in E. coli. Confers resistance to penicillins and cephalosporins.",
+            'blaTEM': "Broad‑spectrum β‑lactamase – ancestor of many ESBLs. Often plasmid‑borne.",
+            'blaKPC': "Carbapenemase – hydrolyses almost all β‑lactams, including carbapenems. Major threat.",
+            'blaNDM': "Carbapenemase – metallo‑β‑lactamase, not inhibited by clavulanate. Often associated with high mortality.",
+            'blaOXA': "Carbapenemase (OXA‑type) – common in Acinetobacter and Enterobacteriaceae. Difficult to detect.",
+            'mcr': "Colistin resistance – plasmid‑borne, threatens last‑line drug. High concern for One Health.",
+            'qnr': "Plasmid‑mediated quinolone resistance – protects DNA gyrase, low‑level resistance.",
+            'aac': "Aminoglycoside acetyltransferase – modifies aminoglycosides (gentamicin, tobramycin).",
+            'aph': "Aminoglycoside phosphotransferase – another mechanism for aminoglycoside resistance.",
+            'ant': "Aminoglycoside nucleotidyltransferase – modifies aminoglycosides.",
+            'armA': "16S rRNA methylase – high‑level aminoglycoside resistance.",
+            'tet': "Tetracycline efflux pump or ribosomal protection.",
+            'sul': "Sulfonamide resistance – dihydropteroate synthase variant.",
+            'dfr': "Trimethoprim resistance – alternative dihydrofolate reductase.",
+            'cat': "Chloramphenicol acetyltransferase – inactivates chloramphenicol.",
+            'floR': "Florfenicol/chloramphenicol efflux.",
+            'erm': "Macrolide resistance – ribosomal methylation.",
+            'mph': "Macrolide phosphotransferase – inactivates macrolides.",
+        }
+        
+        html = """
+        <div class="alert-box alert-info"><i class="fas fa-biohazard"></i><div>
+        <h3>AMR Gene Analysis (Gene‑Centric)</h3>
+        <p>Each AMR gene is shown with <strong>all genomes that carry it</strong>. Use filter buttons to focus on important resistance classes. The genome search box highlights specific isolates across the table – useful for tracking which samples carry a particular gene combination.</p>
+        <p><strong>Surveillance importance:</strong> Tracking ESBL, carbapenemase, and colistin resistance genes is crucial for antimicrobial stewardship and outbreak detection. Critical resistance genes are marked with ⚠️.</p>
+        </div></div>
+        
+        <div class="info-text"><i class="fas fa-graduation-cap"></i> <strong>Key AMR Gene Classes & Their Clinical Importance</strong><br>
+        <ul style="margin-top:8px;">
+            <li><strong>ESBLs (blaCTX‑M, blaSHV, blaTEM)</strong> – Break down extended‑spectrum cephalosporins; limit treatment options.</li>
+            <li><strong>Carbapenemases (blaKPC, blaNDM, blaOXA, blaVIM, blaIMP)</strong> – Destroy carbapenems (last‑line antibiotics); WHO critical priority.</li>
+            <li><strong>Colistin resistance (mcr, pmr, lpx, arn)</strong> – Threatens last‑resort drug for MDR infections; plasmid‑mediated spread.</li>
+            <li><strong>Quinolone resistance (qnr, gyrA, parC)</strong> – Reduces fluoroquinolone efficacy; often combined with other mechanisms.</li>
+            <li><strong>Aminoglycoside resistance (aac, aph, ant, armA)</strong> – Common in hospital isolates; armA causes high‑level resistance.</li>
+            <li><strong>Tetracycline (tet)</strong> – Efflux or ribosomal protection; widespread in commensals and pathogens.</li>
+            <li><strong>Sulfonamide/Trimethoprim (sul, dfr)</strong> – Resistance to common oral agents; often carried on integrons.</li>
+            <li><strong>Phenicol (cat, floR)</strong> – Resistance to chloramphenicol and florfenicol; veterinary importance.</li>
+            <li><strong>Macrolide (erm, mph, msr)</strong> – Increasingly reported in Enterobacteriaceae; link to azithromycin failure.</li>
+            <li><em>Hover over any gene name in the table for more details.</em></li>
+        </ul>
+        </div>
+        
+        <input type="text" class="search-box" id="search-amr-gene" onkeyup="searchTable('amr-table','search-amr-gene')" placeholder="🔍 Search AMR genes (e.g., blaCTX-M, mcr-1)...">
+        <input type="text" class="search-box" id="search-amr-genome" onkeyup="highlightGenome('amr-table','search-amr-genome')" placeholder="🔍 Highlight genome tags matching text (e.g., sample name)">
+        <div class="action-buttons">
+        """
+        
+        # Extensive filter list (from the second version, formatted as tuples)
+        filters = [
+            ("ESBL (CTX‑M)", "blaCTX-M"), ("ESBL (SHV)", "blaSHV"), ("ESBL (TEM)", "blaTEM"),
+            ("Carbapenemases (KPC)", "blaKPC"), ("Carbapenemases (NDM)", "blaNDM"), ("Carbapenemases (OXA)", "OXA"),
+            ("Carbapenemases (VIM)", "VIM"), ("Carbapenemases (IMP)", "IMP"),
+            ("Colistin (mcr)", "mcr"), ("Colistin (pmrAB)", "pmr"), ("Colistin (lpx)", "lpx"), ("Colistin (arn)", "arn"),
+            ("Quinolones (qnr)", "qnr"), ("Quinolones (gyrA mutation)", "gyrA_"), ("Quinolones (parC mutation)", "parC_"),
+            ("Aminoglycosides (aac)", "aac"), ("Aminoglycosides (aph)", "ant"), ("Aminoglycosides (ant)", "ant"),
+            ("High‑level AG (armA)", "armA"), ("High‑level AG (rmt)", "rmt"),
+            ("Tetracycline (tet)", "tet"), ("Tigecycline (tetX)", "tetX"),
+            ("Sulfonamide (sul)", "sul"), ("Trimethoprim (dfr)", "dfr"),
+            ("Phenicol (cat)", "cat"), ("Phenicol (floR)", "floR"),
+            ("Macrolides (erm)", "erm"), ("Macrolides (mph)", "mph"), ("Macrolides (msr)", "msr"),
+            ("Fosfomycin (fos)", "fos"), ("Fosfomycin (uhpT mutation)", "uhpT"),
+            ("Heavy metal (mer)", "mer"), ("Heavy metal (sil)", "sil"), ("Heavy metal (pco)", "pco"),
+            ("Biocide (qac)", "qac"), ("Biocide (cepA)", "cep"),
+            ("Efflux pumps (ade)", "ade"), ("Efflux pumps (abeM)", "abeM"),
+            ("Plasmid replicons", "Inc")
+        ]
+        color_classes = ['btn-primary', 'btn-success', 'btn-warning', 'btn-danger', 'btn-info', 'btn-secondary']
+        for idx, (label, pattern) in enumerate(filters):
+            color = color_classes[idx % len(color_classes)]
+            html += f'<button class="action-btn {color}" onclick="document.getElementById(\'search-amr-gene\').value=\'{pattern}\'; searchTable(\'amr-table\',\'search-amr-gene\')">{label}</button>'
+        html += '<button class="action-btn btn-primary" onclick="document.getElementById(\'search-amr-gene\').value=\'\'; searchTable(\'amr-table\',\'search-amr-gene\')">Clear</button>'
+        html += '</div>'
+        
+        # Table with critical markers, tooltips, and genome tags
+        html += '<div class="scrollable-table"><table id="amr-table" class="data-table"><thead>'
+        html += '<tr><th data-sort="string">Gene</th><th data-sort="string">Database</th><th data-sort="number">Count</th><th data-sort="number">%</th><th data-sort="string">Genomes</th><tr>'
+        html += '</thead><tbody>'
         for g in all_genes:
-            pct = f"{(g['count']/total_samples)*100:.1f}%" if total_samples else "0%"
-            is_critical = any(crit.lower() in g['gene'].lower() for crit in self.data_analyzer.critical_amr_genes)
-            gene_display = f"<strong>{g['gene']}</strong>" + (" ⚠️" if is_critical else "")
+            pct = f"{g['percentage']:.1f}%" if g['percentage'] else f"{(g['count']/total_samples)*100:.1f}%"
             genome_tags = ''.join(f'<span class="genome-tag">{gen}</span>' for gen in g['genomes'])
+            is_critical = any(crit.lower() in g['gene'].lower() for crit in self.data_analyzer.critical_amr_genes)
+            # Tooltip
+            tooltip = ""
+            gene_lower = g['gene'].lower()
+            for pattern, desc in amr_descriptions.items():
+                if pattern.lower() in gene_lower:
+                    tooltip = f' title="{desc}"'
+                    break
+            gene_display = f"<strong><span class=\"gene-name\"{tooltip}>{g['gene']}</span></strong>" + (" ⚠️" if is_critical else "")
             html += f'<tr><td>{gene_display}</td><td>{g["database"]}</td><td>{g["count"]}</td><td>{pct}</td><td><div class="genome-list">{genome_tags}</div></td></tr>'
         html += '</tbody></table></div>'
         return html
     
+    # ------------------------------ Virulence Tab (with genome search) ------------------------------
     def _virulence_section(self, kwargs):
         gene_centric = kwargs['gene_centric']
-        vir_db = gene_centric.get('virulence_databases', {})
+        all_genes = []
+        for db in gene_centric.get('virulence_databases', {}).values():
+            all_genes.extend(db)
+        all_genes.sort(key=lambda x: x['count'], reverse=True)
         total_samples = len(kwargs['samples_data'])
-        html = '''
-        <div class="alert-box alert-info">
-            <i class="fas fa-info-circle fa-2x"></i>
-            <div>
-                <h3>Virulence Gene Analysis</h3>
-                <p>Each gene with all genomes. Filter by key pathotypes. Critical virulence genes (Shiga toxins, intimin, CNF1, etc.) are marked ⚠️.</p>
-            </div>
+        
+        # Dictionary mapping gene name patterns to descriptions (for tooltips)
+        gene_descriptions = {
+            'stx1': "Shiga toxin 1 – Causes haemorrhagic colitis and haemolytic uraemic syndrome (HUS). Associated with STEC/EHEC.",
+            'stx2': "Shiga toxin 2 – More potent than Stx1, strongly linked to severe disease and HUS. Key STEC/EHEC marker.",
+            'eae': "Intimin – Mediates intimate attachment to intestinal epithelium. Essential for EPEC and EHEC pathogenesis.",
+            'bfp': "Bundle-forming pilus – Type IV pilus involved in localised adherence. Classic EPEC marker.",
+            'aggR': "AggR regulator – Master regulator of EAEC virulence genes (aggregative adherence fimbriae, toxins).",
+            'lt': "Heat-labile enterotoxin – Causes watery diarrhoea by increasing cAMP. Major ETEC toxin.",
+            'sta1': "Heat-stable enterotoxin – Activates guanylyl cyclase, causing secretory diarrhoea. Common in ETEC.",
+            'ipaH': "Invasion plasmid antigen H – Type III secretion effector involved in host cell invasion. Key EIEC/Shigella marker.",
+            'cnf1': "Cytotoxic necrotising factor 1 – Rho GTPase activator, causes cytoskeletal changes. Associated with UPEC/ExPEC.",
+            'hly': "α‑hemolysin – Pore‑forming toxin, lyses erythrocytes and host cells. Important for UPEC virulence.",
+            'kps': "Group II capsule – Protects against complement and phagocytosis. Key for extra‑intestinal pathogenic E. coli (ExPEC).",
+            'iuc': "Aerobactin siderophore – Iron acquisition system, enhances survival in host. Common in ExPEC and EAEC.",
+            'clb': "Colibactin – Genotoxin that causes DNA double‑strand breaks. Linked to colorectal cancer and neonatal meningitis.",
+            'cdt': "Cytolethal distending toxin – Causes cell cycle arrest and distension. Contributes to persistent diarrhoea.",
+        }
+        
+        html = """
+        <div class="alert-box alert-info"><i class="fas fa-virus"></i><div>
+        <h3>Virulence Gene Analysis (Gene‑Centric)</h3>
+        <p>Each virulence gene is shown with <strong>all genomes that carry it</strong>. Use filter buttons to focus on key pathotype determinants. The genome search box highlights specific isolates.</p>
+        <p><strong>Surveillance importance:</strong> Virulence profiles differentiate harmless commensals from pathogenic strains. Shiga toxins (stx), intimin (eae), and other markers are critical for public health risk assessment. Critical virulence genes are marked with ⚠️.</p>
+        </div></div>
+        
+        <div class="info-text"><i class="fas fa-graduation-cap"></i> <strong>Key Virulence Genes & Their Roles</strong><br>
+        <ul style="margin-top:8px;">
+            <li><strong>stx1/stx2</strong> – Shiga toxins: cause haemorrhagic colitis and HUS (STEC/EHEC).</li>
+            <li><strong>eae</strong> – Intimin: intimate attachment, essential for EPEC/EHEC.</li>
+            <li><strong>bfpA</strong> – Bundle‑forming pilus: adherence in EPEC.</li>
+            <li><strong>aggR</strong> – Master regulator of EAEC virulence (aggregative adherence, toxins).</li>
+            <li><strong>lt/sta1</strong> – Heat‑labile/‑stable toxins: cause watery diarrhoea (ETEC).</li>
+            <li><strong>ipaH</strong> – Invasion plasmid antigen: cell invasion (EIEC/Shigella).</li>
+            <li><strong>cnf1</strong> – Cytotoxic necrotising factor: cytoskeletal changes (ExPEC).</li>
+            <li><strong>hlyA</strong> – α‑hemolysin: pore‑forming toxin (UPEC).</li>
+            <li><strong>kps</strong> – Capsule: immune evasion (ExPEC).</li>
+            <li><strong>iuc</strong> – Aerobactin: iron acquisition (ExPEC/EAEC).</li>
+            <li><em>Hover over any gene name in the table for more details.</em></li>
+        </ul>
         </div>
-        <input type="text" class="search-box" id="search-vir" onkeyup="searchTable('vir-table','search-vir')" placeholder="🔍 Search virulence genes...">
+        
+        <input type="text" class="search-box" id="search-vir-gene" onkeyup="searchTable('vir-table','search-vir-gene')" placeholder="🔍 Search virulence genes (e.g., stx1, eae)...">
+        <input type="text" class="search-box" id="search-vir-genome" onkeyup="highlightGenome('vir-table','search-vir-genome')" placeholder="🔍 Highlight genome tags matching text">
         <div class="action-buttons">
-        '''
-        # Full list of filters – exactly as you had (plus a few more)
+        """
+        
         filters = [
             ("Shiga toxins (stx)", "stx"), ("Intimin (eae)", "eae"), ("CNF1", "cnf1"),
             ("Hemolysin (hly)", "hly"), ("LT toxin", "lt"), ("ST toxin", "st"),
@@ -1171,97 +1543,383 @@ class UltimateHTMLGenerator:
         color_classes = ['btn-primary', 'btn-success', 'btn-warning', 'btn-danger', 'btn-info', 'btn-secondary']
         for idx, (label, pattern) in enumerate(filters):
             color = color_classes[idx % len(color_classes)]
-            html += f'<button class="action-btn {color}" onclick="document.getElementById(\'search-vir\').value=\'{pattern}\'; searchTable(\'vir-table\',\'search-vir\')">{label}</button>'
-        html += '<button class="action-btn btn-light" onclick="document.getElementById(\'search-vir\').value=\'\'; searchTable(\'vir-table\',\'search-vir\')">Clear</button>'
-        html += '</div>'   
-
-        # Table (unchanged)
-        html += '<div class="scrollable-table"><table id="vir-table" class="data-table"><thead><tr><th data-sort="string">Gene</th><th data-sort="string">Database</th><th data-sort="number">Count</th><th data-sort="number">%</th><th data-sort="string">Genomes</th></tr></thead><tbody>'
-        all_genes = []
-        for db, genes in vir_db.items():
-            all_genes.extend(genes)
-        all_genes.sort(key=lambda x: x['count'], reverse=True)
+            html += f'<button class="action-btn {color}" onclick="document.getElementById(\'search-vir-gene\').value=\'{pattern}\'; searchTable(\'vir-table\',\'search-vir-gene\')">{label}</button>'
+        html += '<button class="action-btn btn-primary" onclick="document.getElementById(\'search-vir-gene\').value=\'\'; searchTable(\'vir-table\',\'search-vir-gene\')">Clear</button>'
+        html += '</div>'
+        
+        # Table with tooltips
+        html += '<div class="scrollable-table"><table id="vir-table" class="data-table"><thead>'
+        html += '<tr><th data-sort="string">Gene</th><th data-sort="string">Database</th><th data-sort="number">Count</th><th data-sort="number">%</th><th data-sort="string">Genomes</th></tr>'
+        html += '</thead><tbody>'
         for g in all_genes:
-            pct = f"{(g['count']/total_samples)*100:.1f}%" if total_samples else "0%"
-            is_critical = any(crit.lower() in g['gene'].lower() for crit in self.data_analyzer.critical_virulence_genes)
-            gene_display = f"<strong>{g['gene']}</strong>" + (" ⚠️" if is_critical else "")
+            pct = f"{g['percentage']:.1f}%" if g['percentage'] else f"{(g['count']/total_samples)*100:.1f}%"
             genome_tags = ''.join(f'<span class="genome-tag">{gen}</span>' for gen in g['genomes'])
+            is_critical = any(crit.lower() in g['gene'].lower() for crit in self.data_analyzer.critical_virulence_genes)
+            # Find tooltip description
+            tooltip = ""
+            gene_lower = g['gene'].lower()
+            for pattern, desc in gene_descriptions.items():
+                if pattern in gene_lower:
+                    tooltip = f' title="{desc}"'
+                    break
+            
+            gene_display = f"<strong><span class=\"gene-name\"{tooltip}>{g['gene']}</span></strong>" + (" ⚠️" if is_critical else "")
             html += f'<tr><td>{gene_display}</td><td>{g["database"]}</td><td>{g["count"]}</td><td>{pct}</td><td><div class="genome-list">{genome_tags}</div></td></tr>'
         html += '</tbody></table></div>'
         return html
     
+    # ------------------------------ Plasmid Tab (new) ------------------------------
+    def _plasmid_section(self, kwargs):
+        gene_centric = kwargs['gene_centric']
+        all_genes = []
+        for db in gene_centric.get('plasmid_databases', {}).values():
+            all_genes.extend(db)
+        all_genes.sort(key=lambda x: x['count'], reverse=True)
+        total_samples = len(kwargs['samples_data'])
+        html = """
+        <div class="alert-box alert-info"><i class="fas fa-dna"></i><div>
+        <h3>Plasmid Replicons &amp; Serotyping (PlasmidFinder + EcoH)</h3>
+        <p>This table combines two important analyses:</p>
+        <ul>
+            <li><strong>PlasmidFinder:</strong> Identifies plasmid replicon markers (e.g., IncF, IncI, Col), which are vehicles for horizontal gene transfer of AMR and virulence genes.</li>
+            <li><strong>EcoH:</strong> Predicts O and H antigens for <em>E. coli</em> serotyping (e.g., O157:H7). Serotypes are crucial for outbreak surveillance and pathotype identification.</li>
+        </ul>
+        <p>Use the genome search box to highlight specific isolates. Tracking epidemic plasmids and serotypes helps understand the spread of resistance and pathogenic clones.</p>
+        </div></div>
+        <input type="text" class="search-box" id="search-plasmid-gene" onkeyup="searchTable('plasmid-table','search-plasmid-gene')" placeholder="🔍 Search plasmid replicons or serotype markers (e.g., IncF, O157, H7)...">
+        <input type="text" class="search-box" id="search-plasmid-genome" onkeyup="highlightGenome('plasmid-table','search-plasmid-genome')" placeholder="🔍 Highlight genome tags matching text">
+        <div class="action-buttons">
+            <button class="action-btn btn-info" onclick="document.getElementById('search-plasmid-gene').value='IncF'; searchTable('plasmid-table','search-plasmid-gene')">IncF plasmids</button>
+            <button class="action-btn btn-info" onclick="document.getElementById('search-plasmid-gene').value='IncI'; searchTable('plasmid-table','search-plasmid-gene')">IncI plasmids</button>
+            <button class="action-btn btn-info" onclick="document.getElementById('search-plasmid-gene').value='Col'; searchTable('plasmid-table','search-plasmid-gene')">Colicin plasmids</button>
+            <button class="action-btn btn-info" onclick="document.getElementById('search-plasmid-gene').value='O'; searchTable('plasmid-table','search-plasmid-gene')">O‑serotype markers</button>
+            <button class="action-btn btn-info" onclick="document.getElementById('search-plasmid-gene').value='H'; searchTable('plasmid-table','search-plasmid-gene')">H‑serotype markers</button>
+            <button class="action-btn btn-primary" onclick="document.getElementById('search-plasmid-gene').value=''; searchTable('plasmid-table','search-plasmid-gene')">Clear</button>
+        </div>
+        <div class="scrollable-table"><table id="plasmid-table" class="data-table"><thead>
+        <tr><th data-sort="string">Marker</th><th data-sort="string">Database</th><th data-sort="number">Count</th><th data-sort="number">%</th><th data-sort="string">Genomes</th>
+        </thead><tbody>
+        """
+        for g in all_genes:
+            pct = f"{g['percentage']:.1f}%" if g['percentage'] else f"{(g['count']/total_samples)*100:.1f}%"
+            genome_tags = ''.join(f'<span class="genome-tag">{gen}</span>' for gen in g['genomes'])
+            html += f'<tr><td><strong>{g["gene"]}</strong></td><td>{g["database"]}</td><td>{g["count"]}</td><td>{pct}</td><td><div class="genome-list">{genome_tags}</div></td></tr>'
+        html += '</tbody></table></div>'
+        return html
+    
+    # ------------------------------ Bacmet Tab (new) ------------------------------
+    def _bacmet_section(self, kwargs):
+        gene_centric = kwargs['gene_centric']
+        all_genes = []
+        for db in gene_centric.get('bacmet_databases', {}).values():
+            all_genes.extend(db)
+        all_genes.sort(key=lambda x: x['count'], reverse=True)
+        total_samples = len(kwargs['samples_data'])
+        
+        # Dictionary for tooltips
+        bacmet_descriptions = {
+            'qac': "Quaternary ammonium compound resistance – biocide used in disinfectants, antiseptics, and preservatives.",
+            'qacE': "Truncated qacE – often found on integrons, confers low‑level quaternary ammonium resistance.",
+            'cepA': "Chlorhexidine resistance – biocide used in antiseptic wipes and mouthwashes.",
+            'formA': "Formaldehyde resistance – biocide used in disinfection and embalming.",
+            'mer': "Mercury resistance – reduces toxic Hg²⁺ to volatile Hg⁰. Often linked to transposons.",
+            'ars': "Arsenic resistance – arsenate reductase and efflux pump, common in contaminated environments.",
+            'cop': "Copper homeostasis – copper efflux and resistance, important for survival in host and environment.",
+            'sil': "Silver resistance – efflux pumps, threatens use of silver‑based wound dressings.",
+            'chr': "Chromate resistance – reduces toxic Cr⁶⁺ to less toxic Cr³⁺.",
+            'cad': "Cadmium resistance – efflux ATPase, often plasmid‑borne.",
+            'znt': "Zinc efflux – contributes to metal tolerance and can co‑select for AMR.",
+            'czc': "Cobalt‑zinc‑cadmium efflux – RND family pump, widespread in bacteria.",
+            'pbr': "Lead resistance – efflux and sequestration systems.",
+            'nik': "Nickel transport – uptake system, sometimes linked to hydrogenase activity.",
+            'cor': "Magnesium/cobalt transport – inner membrane protein.",
+            'soxR': "Oxidative stress regulator – activates efflux pumps and superoxide dismutase.",
+            'cpxR': "Envelope stress response – activates protein folding and efflux genes.",
+            'baeR': "Multidrug efflux regulator – responds to toxic compounds.",
+            'ade': "RND efflux pump (Ade family) – multidrug resistance, often plasmid‑borne.",
+            'mex': "RND efflux pump (Mex family) – common in Pseudomonas, but found in Enterobacteriaceae.",
+            'emr': "MFS efflux pump (Emr family) – exports multiple antibiotics and biocides.",
+            'sme': "MFS efflux pump (Sme family) – involved in resistance to detergents.",
+            'norA': "MFS efflux pump – fluoroquinolone and biocide export.",
+        }
+        
+        html = """
+        <div class="alert-box alert-info"><i class="fas fa-flask"></i><div>
+        <h3>Bacmet2 Database: Biocide, Heavy Metal & Stress Resistance</h3>
+        <p>These genes confer resistance to disinfectants (quaternary ammonium, chlorhexidine, formaldehyde), heavy metals (mercury, arsenic, copper, silver, chromium, cadmium, zinc, lead), and stress responses that can co‑select with antibiotic resistance.</p>
+        <p><strong>Surveillance importance:</strong> Tracking biocide resistance helps evaluate infection control measures. Metal resistance markers indicate potential co‑selection with AMR genes in hospital and agricultural environments.</p>
+        </div></div>
+        
+        <div class="info-text"><i class="fas fa-graduation-cap"></i> <strong>Key Bacmet Categories & Their Roles</strong><br>
+        <ul style="margin-top:8px;">
+            <li><strong>Biocides (qac, cep, form)</strong> – Resistance to disinfectants and antiseptics used in hospitals. Their spread could compromise infection control.</li>
+            <li><strong>Heavy metals (mer, ars, cop, sil, chr, cad, znt, czc, pbr)</strong> – Resistance to mercury, arsenic, copper, silver, chromium, cadmium, zinc, cobalt, lead. Often co‑located with AMR genes on plasmids and integrons.</li>
+            <li><strong>Stress regulators (soxR, cpxR, baeR)</strong> – Activate efflux pumps and stress responses, indirectly contributing to multidrug resistance.</li>
+            <li><strong>Efflux pumps (ade, mex, emr, sme, norA)</strong> – Export not only antibiotics but also biocides, heavy metals, and dyes. Major players in co‑selection.</li>
+            <li><em>Hover over any gene name in the table for more details.</em></li>
+        </ul>
+        </div>
+        
+        <input type="text" class="search-box" id="search-bac-gene" onkeyup="searchTable('bac-table','search-bac-gene')" placeholder="🔍 Search Bacmet genes (e.g., qac, mer, ars, soxR)...">
+        <input type="text" class="search-box" id="search-bac-genome" onkeyup="highlightGenome('bac-table','search-bac-genome')" placeholder="🔍 Highlight genome tags matching text">
+        <div class="action-buttons">
+        """
+        
+        # Comprehensive filter buttons – categorised
+        filters = [
+            # Biocides
+            ("Biocide (qac)", "qac"), ("Biocide (qacE)", "qacE"), ("Biocide (cepA)", "cep"), ("Biocide (form)", "form"),
+            # Heavy metals – Mercury
+            ("Mercury (mer)", "mer"), ("Mercury (merA)", "merA"), ("Mercury (merB)", "merB"),
+            # Heavy metals – Arsenic
+            ("Arsenic (ars)", "ars"), ("Arsenic (arsB)", "arsB"), ("Arsenic (arsC)", "arsC"),
+            # Heavy metals – Copper
+            ("Copper (cop)", "cop"), ("Copper (pco)", "pco"),
+            # Heavy metals – Silver
+            ("Silver (sil)", "sil"),
+            # Heavy metals – Chromium
+            ("Chromium (chr)", "chr"),
+            # Heavy metals – Cadmium/Zinc/Cobalt
+            ("Cadmium (cad)", "cad"), ("Zinc (znt)", "znt"), ("Cobalt‑Zinc‑Cadmium (czc)", "czc"),
+            ("Lead (pbr)", "pbr"), ("Nickel (nik)", "nik"), ("Magnesium/Cobalt (cor)", "cor"),
+            # Stress responses
+            ("Oxidative stress (soxR)", "soxR"), ("Envelope stress (cpxR)", "cpxR"),
+            ("Multidrug efflux regulator (baeR)", "baeR"),
+            # Efflux pumps – RND families
+            ("RND efflux (ade)", "ade"), ("RND efflux (mex)", "mex"),
+            # MFS efflux pumps
+            ("MFS efflux (emr)", "emr"), ("MFS efflux (sme)", "sme"), ("MFS efflux (norA)", "norA"),
+            ("MFS efflux (vce)", "vce"), ("MFS efflux (smd)", "smd"),
+            # Other / general
+            ("Tellurite (ter)", "ter"), ("Acid resistance (ydeP)", "ydeP"), ("DNA protection (dps)", "dps"),
+            ("Fatty acid adaptation (fab)", "fab"), ("General stress (srp)", "srp")
+        ]
+        color_classes = ['btn-primary', 'btn-success', 'btn-warning', 'btn-danger', 'btn-info', 'btn-secondary']
+        for idx, (label, pattern) in enumerate(filters):
+            color = color_classes[idx % len(color_classes)]
+            html += f'<button class="action-btn {color}" onclick="document.getElementById(\'search-bac-gene\').value=\'{pattern}\'; searchTable(\'bac-table\',\'search-bac-gene\')">{label}</button>'
+        html += '<button class="action-btn btn-primary" onclick="document.getElementById(\'search-bac-gene\').value=\'\'; searchTable(\'bac-table\',\'search-bac-gene\')">Clear</button>'
+        html += '</div>'
+        
+        # Table with tooltips on gene names
+        html += '<div class="scrollable-table"><table id="bac-table" class="data-table"><thead>'
+        html += '<tr><th data-sort="string">Gene</th><th data-sort="string">Database</th><th data-sort="number">Count</th><th data-sort="number">%</th><th data-sort="string">Genomes</th></tr>'
+        html += '</thead><tbody>'
+        for g in all_genes:
+            pct = f"{g['percentage']:.1f}%" if g['percentage'] else f"{(g['count']/total_samples)*100:.1f}%"
+            genome_tags = ''.join(f'<span class="genome-tag">{gen}</span>' for gen in g['genomes'])
+            # Tooltip for gene
+            tooltip = ""
+            gene_lower = g['gene'].lower()
+            for pattern, desc in bacmet_descriptions.items():
+                if pattern.lower() in gene_lower:
+                    tooltip = f' title="{desc}"'
+                    break
+            # No critical marker for Bacmet (optional, but we can add if needed....I'll visit in the future!)
+            gene_display = f"<strong><span class=\"gene-name\"{tooltip}>{g['gene']}</span></strong>"
+            html += f'<tr><td>{gene_display}</td><td>{g["database"]}</td><td>{g["count"]}</td><td>{pct}</td><td><div class="genome-list">{genome_tags}</div></td></tr>'
+        html += '</tbody></table></div>'
+        return html
+    
+    # ------------------------------ Patterns Tab ------------------------------
     def _patterns_section(self, kwargs):
         patterns = kwargs['patterns']
-        html = '<div class="alert-box alert-info"><i class="fas fa-info-circle"></i><div><h3>Cross-Genome Patterns</h3><p>High-risk combinations and gene co-occurrence.</p></div></div>'
         high = patterns.get('high_risk_combinations', [])
+        cooc = patterns.get('gene_cooccurrence', {})
+        
+        html = """
+        <div class="alert-box alert-info"><i class="fas fa-project-diagram"></i><div><h3>Cross-Genome Patterns & High-Risk Combinations</h3><p>Samples that carry both critical AMR genes (ESBL, carbapenemase, mcr) AND critical virulence genes (stx, eae, cnf1, etc.) are flagged as high‑risk. These combinations pose a serious threat to public health because they combine difficult-to-treat resistance with pathogenic potential.</p><p>The co‑occurrence table shows which pairs of genes are frequently found together across your samples.</p></div></div>
+        """
+        
+        # High-risk combinations section
         if high:
-            html += f'<div class="alert-box alert-danger"><i class="fas fa-radiation fa-2x"></i><div><h3>⚠️ {len(high)} High-Risk Samples</h3><p>Carry both critical AMR and virulence genes.</p></div></div>'
+            html += '<div class="alert-box alert-danger"><i class="fas fa-exclamation-triangle"></i><div><h3>⚠️ High-Risk Samples Detected</h3><p>These samples carry both critical AMR and critical virulence genes. Use the search box to focus on specific isolates.</p></div></div>'
             html += '<input type="text" class="search-box" id="search-highrisk" onkeyup="searchTable(\'highrisk-table\',\'search-highrisk\')" placeholder="🔍 Search high‑risk combinations...">'
             html += '<div class="scrollable-table"><table id="highrisk-table" class="data-table"><thead><tr><th data-sort="string">Sample</th><th data-sort="string">ST</th><th data-sort="string">Serotype</th><th data-sort="string">Critical AMR</th><th data-sort="string">Critical Virulence</th></tr></thead><tbody>'
             for h in high:
                 html += f'<tr><td><strong>{h["sample"]}</strong></td><td>{h["st"]}</td><td>{h["serotype"]}</td><td>{", ".join(h["critical_amr_genes"])}</td><td>{", ".join(h["critical_virulence_genes"])}</td></tr>'
             html += '</tbody></table></div>'
-        cooc = patterns.get('gene_cooccurrence', {})
-        cooc_list = []
-        for g1, partners in cooc.items():
-            for g2, cnt in partners.items():
-                cooc_list.append((g1, g2, cnt))
-        cooc_list.sort(key=lambda x: x[2], reverse=True)
-        if cooc_list:
-            html += '<h3>Top 100 Gene Co-occurrences</h3><input type="text" class="search-box" id="search-cooc" onkeyup="searchTable(\'cooc-table\',\'search-cooc\')" placeholder="🔍 Search co‑occurrence pairs...">'
-            html += '<div class="scrollable-table"><table id="cooc-table" class="data-table"><thead><tr><th data-sort="string">Gene 1</th><th data-sort="string">Gene 2</th><th data-sort="number">Co-occurrence Count</th></tr></thead><tbody>'
-            for g1, g2, cnt in cooc_list[:100]:
+        else:
+            html += '<p>No high‑risk combinations (critical AMR + critical virulence) were detected.</p>'
+        
+        # Gene co-occurrence section
+        if cooc:
+            # Build list of co-occurrence pairs (g1, g2, count)
+            cooc_list = []
+            for g1, partners in cooc.items():
+                for g2, cnt in partners.items():
+                    # Avoid duplicates by ordering genes alphabetically
+                    if g1 < g2:
+                        cooc_list.append((g1, g2, cnt))
+                    else:
+                        cooc_list.append((g2, g1, cnt))
+            # Deduplicate and sum counts (though our collection already did this once)
+            # Use a dictionary to combine counts from both directions (just in case)
+            unique_pairs = {}
+            for g1, g2, cnt in cooc_list:
+                pair = tuple(sorted([g1, g2]))
+                unique_pairs[pair] = unique_pairs.get(pair, 0) + cnt
+            # Convert back to list and sort by count descending
+            cooc_list = [(g1, g2, cnt) for (g1, g2), cnt in unique_pairs.items()]
+            cooc_list.sort(key=lambda x: x[2], reverse=True)
+            
+            html += '<h3>Gene Co‑occurrence (top 200 pairs)</h3>'
+            html += '<input type="text" class="search-box" id="search-cooc" onkeyup="searchTable(\'cooc-table\',\'search-cooc\')" placeholder="🔍 Search gene pairs...">'
+            html += '<div class="scrollable-table"><table id="cooc-table" class="data-table"><thead>'
+            html += '<tr><th data-sort="string">Gene 1</th><th data-sort="string">Gene 2</th><th data-sort="number">Co‑occurrence Count</th></tr>'
+            html += '</thead><tbody>'
+            for g1, g2, cnt in cooc_list[:200]:
                 html += f'<tr><td>{g1}</td><td>{g2}</td><td>{cnt}</td></tr>'
             html += '</tbody></table></div>'
+        else:
+            html += '<p>No gene co‑occurrence data available.</p>'
+        
         return html
     
-    def _qc_section(self, kwargs):
-        qc_data = kwargs.get('qc_data', {})
-        if not qc_data:
-            return '<div class="alert-box alert-warning"><i class="fas fa-exclamation-circle"></i><div>No FASTA QC data found. Please ensure FASTA_QC_summary.html is present.</div></div>'
-        metrics = set()
-        for d in qc_data.values():
-            metrics.update(d.keys())
-        metrics = sorted(metrics)
-        html = '<div class="alert-box alert-info"><i class="fas fa-chart-line"></i><div>FASTA Quality Control metrics for each genome.</div></div>'
-        html += '<input type="text" class="search-box" id="search-qc" onkeyup="searchTable(\'qc-table\',\'search-qc\')" placeholder="🔍 Search sample...">'
-        html += '<div class="scrollable-table"><table id="qc-table" class="data-table"><thead><tr><th data-sort="string">Sample</th>'
-        for m in metrics:
-            html += f'<th data-sort="number">{m}</th>'
-        html += '</tr></thead><tbody>'
-        for sample, vals in sorted(qc_data.items()):
-            html += f'<tr><td><strong>{sample}</strong></td>'
-            for m in metrics:
-                v = vals.get(m, 'ND')
-                if isinstance(v, float):
-                    v = f"{v:,.0f}" if v > 1000 else f"{v:.2f}"
-                html += f'<td>{v}</td>'
-            html += '</tr>'
+    # ------------------------------ Database Metrics Tab ------------------------------
+    def _databases_section(self, kwargs):
+        stats = kwargs['gene_centric'].get('database_stats', {})
+        html = """
+        <div class="alert-box alert-info"><i class="fas fa-database"></i><div><h3>Database Metrics</h3><p>Number of unique genes and total occurrences per database. This helps assess the completeness of your screening and the diversity of resistance/virulence genes detected.</p></div></div>
+        <div class="scrollable-table"><table class="data-table"><thead><tr><th data-sort="string">Database</th><th data-sort="number">Unique Genes</th><th data-sort="number">Total Occurrences</th></tr></thead><tbody>
+        """
+        for db, d in stats.items():
+            html += f'<tr><td><strong>{db.upper()}</strong></td><td>{d["total_genes"]}</td><td>{d["total_occurrences"]}</td></tr>'
         html += '</tbody></table></div>'
         return html
     
-    def _aiguide_section(self, kwargs):
+    # ------------------------------ AI Guide ------------------------------
+    def _aiguide_section(self):
         return """
-        <div class="alert-box alert-info"><i class="fas fa-robot fa-2x"></i><div><h3>AI Assistant Guide</h3><p>Upload this HTML or the JSON file to ChatGPT, Claude, or Gemini to ask questions.</p></div></div>
-        <div class="database-section"><h4>Example questions for E. coli:</h4><ul>
-        <li>Which STs carry mcr-1 or other colistin resistance genes?</li>
-        <li>List all samples with Shiga toxin genes (stx1/stx2) and intimin (eae).</li>
-        <li>What is the most common phylogroup among ST131?</li>
-        <li>Show me ST-O:H combinations associated with high-risk virulence profiles.</li>
-        <li>Which resistance genes co-occur most frequently with blaCTX-M?</li>
-        </ul></div>
+        <div class="alert-box alert-info"><i class="fas fa-robot fa-2x"></i><div>
+        <h3>🤖 AI Assistant Guide – Your Co‑Pilot for Science, Not a Substitute</h3>
+        <p>You’ve generated a rich dataset. Now let AI help you turn numbers into narratives – <strong>ethically, responsibly, and with you in the driver’s seat</strong>.</p>
+        </div></div>
+        
+        <div class="info-text">
+        <i class="fas fa-lightbulb"></i> <strong>The Golden Rule of AI in Science:</strong><br>
+        AI is like a hyper‑caffeinated grad student who never sleeps – great at summarising, spotting patterns, and drafting, but <strong>it can hallucinate, cite fake papers, and misunderstand context</strong>. Always verify, always think critically, and never let AI replace your expert judgment. <span style="font-size:1.2em;">😉</span>
+        </div>
+        
+        <h4>🚀 How to Use This Report with AI (ChatGPT, Claude, Gemini, etc.)</h4>
+        <ol style="margin-bottom:20px;">
+            <li><strong>Export the full data as JSON but I'd prefer this HTML</strong> (click the <em>Export</em> tab → "Download JSON").</li>
+            <li><strong>Upload the JSON file</strong> to your preferred AI chat interface (e.g., ChatGPT Plus with file upload, Claude, or Gemini Advanced).</li>
+            <li><strong>Ask specific, contextual questions</strong> – the AI will read your actual data and answer based on it.</li>
+            <li><strong>Use the generated insights</strong> to draft sections of your manuscript, thesis, or public health report – but <strong>always fact‑check against the original tables</strong>.</li>
+        </ol>
+        
+        <h4>📝 Using AI to Draft Manuscripts & Theses – A Step‑by‑Step Workflow</h4>
+        <div class="info-text" style="background:#f0f8ff;">
+        <p><strong>Scenario:</strong> You've analysed 200 E. coli genomes and want to write a paper on "Genomic epidemiology of ESBL‑producing E. coli in Ghana".</p>
+        <p><strong>Step 1 – Let AI generate an outline:</strong><br>
+        <em>"Based on the JSON data, suggest a logical structure for a scientific paper covering: population structure (MLST, serotypes), AMR gene prevalence, pathotype distribution, and high‑risk combinations."</em></p>
+        <p><strong>Step 2 – Draft the Methods section:</strong><br>
+        <em>"Write a methods paragraph describing how we used AMRFinderPlus, ABRicate (VFDB, PlasmidFinder, EcoH, Bacmet2), and the custom GENIUS pipeline to classify pathotypes."</em></p>
+        <p><strong>Step 3 – Summarise key results in plain English:</strong><br>
+        <em>"From the JSON, what are the top 5 most common AMR genes and their percentages? Format as bullet points."</em></p>
+        <p><strong>Step 4 – Generate a draft discussion:</strong><br>
+        <em>"Based on the prevalence of blaCTX‑M (45%), mcr-1 (3%), and the identification of ST131 (30% of isolates), draft a discussion paragraph on the public health implications."</em></p>
+        <p><strong>Step 5 – Polish and cross‑reference:</strong><br>
+        Ask AI to rephrase, shorten, or expand specific sentences, but <strong>manually verify every number and citation</strong>.</p>
+        </div>
+        
+        <h4>🎓 For Thesis Writers – Let AI Be Your Writing Coach</h4>
+        <ul>
+            <li><strong>Generate figure/table captions:</strong> <em>"Write a descriptive caption for the pathotype prevalence table (STEC 20%, EPEC 15%, …)."</em></li>
+            <li><strong>Rewrite passive voice to active:</strong> <em>"Change this sentence to active voice: 'The blaCTX-M gene was detected in 45% of isolates.'"</em></li>
+            <li><strong>Create a graphical abstract concept:</strong> <em>"Describe a graphical abstract that visualises the main findings: ST131 dominance, high ESBL rate, and presence of mcr-1."</em></li>
+            <li><strong>Summarise limitations:</strong> <em>"Based on the QC metrics (e.g., N50 values), what limitations should I mention in the discussion?"</em></li>
+        </ul>
+        
+        <h4>⚠️ Ethical Guardrails – Because With Great Power Comes Great Responsibility</h4>
+        <div class="info-text" style="background:#fff3cd; border-left-color:#ffc107;">
+        <ul style="margin:5px 0;">
+            <li><strong>❌ Never paste unreviewed AI output directly into a manuscript</strong> – treat it as a first draft, not a final product.</li>
+            <li><strong>✅ Always cite the AI tool if you use verbatim text</strong> (check journal policies – many now require disclosure).</li>
+            <li><strong>🔍 Fact‑check every number, gene name, and reference</strong> – AI can invent plausible‑sounding nonsense (confabulation).</li>
+            <li><strong>👥 Keep human experts in the loop</strong> – AI is a co‑pilot, not the captain. Your thesis advisor, co‑authors, and reviewers are irreplaceable.</li>
+            <li><strong>🌍 Use AI to democratise science</strong> – non‑native English speakers can use it to improve clarity, but always acknowledge its use.</li>
+        </ul>
+        <p style="margin-top:10px;"><i class="fas fa-laugh-beam"></i> <strong>Humour break:</strong> AI once told a colleague that "the plasmid IncF was discovered by Galileo in 1610". <strong>Don't be that person.</strong> Verify, verify, verify!</p>
+        </div>
+        
+        <div class="info-text" style="margin-top:20px;">
+        <i class="fas fa-globe-africa"></i> <strong>Our Philosophy:</strong> We are in the era of AI‑augmented science. Used ethically, AI can accelerate public health research, reduce language barriers, and empower researchers in low‑resource settings. But it must never replace human curiosity, critical thinking, or domain expertise. <strong>You are the expert – AI is your enthusiastic, occasionally forgetful assistant.</strong> 🧠🤝🤖
+        </div>
+        
+        <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert('Question copied to clipboard! 📋 Now paste it into your AI chat.');
+        }
+        </script>
         """
     
-    def _export_section(self, kwargs):
+    # ------------------------------ Call to Action ------------------------------
+    def _calltoaction_section(self):
+        return """
+        <div class="alert-box alert-info"><i class="fas fa-globe fa-2x"></i><div>
+        <h3>The Global Burden of AMR and Our Call to Action</h3>
+        <p>Antimicrobial resistance (AMR) is one of the top global public health threats, with an estimated <strong>1.27 million direct deaths annually</strong>. <em>Escherichia coli</em> is a major contributor, causing urinary tract infections, bloodstream infections, and foodborne outbreaks. Tracking AMR and virulence determinants is essential to inform treatment guidelines and infection control.</p>
+        <p>We developed <strong>ECOLITYPER</strong> to empower researchers and clinicians – especially in low‑resource settings – to analyse their own sequencing data without extensive bioinformatics expertise.</p>
+        </div></div>
+        
+        <div style="background:#e8f5e9; padding:20px; border-radius:12px; margin:20px 0;">
+        <h3><i class="fas fa-bacterium"></i> ESCAPE AMR – Our Ongoing Project (ESKAPE Pathogens)</h3>
+        <p><strong>ECOLITYPER</strong> is one of the first module of a larger initiative called <strong>ESCAPE AMR</strong> (formerly ESKAPE). We target the notorious <strong>ESKAPE pathogens</strong>:</p>
+        <ul>
+            <li><strong>E</strong>nterococcus faecium</li>
+            <li><strong>S</strong>taphylococcus aureus</li>
+            <li><strong>K</strong>lebsiella pneumoniae</li>
+            <li><strong>A</strong>cinetobacter baumannii</li>
+            <li><strong>P</strong>seudomonas aeruginosa</li>
+            <li><strong>E</strong>nterobacter species (including E. coli)</li>
+        </ul>
+        <p>These bacteria “escape” the effects of antibiotics – hence the name. But we believe the name is also a global call to action:</p>
+        <div style="background:#fff3e0; padding:15px; border-radius:8px; margin:15px 0;">
+            <p><strong>🔹 E</strong>veryone must join forces – researchers, clinicians, policymakers, and citizens.<br>
+            <strong>🔹 S</strong>mart surveillance is our first line of defence. No more guessing – we need genomic data.<br>
+            <strong>🔹 K</strong>nowledge must be shared openly. No paywalls, no closed silos.<br>
+            <strong>🔹 A</strong>frica bears a heavy AMR burden, but African solutions are already emerging.<br>
+            <strong>🔹 P</strong>revention is cheaper than cure. Let's stop resistant infections before they spread.<br>
+            <strong>🔹 E</strong>very day we delay, more lives are at stake. The time to act is now, not tomorrow.</p>
+        </div>
+        <p><i class="fas fa-laugh-squint"></i> <strong>“We didn’t choose the name ESKAPE because it sounds cool (though it does). We chose it because it reminds us every single day: we must ESCAPE the AMR crisis – together, urgently, and with the best science we have.”</strong><br>
+        — Brown Beckley, lead developer (who secretly hopes this pun makes you smile, not roll your eyes 😉)</p>
+        </div>
+        
+        <div style="text-align:center; margin:40px 0;">
+            <i class="fas fa-star" style="font-size:3em; color:#ffc107;"></i>
+            <h3>🤝 We Invite You to Contribute!</h3>
+            <p><strong>If you find this tool useful, please:</strong></p>
+            <div class="action-buttons" style="justify-content:center;">
+                <a href="https://github.com/bbeckley-hub/ecolityper" target="_blank" class="action-btn btn-primary" style="text-decoration:none;"><i class="fab fa-github"></i> ⭐ Star us on GitHub</a>
+                <a href="mailto:brownbeckley94@gmail.com" class="action-btn btn-success" style="text-decoration:none;"><i class="fas fa-envelope"></i> Contact the team</a>
+                <a href="https://github.com/bbeckley-hub/ecolityper/issues" target="_blank" class="action-btn btn-warning" style="text-decoration:none;"><i class="fas fa-bug"></i> Report issues</a>
+            </div>
+            <p style="margin-top:20px;"><i class="fas fa-chalkboard-user"></i> <strong>We welcome collaborations</strong> to adapt this tool for other pathogens and to improve AMR surveillance in Africa and beyond.</p>
+            <p><i class="fas fa-hand-holding-heart"></i> If you are a funder or organisation interested in supporting the <strong>ESCAPE AMR</strong> project, please reach out. Together we can build a free, open‑source ecosystem for genomic surveillance of all ESKAPE pathogens.</p>
+        </div>
+        
+        <div class="info-text" style="background:#f8f9fa;">
+        <i class="fas fa-quote-left"></i> “AMR is a silent pandemic, but we have the tools to fight it – if we share them, if we teach each other, and if we act with urgency. Let's escape the era of untreatable infections.”<br>
+        <strong>— The ESCAPE AMR Team, University of Ghana Medical School</strong>
+        </div>
+        """
+    
+    # ------------------------------ Export Section ------------------------------
+    def _export_section(self):
         return """
         <div class="alert-box alert-info"><i class="fas fa-download"></i><div>Export data tables as CSV or download complete JSON.</div></div>
         <div class="action-buttons">
             <button class="action-btn btn-primary" onclick="exportTableToCSV('samples-table','sample_overview.csv')">Sample Overview CSV</button>
             <button class="action-btn btn-primary" onclick="exportTableToCSV('amr-table','amr_genes.csv')">AMR Genes CSV</button>
             <button class="action-btn btn-primary" onclick="exportTableToCSV('vir-table','virulence_genes.csv')">Virulence Genes CSV</button>
-            <button class="action-btn btn-primary" onclick="exportTableToCSV('highrisk-table','high_risk.csv')">High-Risk CSV</button>
-            <button class="action-btn btn-primary" onclick="exportTableToCSV('qc-table','fasta_qc.csv')">FASTA QC CSV</button>
-            <button class="action-btn btn-success" onclick="location.href='genius_ultimate_report.json'">Download JSON</button>
+            <button class="action-btn btn-primary" onclick="exportTableToCSV('plasmid-table','plasmid_serotyping_markers.csv')">Plasmid & Serotyping CSV</button>
+            <button class="action-btn btn-primary" onclick="exportTableToCSV('bac-table','bacmet_genes.csv')">Bacmet CSV</button>
+            <button class="action-btn btn-primary" onclick="exportTableToCSV('patho-sample-table','pathotype_samples.csv')">Pathotype Samples CSV</button>
+            <button class="action-btn btn-success" onclick="location.href='genius_ecoli_ultimate_report.json'">Download JSON</button>
         </div>
         """
 
@@ -1274,19 +1932,20 @@ class GeniusUltimateReporter:
     Orchestrates the entire analysis pipeline:
     1. Find all HTML report files in the input directory.
     2. Parse each report and integrate data.
-    3. Generate JSON, CSV, and HTML outputs.
+    3. Classify pathotypes.
+    4. Generate JSON, CSV, and HTML outputs.
     """
     
     def __init__(self, input_dir: Path):
         self.input_dir = Path(input_dir)
-        self.output_dir = self.input_dir / "GENIUS_ULTIMATE_REPORTS"
+        self.output_dir = self.input_dir / "GENIUS_ECOLI_ULTIMATE_REPORTS"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.parser = UltimateHTMLParser()
         self.analyzer = UltimateDataAnalyzer()
         self.html_generator = UltimateHTMLGenerator(self.analyzer)
         self.metadata = {
-            "tool_name": "GENIUS E.coli Ultimate Reporter",
-            "version": "2.0.0",
+            "tool_name": "GENIUS E.coli Ultimate Reporter (Enhanced)",
+            "version": "3.0.0",
             "author": "Brown Beckley <brownbeckley94@gmail.com>",
             "affiliation": "University of Ghana Medical School",
             "analysis_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1328,6 +1987,7 @@ class GeniusUltimateReporter:
     def integrate_all_data(self, html_files: Dict[str, List[Path]]) -> Dict[str, Any]:
         """
         Parse all HTML reports and merge data into a single integrated dictionary.
+        Also classifies pathotypes for each sample.
         """
         print("\n🔗 Integrating data...")
         integrated = {
@@ -1372,7 +2032,7 @@ class GeniusUltimateReporter:
         abricate_gene_freq = {}
         for f in html_files['abricate']:
             genes_by_sample, gene_freq = self.parser.parse_abricate_database_report(f)
-            # Determine database name (simplified)
+            # Determine database name from filename (simplified)
             db_name = 'unknown'
             for db in self.parser.abricate_databases:
                 if db in f.name.lower():
@@ -1398,13 +2058,15 @@ class GeniusUltimateReporter:
         
         print(f"📊 Found {len(all_samples)} unique samples")
         
-        # Integrate data for each sample
+        # Integrate data for each sample and classify pathotype
         for sample in all_samples:
             # Collect virulence genes from VFDB and ecoli_vf databases
             virulence_genes = []
             for db in ['vfdb', 'ecoli_vf']:
                 if db in abricate_by_sample.get(sample, {}):
                     virulence_genes.extend(abricate_by_sample[sample][db])
+            # Classify pathotype
+            pathotype = self.analyzer.classify_pathotype(virulence_genes)
             
             integrated['samples'][sample] = {
                 'mlst': mlst_data.get(sample, {'ST': 'ND', 'Allele_Profile': 'ND'}),
@@ -1412,7 +2074,8 @@ class GeniusUltimateReporter:
                 'chtyper': chtyper_data.get(sample, {'FumC_Type': 'ND', 'FimH_Type': 'ND', 'CH_Type': 'ND'}),
                 'phylogrouping': phylogrouping_data.get(sample, {'Clermont_Type': 'ND'}),
                 'amr_genes': amr_by_sample.get(sample, []),
-                'virulence_genes': list(set(virulence_genes))  # remove duplicates
+                'virulence_genes': list(set(virulence_genes)),
+                'pathotype': pathotype
             }
         
         # Store gene frequencies for gene-centric tables
@@ -1423,7 +2086,8 @@ class GeniusUltimateReporter:
         
         # Generate gene-centric tables and cross-genome patterns
         print("\n🧠 Processing gene-centric analysis...")
-        integrated['gene_centric'] = self.analyzer.create_gene_centric_tables(integrated)
+        total_samples = len(all_samples)
+        integrated['gene_centric'] = self.analyzer.create_gene_centric_tables(integrated, total_samples)
         integrated['patterns'] = self.analyzer.create_cross_genome_patterns(integrated)
         
         return integrated
@@ -1431,15 +2095,15 @@ class GeniusUltimateReporter:
     def generate_json_report(self, data: Dict[str, Any]) -> Path:
         """Save all integrated data as a JSON file."""
         print("\n📝 Generating JSON report...")
-        out = self.output_dir / "genius_ultimate_report.json"
-        # Use default=str to handle non-serializable objects (e.g., Path)
+        out = self.output_dir / "genius_ecoli_ultimate_report.json"
+        # Use default=str to handle non-serializable objects
         with open(out, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, default=str)
         print(f"    ✅ JSON saved: {out}")
         return out
     
     def generate_csv_reports(self, data: Dict[str, Any]):
-        """Generate CSV files for sample overview, AMR genes, virulence genes, and high-risk combinations."""
+        """Generate CSV files for sample overview, AMR genes, virulence genes, plasmids, bacmet, and pathotype."""
         print("\n📊 Generating CSV reports...")
         
         # Sample overview CSV
@@ -1449,6 +2113,7 @@ class GeniusUltimateReporter:
             'Serotype': d['serotype']['Serotype'],
             'Phylogroup': d['phylogrouping']['Clermont_Type'],
             'CH_Type': d['chtyper']['CH_Type'],
+            'Pathotype': d['pathotype'],
             'AMR_Count': len(d['amr_genes']),
             'Virulence_Count': len(d['virulence_genes'])
         } for s, d in data['samples'].items()])
@@ -1462,6 +2127,7 @@ class GeniusUltimateReporter:
                     'Gene': g['gene'],
                     'Database': g['database'],
                     'Count': g['count'],
+                    'Percentage': g.get('percentage', 0),
                     'Genomes': ';'.join(g['genomes'])
                 })
         if amr_rows:
@@ -1475,10 +2141,39 @@ class GeniusUltimateReporter:
                     'Gene': g['gene'],
                     'Database': g['database'],
                     'Count': g['count'],
+                    'Percentage': g.get('percentage', 0),
                     'Genomes': ';'.join(g['genomes'])
                 })
         if vir_rows:
             pd.DataFrame(vir_rows).to_csv(self.output_dir / "virulence_genes.csv", index=False)
+        
+        # Plasmid markers CSV
+        plasmid_rows = []
+        for db, genes in data['gene_centric'].get('plasmid_databases', {}).items():
+            for g in genes:
+                plasmid_rows.append({
+                    'Marker': g['gene'],
+                    'Database': g['database'],
+                    'Count': g['count'],
+                    'Percentage': g.get('percentage', 0),
+                    'Genomes': ';'.join(g['genomes'])
+                })
+        if plasmid_rows:
+            pd.DataFrame(plasmid_rows).to_csv(self.output_dir / "plasmid_markers.csv", index=False)
+        
+        # Bacmet genes CSV
+        bacmet_rows = []
+        for db, genes in data['gene_centric'].get('bacmet_databases', {}).items():
+            for g in genes:
+                bacmet_rows.append({
+                    'Gene': g['gene'],
+                    'Database': g['database'],
+                    'Count': g['count'],
+                    'Percentage': g.get('percentage', 0),
+                    'Genomes': ';'.join(g['genomes'])
+                })
+        if bacmet_rows:
+            pd.DataFrame(bacmet_rows).to_csv(self.output_dir / "bacmet_genes.csv", index=False)
         
         # High-risk combinations CSV
         high = data['patterns'].get('high_risk_combinations', [])
@@ -1490,7 +2185,7 @@ class GeniusUltimateReporter:
     def run(self):
         """Execute the complete analysis pipeline."""
         print("=" * 80)
-        print("🧠 GENIUS E.COLI ULTIMATE REPORTER v2.0.0")
+        print("🧠 GENIUS E.COLI ULTIMATE REPORTER v3.0.0")
         print("=" * 80)
         print(f"📁 Input directory: {self.input_dir}")
         
@@ -1520,34 +2215,36 @@ class GeniusUltimateReporter:
         gene_centric = data['gene_centric']
         total_amr = sum(len(genes) for genes in gene_centric.get('amr_databases', {}).values())
         total_vir = sum(len(genes) for genes in gene_centric.get('virulence_databases', {}).values())
+        patho_counts = patterns.get('pathotype_distribution', Counter())
         
         print("\n" + "=" * 80)
         print("✅ ULTIMATE ANALYSIS COMPLETE!")
         print("=" * 80)
         print(f"📁 Output directory: {self.output_dir}")
         print(f"📄 Files generated:")
-        print(f"   • genius_ultimate_report.html (Interactive report)")
-        print(f"   • genius_ultimate_report.json (Complete data)")
+        print(f"   • genius_ecoli_ultimate_report.html (Interactive report)")
+        print(f"   • genius_ecoli_ultimate_report.json (Complete data)")
         print(f"   • sample_overview.csv (Sample data)")
         print(f"   • amr_genes.csv (Gene-centric AMR data)")
         print(f"   • virulence_genes.csv (Gene-centric virulence data)")
+        print(f"   • plasmid_markers.csv (Plasmid replicons)")
+        print(f"   • bacmet_genes.csv (Biocide/metal resistance)")
         print(f"   • high_risk_combinations.csv (Pattern analysis)")
-        if data.get('qc_data'):
-            print(f"   • fasta_qc.csv (FASTA QC metrics) – export from QC tab")
         
         print(f"\n📈 ANALYSIS SUMMARY:")
         print(f"   • {total_samples} total samples analyzed")
         print(f"   • {total_amr} AMR genes across all databases")
         print(f"   • {total_vir} virulence genes")
         print(f"   • {high_risk} high-risk AMR+virulence combinations")
+        print(f"   • {len(patho_counts)} distinct pathotypes detected")
         
         print("\n🎯 Next steps:")
-        print("   1. Open genius_ultimate_report.html in your browser")
-        print("   2. Explore AMR and Virulence tabs to see genes with ALL their genomes")
-        print("   3. Use filter buttons to focus on key resistance/virulence genes")
+        print("   1. Open genius_ecoli_ultimate_report.html in your browser")
+        print("   2. Explore the new Pathotype Analysis tab for prevalence statistics")
+        print("   3. Use genome search boxes in AMR, Virulence, Plasmid, and Bacmet tabs to highlight specific isolates")
         print("   4. Examine combination tables under MLST, Serotype, CH Type, and Phylogroup tabs")
-        print("   5. Use print buttons on each section header to print specific sections")
-        print("   6. Export data using the Export tab or individual CSV buttons")
+        print("   5. Export data using the Export tab or individual CSV buttons")
+        print("   6. Use the AI Guide to ask ChatGPT/Claude about your JSON data")
         
         print("\n" + "=" * 80)
         return True
@@ -1558,11 +2255,11 @@ class GeniusUltimateReporter:
 # =============================================================================
 def main():
     parser = argparse.ArgumentParser(
-        description='GENIUS E.coli Ultimate Reporter - Gene-Centric Analysis',
+        description='GENIUS E.coli Ultimate Reporter (Enhanced) - Pathotype Classification & Gene-Centric Analysis',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python genius_ecoli_ultimate_reporter.py -i /path/to/html/reports
+  python genius_ecoli_ultimate_reporter_enhanced.py -i /path/to/html/reports
 
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School, Department of Medical Biochemistry
@@ -1571,7 +2268,7 @@ Affiliation: University of Ghana Medical School, Department of Medical Biochemis
     parser.add_argument('-i', '--input-dir', required=True,
                         help='Directory containing HTML report files')
     parser.add_argument('-o', '--output-dir',
-                        help='Custom output directory (default: input_dir/GENIUS_ULTIMATE_REPORTS)')
+                        help='Custom output directory (default: input_dir/GENIUS_ECOLI_ULTIMATE_REPORTS)')
     
     args = parser.parse_args()
     input_dir = Path(args.input_dir)

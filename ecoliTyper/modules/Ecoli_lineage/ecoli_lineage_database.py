@@ -452,6 +452,184 @@ LINEAGE_DATABASE = {
         "outbreak_potential": "HIGH in poultry",
         "key_references": ["PMID: 35945191", "PMID: 39235965", "PMID: 38175844", "PMID: 36755458", "PMID: 22615330", "PMID: 28049430", "PMID: 34047644", "PMID: 28049430"]
     },
+
+    # =========================================================================
+    # ADDITIONAL HIGH-RISK & EMERGING LINEAGES (2025–2026)
+    # =========================================================================
+
+    "ST361": {
+        "primary_name": "Global MDR Clone (blaNDM-5 Associated)",
+        "category": "High-Risk Clone",
+        "sublineages": ["ST361-1", "ST361-2"],
+        "serotype": "O9:H30",
+        "phylogroup": "D",
+        "fumC": "fumC45",
+        "fimH": "fimH41",
+        "clermont_complex": "STc361",
+        "pathotypes": ["UPEC", "SEPEC", "ExPEC"],
+        "key_virulence_genes": ["fimH", "iutA", "fyuA", "kpsMII"],
+        "resistance_profile": {
+            "carbapenemase": ["blaNDM-5", "blaNDM-1"],
+            "esbl": ["blaCTX-M-15", "blaCTX-M-27"],
+            "fluoroquinolone": ["gyrA-S83L", "parC-S80I"],
+            "other": ["rmtB", "tet(A)", "sul1"]
+        },
+        "epidemiology": {
+            "first_identified": 2018,
+            "global_distribution": "Emerging worldwide, especially Asia and Europe",
+            "geographical_distribution": {
+                "high_prevalence": ["China", "India", "Italy", "Greece"],
+                "medium_prevalence": ["USA", "Germany", "UK"],
+                "emerging_regions": ["Africa", "Middle East"],
+                "regional_variants": {
+                    "Asia": "NDM-5 dominant, community and hospital",
+                    "Europe": "NDM-1, healthcare-associated"
+                }
+            },
+            "transmission": "Healthcare-associated, environmental reservoirs",
+            "reservoir": "Human gut, livestock, wetlands"
+        },
+        "clinical_significance": {
+            "primary_infections": ["Bloodstream infections", "UTI", "Biliary stent infections"],
+            "resistance": "Carbapenem-resistant, limited options",
+            "mortality": "High in bacteremia"
+        },
+        "risk_level": "VERY HIGH",
+        "outbreak_potential": "HIGH",
+        "key_references": ["PMID: 41455885", "PMID: 36358134", "PMID: 31541503"]
+    },
+
+    "ST101": {
+        "primary_name": "Avian Pathogenic E. coli (APEC) Clone",
+        "category": "Animal-Associated",
+        "sublineages": ["ST101-1", "ST101-2"],
+        "serotype": "O2:H6",
+        "phylogroup": "B1",
+        "fumC": "fumC18",
+        "fimH": "fimH20",
+        "clermont_complex": "STc101",
+        "pathotypes": ["APEC", "UPEC", "ExPEC"],
+        "key_virulence_genes": ["iss", "iroN", "iutA", "hlyF", "ompT"],
+        "resistance_profile": {
+            "common": ["Tetracycline", "Sulfonamides", "Ampicillin"],
+            "genes": ["tet(A)", "sul1", "blaTEM"],
+            "emerging": ["Fluoroquinolones", "ESBL"]
+        },
+        "epidemiology": {
+            "host_range": "Poultry predominant, zoonotic potential",
+            "geographical_distribution": {
+                "poultry_global": "Worldwide in turkeys and broilers",
+                "high_prevalence": ["USA", "Europe", "Brazil"],
+                "zoonotic_cases": "Sporadic human infections"
+            },
+            "economic_impact": "Major losses in turkey production"
+        },
+        "clinical_significance": {
+            "animal_disease": "Colibacillosis, septicemia",
+            "human_infections": "Rare, mainly immunocompromised"
+        },
+        "risk_level": "MODERATE",
+        "outbreak_potential": "HIGH in poultry",
+        "key_references": ["PMID: 23696618", "PMID: 35411158", "PMID: 25989320", "PMID: 24514099"]
+    },
+
+    "ST38": {
+        "primary_name": "Pandemic ESBL/ExPEC Clone (Companion Animal & Human)",
+        "category": "High-Risk Clone",
+        "sublineages": ["ST38-1", "ST38-2"],
+        "serotype": "O7:H4",
+        "phylogroup": "D",
+        "fumC": "fumC22",
+        "fimH": "fimH17",
+        "clermont_complex": "STc38",
+        "pathotypes": ["UPEC", "SEPEC", "ExPEC"],
+        "key_virulence_genes": ["fimH", "iutA", "fyuA", "traT"],
+        "resistance_profile": {
+            "esbl": ["blaCTX-M-15", "blaCTX-M-14"],
+            "carbapenemase": ["blaOXA-48", "blaNDM-1"],
+            "fluoroquinolone": ["qnrS1", "aac(6')-Ib-cr"]
+        },
+        "epidemiology": {
+            "distribution": "Global, human and animal",
+            "geographical_distribution": {
+                "high_prevalence": ["Europe", "North America", "Asia"],
+                "medium_prevalence": ["Africa", "South America"],
+                "animal_reservoirs": ["Dogs", "Cattle", "Meat products"]
+            },
+            "zoonotic_potential": "High, foodborne and pet contact"
+        },
+        "clinical_significance": {
+            "primary_infections": ["UTI", "Bloodstream infections"],
+            "resistance": "ESBL and carbapenemase producer"
+        },
+        "risk_level": "HIGH",
+        "outbreak_potential": "MODERATE",
+        "key_references": ["PMID: 38624228", "PMID: 38153179", "PMID: 21966500", "PMID: 28158613", "PMID: 32919009"]
+    },
+
+    "ST141": {
+        "primary_name": "Emerging ESBL Lineage (Canine & Human)",
+        "category": "Resistance-Associated",
+        "sublineages": ["ST141-1"],
+        "serotype": "O9:H4",
+        "phylogroup": "B1",
+        "fumC": "fumC15",
+        "fimH": "fimH33",
+        "clermont_complex": "STc141",
+        "pathotypes": ["UPEC", "Commensal"],
+        "key_virulence_genes": ["fimH", "iutA"],
+        "resistance_profile": {
+            "esbl": ["blaCTX-M-15", "blaCTX-M-27"],
+            "fluoroquinolone": ["gyrA-S83L"]
+        },
+        "epidemiology": {
+            "first_identified": 2020,
+            "geographical_distribution": {
+                "high_prevalence": ["Austria", "Germany"],
+                "emerging_regions": ["Europe", "North America"]
+            },
+            "host_range": "Dogs, humans, environment"
+        },
+        "clinical_significance": {
+            "primary_infections": ["UTI in dogs and humans"]
+        },
+        "risk_level": "MODERATE",
+        "outbreak_potential": "LOW",
+        "key_references": ["PMID: PMID: 36830293", "PMID: 40167147", "PMCID: PMC6935910", "PMID: 31619530", "PMID: 40140916","https://doi.org/10.1038/s41598-018-22943-0"]
+    },
+
+    "ST224": {
+        "primary_name": "Livestock-Associated ESBL/MDR Clone",
+        "category": "Animal-Associated",
+        "sublineages": ["ST224-1", "ST224-2"],
+        "serotype": "O8:H9",
+        "phylogroup": "B1",
+        "fumC": "fumC19",
+        "fimH": "fimH31",
+        "clermont_complex": "STc224",
+        "pathotypes": ["APEC", "ExPEC"],
+        "key_virulence_genes": ["iss", "iroN", "iutA"],
+        "resistance_profile": {
+            "esbl": ["blaCTX-M-1", "blaCTX-M-14"],
+            "tetracycline": ["tet(A)"],
+            "sulfonamide": ["sul1", "sul2"]
+        },
+        "epidemiology": {
+            "host_range": "Cattle, sheep, poultry",
+            "geographical_distribution": {
+                "high_prevalence": ["China", "Spain", "Brazil"],
+                "medium_prevalence": ["Europe", "North America"]
+            },
+            "transmission": "Foodborne, environmental runoff"
+        },
+        "clinical_significance": {
+            "animal_disease": "Colibacillosis in livestock",
+            "human_infections": "Sporadic, via food chain"
+        },
+        "risk_level": "MODERATE",
+        "outbreak_potential": "MODERATE",
+        "key_references": ["PMID: 36057242", "PMID: 24928853", "PMID: 41175318", "PMID: 30404045", "PMID: 40022824", "PMID: 26824955"]
+    },    
     
     "ST88": {
         "primary_name": "Meningitis/ExPEC Clone",
@@ -493,65 +671,65 @@ LINEAGE_DATABASE = {
 # EMERGING & GLOBAL MDR LINEAGES - COMPREHENSIVE ADDITIONS
 # =========================================================================
 
-"ST1193": {
-        "primary_name": "Emerging Fluoroquinolone-Resistant Uropathogenic Clone",
-        "category": "High-Risk Clone",
-        "sublineages": ["ST1193-1", "ST1193-2", "ST1193-3"],
-        "serotype": "O75:H5",
-        "phylogroup": "B2",
-        "fumC": "fumC41",
-        "fimH": "fimH64",
-        "clermont_complex": "STc14",
-        
-        "pathotypes": ["UPEC", "SEPEC", "ExPEC"],
-        "key_virulence_genes": ["fimH", "papA", "papGII", "iutA", "fyuA", "kpsMII", "ompT", "malX"],
-        
-        "resistance_profile": {
-            "fluoroquinolone": ["gyrA-S83L", "gyrA-D87N", "parC-S80I", "parC-E84V"],
-            "esbl": ["blaCTX-M-15", "blaCTX-M-27"],
-            "aminoglycoside": ["aac(6')-Ib-cr", "aac(3)-II"],
-            "other": ["sul1", "sul2", "tet(A)", "dfrA17"],
-            "important_note": "Rapidly emerging fluoroquinolone resistance in community settings"
-        },
-        
-        "epidemiology": {
-            "first_identified": 2015,
-            "emergence_timeline": "Rapid global spread since 2015",
-            "geographical_distribution": {
-                "high_prevalence": ["North America", "Europe", "Australia"],
-                "medium_prevalence": ["Asia", "South America"],
-                "emerging_regions": ["Africa", "Middle East"],
-                "regional_variants": {
-                    "North America": "Community-associated UTIs, nursing homes",
-                    "Europe": "Healthcare and community settings",
-                    "Australia": "Rapid dissemination in community",
-                    "Asia": "Emerging in hospital settings"
-                }
+    "ST1193": {
+            "primary_name": "Emerging Fluoroquinolone-Resistant Uropathogenic Clone",
+            "category": "High-Risk Clone",
+            "sublineages": ["ST1193-1", "ST1193-2", "ST1193-3"],
+            "serotype": "O75:H5",
+            "phylogroup": "B2",
+            "fumC": "fumC41",
+            "fimH": "fimH64",
+            "clermont_complex": "STc14",
+            
+            "pathotypes": ["UPEC", "SEPEC", "ExPEC"],
+            "key_virulence_genes": ["fimH", "papA", "papGII", "iutA", "fyuA", "kpsMII", "ompT", "malX"],
+            
+            "resistance_profile": {
+                "fluoroquinolone": ["gyrA-S83L", "gyrA-D87N", "parC-S80I", "parC-E84V"],
+                "esbl": ["blaCTX-M-15", "blaCTX-M-27"],
+                "aminoglycoside": ["aac(6')-Ib-cr", "aac(3)-II"],
+                "other": ["sul1", "sul2", "tet(A)", "dfrA17"],
+                "important_note": "Rapidly emerging fluoroquinolone resistance in community settings"
             },
-            "transmission": "Community-associated, healthcare-associated",
-            "reservoir": "Human gastrointestinal tract",
-            "demographics": "Elderly, immunocompromised, recurrent UTI patients"
+            
+            "epidemiology": {
+                "first_identified": 2015,
+                "emergence_timeline": "Rapid global spread since 2015",
+                "geographical_distribution": {
+                    "high_prevalence": ["North America", "Europe", "Australia"],
+                    "medium_prevalence": ["Asia", "South America"],
+                    "emerging_regions": ["Africa", "Middle East"],
+                    "regional_variants": {
+                        "North America": "Community-associated UTIs, nursing homes",
+                        "Europe": "Healthcare and community settings",
+                        "Australia": "Rapid dissemination in community",
+                        "Asia": "Emerging in hospital settings"
+                    }
+                },
+                "transmission": "Community-associated, healthcare-associated",
+                "reservoir": "Human gastrointestinal tract",
+                "demographics": "Elderly, immunocompromised, recurrent UTI patients"
+            },
+            
+            "clinical_significance": {
+                "primary_infections": ["UTI", "Recurrent UTI", "Bloodstream infections"],
+                "treatment_challenges": "Fluoroquinolone resistance limits oral options",
+                "persistence": "High recurrence rates in urinary tract",
+                "mortality": "Increased in bacteremia compared to susceptible strains"
+            },
+            
+            "genomic_features": {
+                "plasmid": ["IncFII", "IncFIB"],
+                "prophage": ["yehV", "pheV"],
+                "island": ["PAI-IV", "PAI-V"],
+                "mutations": ["gyrA-S83L", "gyrA-D87N", "parC-S80I"]
+            },
+            
+            "risk_level": "HIGH",
+            "outbreak_potential": "MODERATE to HIGH",
+            "surveillance_priority": "EMERGING THREAT",
+            "key_references": ["PMID: 35658504", "PMID: 39674367", "PMID: 39507943", "PMID: 31262826", "PMID: 36136628", "PMID: 30787145"]
         },
-        
-        "clinical_significance": {
-            "primary_infections": ["UTI", "Recurrent UTI", "Bloodstream infections"],
-            "treatment_challenges": "Fluoroquinolone resistance limits oral options",
-            "persistence": "High recurrence rates in urinary tract",
-            "mortality": "Increased in bacteremia compared to susceptible strains"
-        },
-        
-        "genomic_features": {
-            "plasmid": ["IncFII", "IncFIB"],
-            "prophage": ["yehV", "pheV"],
-            "island": ["PAI-IV", "PAI-V"],
-            "mutations": ["gyrA-S83L", "gyrA-D87N", "parC-S80I"]
-        },
-        
-        "risk_level": "HIGH",
-        "outbreak_potential": "MODERATE to HIGH",
-        "surveillance_priority": "EMERGING THREAT",
-        "key_references": ["PMID: 35658504", "PMID: 39674367", "PMID: 39507943", "PMID: 31262826", "PMID: 36136628", "PMID: 30787145"]
-    },
 
     "ST405": {
         "primary_name": "Global Multidrug-Resistant ExPEC Clone",
@@ -800,6 +978,67 @@ SEROTYPE_DATABASE = {
         },
         "outbreak_association": "Urinary tract infections, sepsis",
         "references": ["PMID: 20802035", "PMID: 20457787"]
+    },
+
+    # =========================================================================
+    # EMERGING & RARE SEROTYPES (2025–2026)
+    # =========================================================================
+
+    "O77g:H18": {
+        "st": [69],
+        "primary_pathotype": "STEC",
+        "secondary_pathotypes": ["aEPEC"],
+        "key_virulence": ["stx2d", "eae", "ehxA"],
+        "shiga_toxin_profile": "stx2d only (eae-positive)",
+        "h_us_risk": "HIGH",
+        "clinical_severity": "HUS reported, severe diarrhea",
+        "geographical_distribution": {
+            "major_outbreak": "France 2025 (unpasteurized cheese)",
+            "sporadic_cases": ["Europe"]
+        },
+        "outbreak_association": "Raw milk cheese",
+        "references": ["PMID: 21075195", "https://doi.org/10.1128/aem.02449-25", "https://doi.org/10.1128/mra.00194-26"]
+    },
+
+    "O177:H11": {
+        "st": [765],  #
+        "primary_pathotype": "STEC",
+        "key_virulence": ["stx1", "stx2", "eae"],
+        "h_us_risk": "MODERATE",
+        "geographical_distribution": {
+            "emerging_in": "Italy (cattle at slaughter)",
+            "global_trend": "Increasing in livestock"
+        },
+        "outbreak_association": "Beef products",
+        "references": ["PMID: 39079448", "PMID: 17292501", "PMID: 41011762"]
+    },
+
+    "O177:H25": {
+        "st": ['ST659'],
+        "primary_pathotype": "STEC",
+        "key_virulence": ["stx2", "eae"],
+        "h_us_risk": "MODERATE",
+        "geographical_distribution": {
+            "emerging_in": "Italy (cattle at slaughter)",
+            "spillover_potential": "Human cases rare but increasing"
+        },
+        "outbreak_association": "Undercooked beef",
+        "references": ["PMID: 39079448", "PMID: 32714297"]
+    },
+
+    "O80:H2": {
+        "st": [301, 441],
+        "primary_pathotype": "STEC/EPEC hybrid",
+        "key_virulence": ["stx2a", "eae", "ehxA", "espA"],
+        "h_us_risk": "VERY HIGH",
+        "clinical_severity": "Hemorrhagic colitis, HUS, bacteremia",
+        "geographical_distribution": {
+            "high_incidence": ["France", "Switzerland", "Germany"],
+            "emerging_regions": ["Europe", "North America"],
+            "animal_reservoirs": "Calves"
+        },
+        "outbreak_association": "Raw milk, contact with calves",
+        "references": ["PMID: 40439404", "PMID: 29148394", "PMID: 40436145", "PMID: 4026697"]
     },
 # =========================================================================
 # NON-O157 EHEC SEROTYPES - COMPREHENSIVE ADDITIONS
@@ -1335,7 +1574,7 @@ PATHOTYPE_DATABASE = {
         },
         "clinical_manifestations": {
             "spectrum": "Bacteremia → severe sepsis → septic shock",
-            "sources": "Urinary (most common), abdominal, unknown primary"
+            "sources": "Urinary (most common), abdominal"
         },
         "resistance_profile": {
             "common_resistance": ["Ampicillin", "Fluoroquinolones", "Third-generation cephalosporins"],
@@ -1581,7 +1820,88 @@ PATHOTYPE_DATABASE = {
         "outbreak_potential": "LOW (not typically outbreak-associated)",
         "risk_level": "MODERATE (chronic disease association)",
         "key_references": ["PMID: 20300577", "PMID: 23382754", "PMID: 29141957", "PMID: 36883813", "PMID: 25338542"]
+    },
+    # =========================================================================
+    # HYBRID PATHOTYPES (2025–2026)
+    # =========================================================================
+
+    "UPEC_EAEC_Hybrid": {
+        "primary_name": "Uropathogenic / Enteroaggregative Hybrid",
+        "category": "Hybrid",
+        "subtypes": ["ExPEC/EAEC", "UPEC/EAEC"],
+        "key_virulence_genes": ["fimH", "papA", "aggR", "aap", "aatA", "iutA", "fyuA"],
+        "pathogenesis": {
+            "mechanism": "Combines extraintestinal virulence (UTI) with aggregative adherence",
+            "clinical_phenotype": "UTI in patients with prior diarrhea or asymptomatic carriage"
+        },
+        "clinical_manifestations": {
+            "primary": "Urinary tract infections, sometimes with gastrointestinal symptoms"
+        },
+        "resistance_profile": {
+            "common": ["Fluoroquinolones", "ESBL", "Carbapenemase (rare)"]
+        },
+        "outbreak_potential": "MODERATE",
+        "risk_level": "HIGH",
+        "key_references": ["PMID: 35336220", "PMID: 40243867", "PMID: 35336220"]
+    },
+
+    "aEPEC_ExPEC_Hybrid": {
+        "primary_name": "Atypical EPEC / Extraintestinal Pathogenic Hybrid",
+        "category": "Hybrid",
+        "key_virulence_genes": ["eae", "bfpA (absent)", "fimH", "papA", "iutA", "hlyA"],
+        "pathogenesis": {
+            "mechanism": "Attaching/effacing lesions + extraintestinal virulence factors",
+            "clinical_phenotype": "Diarrhea progressing to bacteremia or UTI"
+        },
+        "clinical_manifestations": {
+            "primary": "Gastroenteritis followed by systemic infection in vulnerable hosts"
+        },
+        "resistance_profile": {
+            "common": ["Ampicillin", "Tetracycline", "ESBL emerging"]
+        },
+        "outbreak_potential": "LOW",
+        "risk_level": "MODERATE to HIGH",
+        "key_references": ["PMID: 40547800", "PMID: 33919948"]
+    },
+
+    "STEC_ETEC_Hybrid": {
+        "primary_name": "Shiga Toxigenic / Enterotoxigenic Hybrid",
+        "category": "Hybrid",
+        "key_virulence_genes": ["stx1", "stx2", "eltA", "estA", "eae (optional)"],
+        "pathogenesis": {
+            "mechanism": "Shiga toxin + heat-labile/heat-stable enterotoxins",
+            "clinical_phenotype": "Severe watery diarrhea that may become bloody"
+        },
+        "clinical_manifestations": {
+            "primary": "Traveler's diarrhea-like illness with HUS risk"
+        },
+        "resistance_profile": {
+            "common": ["Ampicillin", "Trimethoprim-sulfamethoxazole"]
+        },
+        "outbreak_potential": "MODERATE",
+        "risk_level": "HIGH",
+        "key_references": ["PMID: 41091853", "PMID: 30948755", "PMID: 28119905"]
+    },
+
+    "STEC_EAEC_Hybrid": {
+        "primary_name": "Shiga Toxigenic / Enteroaggregative Hybrid",
+        "category": "Hybrid",
+        "key_virulence_genes": ["stx2", "aggR", "aap", "aatA", "pic"],
+        "pathogenesis": {
+            "mechanism": "EAEC adherence + Shiga toxin (similar to O104:H4)",
+            "clinical_phenotype": "High HUS rate, often in adults"
+        },
+        "clinical_manifestations": {
+            "primary": "Bloody diarrhea, HUS, neurological complications"
+        },
+        "resistance_profile": {
+            "common": ["Ampicillin", "Tetracycline", "Trimethoprim-sulfamethoxazole"]
+        },
+        "outbreak_potential": "VERY HIGH",
+        "risk_level": "VERY HIGH",
+        "key_references": ["PMID: 41091853"]
     }
+
 }
 
 # =============================================================================
@@ -1704,7 +2024,7 @@ CARBAPENEMASE_PRODUCERS = {
 
     "NDM_PRODUCERS": {
         "pathotype": "Various (Broad host range)",
-        "st": [410, 648, 167, 101, 131, 38, 405, 617],
+        "st": [410, 648, 167, 101, 131, 38, 405, 617, 602],
         "carbapenemase": ["blaNDM-1", "blaNDM-5", "blaNDM-7", "blaNDM-9", "blaNDM-12"],
         "enzyme_class": "Ambler Class B metallo-β-lactamase",
         "hydrolysis_spectrum": ["Carbapenems", "Penicillins", "Cephalosporins"],
@@ -1763,7 +2083,7 @@ CARBAPENEMASE_PRODUCERS = {
     "OXA-48-LIKE_PRODUCERS": {
         "pathotype": "Various (UPEC/SEPEC predominant)",
         "st": [38, 131, 410, 648, 69, 405, 101],
-        "carbapenemase": ["blaOXA-48", "blaOXA-181", "blaOXA-232", "blaOXA-204", "blaOXA-244"],
+        "carbapenemase": ["blaOXA-48", "blaOXA-181", "blaOXA-232", "blaOXA-204", "blaOXA-244", "blaOXA-1207"],
         "enzyme_class": "Ambler Class D serine β-lactamase",
         "hydrolysis_spectrum": ["Carbapenems (weak)", "Penicillins"],
         "inhibitor_profile": {

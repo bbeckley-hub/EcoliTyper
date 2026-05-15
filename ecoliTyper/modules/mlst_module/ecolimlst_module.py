@@ -4,7 +4,7 @@ EcoliTyper Module for MLST Analysis of E. coli
 Comprehensive MLST analysis with beautiful HTML reporting
 Author: Beckley Brown <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025-12-16
+Date: 2025-12-16 /2026-05-15(Updated with ASCII art)
 Send a quick mail for any issues or further explanations.
 """
 
@@ -26,9 +26,18 @@ class EcoliTyper:
         self.script_dir = script_dir
         self.mlst_bin = script_dir / "mlst"
         
+        self.ascii_art = """
+███████╗ ██████╗ ██████╗ ██╗     ██╗████████╗██╗   ██╗██████╗ ███████╗██████╗ 
+██╔════╝██╔════╝██╔═══██╗██║     ██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
+█████╗  ██║     ██║   ██║██║     ██║   ██║    ╚████╔╝ ██████╔╝█████╗  ██████╔╝
+██╔══╝  ██║     ██║   ██║██║     ██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗
+███████╗╚██████╗╚██████╔╝███████╗██║   ██║      ██║   ██║     ███████╗██║  ██║
+╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
+        """
+        
         self.metadata = {
             "tool_name": "EcoliTyper MLST Analysis",
-            "version": "1.1.1", 
+            "version": "1.2.0", 
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -234,7 +243,7 @@ Detailed Alleles:
             f.write(tsv_content)
 
     def generate_html_report(self, mlst_results: Dict, output_dir: Path):
-        """Generate HTML report with beautiful purple styling"""
+        """Generate HTML report with beautiful purple styling and ASCII art"""
         
         # JavaScript for rotating quotes
         quotes_js = f"""
@@ -290,6 +299,26 @@ Detailed Alleles:
             margin-bottom: 30px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
+        }}
+        
+        .ascii-container {{
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 0, 0.3);
+        }}
+        
+        .ascii-art {{
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            white-space: pre;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            overflow-x: auto;
         }}
         
         .card {{
@@ -396,6 +425,11 @@ Detailed Alleles:
 <body>
     <div class="container">
         <div class="header">
+            <div class="ascii-container">
+                <div class="ascii-art">
+{self.ascii_art}
+                </div>
+            </div>
             <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper MLST Analysis Report</h1>
             <p style="color: #666; font-size: 1.2em;">Comprehensive MLST typing for Escherichia coli</p>
         </div>
@@ -462,7 +496,6 @@ Detailed Alleles:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper MLST(ecoli_achtman_4) Scheme
             </p>
         </div>
     </div>
@@ -622,7 +655,7 @@ Detailed Alleles:
         print(f"📄 TSV summary created: {summary_file}")
 
     def create_mlst_html_summary(self, all_results: Dict[str, Dict], output_dir: Path):
-        """Create HTML summary with beautiful styling"""
+        """Create HTML summary with beautiful styling and ASCII art"""
         summary_file = output_dir / "mlst_summary.html"
         
         # Get all unique gene names
@@ -685,6 +718,26 @@ Detailed Alleles:
             margin-bottom: 30px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
+        }}
+        
+        .ascii-container {{
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 0, 0.3);
+        }}
+        
+        .ascii-art {{
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            white-space: pre;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            overflow-x: auto;
         }}
         
         .card {{
@@ -799,6 +852,11 @@ Detailed Alleles:
 <body>
     <div class="container">
         <div class="header">
+            <div class="ascii-container">
+                <div class="ascii-art">
+{self.ascii_art}
+                </div>
+            </div>
             <h1>🧬 EcoliTyper - MLST Summary Report</h1>
             <p style="color: #666; font-size: 1.2em;">Comprehensive MLST analysis summary for all samples</p>
         </div>
@@ -891,7 +949,6 @@ Detailed Alleles:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                Analysis performed using EcoliTyper MLST(ecoli_achtman_4) Scheme
             </p>
         </div>
     </div>
@@ -905,6 +962,14 @@ Detailed Alleles:
 
     def run_mlst_batch(self, input_path: str, output_dir: Path, scheme: str = "ecoli_achtman_4") -> Dict[str, Dict]:
         """Run MLST analysis for multiple files"""
+        print(self.ascii_art)
+        print("🔬 EcoliTyper MLST Analysis")
+        print("=" * 50)
+        print(f"Input: {input_path}")
+        print(f"Output: {output_dir}")
+        print(f"Scheme: {scheme}")
+        print("=" * 50)
+        
         print("🔍 Searching for FASTA files...")
         fasta_files = self.find_fasta_files(input_path)
         
@@ -965,19 +1030,16 @@ Affiliation: University of Ghana Medical School
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    print("🧬 EcoliTyper MLST Analysis")
-    print("=" * 50)
-    print(f"Input: {args.input}")
-    print(f"Output: {output_dir}")
-    print(f"Scheme: {args.scheme}")
-    print("=" * 50)
-    
     if args.batch:
         results = analyzer.run_mlst_batch(args.input, output_dir, args.scheme)
         print(f"✅ Batch MLST completed! Processed {len(results)} samples")
     else:
         input_file = Path(args.input)
         if input_file.exists():
+            # For single file, we also print a simple banner but not the full ASCII (optional)
+            print(analyzer.ascii_art)
+            print("🔬 EcoliTyper MLST Analysis (Single File)")
+            print("=" * 50)
             result = analyzer.run_mlst_single(input_file, output_dir, args.scheme)
             print(f"✅ MLST completed for {input_file.name}: ST{result.get('st', 'ND')}")
         else:

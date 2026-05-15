@@ -4,7 +4,7 @@ EcoliTyper AMRfinderPlus - E. coli AMR Analysis with Dynamic Database
 Comprehensive AMR analysis for E. coli with beautiful HTML reporting - MAXIMUM SPEED VERSION
 Author: Beckley Brown <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025 / Updated 2026
+Date: 2025 / Updated 2026-05-15
 Send a quick mail for any issues or further explanations.
 """
 
@@ -53,8 +53,8 @@ class EcoliAMRfinderPlus:
         db_version = self._get_database_version() if self.bundled_database else "Unknown"
         
         self.metadata = {
-            "tool_name": "EcoliTyper AMRfinderPlus (BUNDLED)",
-            "version": "1.1.1",   # Updated version to reflect dynamic DB
+            "tool_name": "EcoliTyper AMRfinderPlus",
+            "version": "1.2.0",   # Updated version to reflect dynamic DB
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -119,6 +119,17 @@ class EcoliAMRfinderPlus:
             "Science knows no country, because knowledge belongs to humanity. - Louis Pasteur"
         ]
     
+    def _get_ascii_art(self) -> str:
+        """Return the ECOLITYPER ASCII art banner"""
+        return """
+███████╗ ██████╗ ██████╗ ██╗     ██╗████████╗██╗   ██╗██████╗ ███████╗██████╗ 
+██╔════╝██╔════╝██╔═══██╗██║     ██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
+█████╗  ██║     ██║   ██║██║     ██║   ██║    ╚████╔╝ ██████╔╝█████╗  ██████╔╝
+██╔══╝  ██║     ██║   ██║██║     ██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗
+███████╗╚██████╗╚██████╔╝███████╗██║   ██║      ██║   ██║     ███████╗██║  ██║
+╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
+        """
+    
     def _setup_logging(self):
         """Setup logging - must be called first in __init__"""
         logging.basicConfig(
@@ -154,9 +165,9 @@ class EcoliAMRfinderPlus:
             elif total_physical_cores <= 16:
                 optimal_cpus = max(8, total_physical_cores - 1)  # Use 15/16, 14/15, etc.
             elif total_physical_cores <= 32:
-                optimal_cpus = max(16, total_physical_cores - 2)  # Use 30/32, 29/31, etc.
+                optimal_cpus = max(16, total_physical_cores - 1)  # Use 31/32, 30/31, etc.
             else:
-                optimal_cpus = min(32, int(total_physical_cores * 0.90))  # Use 90% on huge systems
+                optimal_cpus = min(32, int(total_physical_cores * 0.95))  # Use 95% on huge systems
             
             # Ensure at least 1 CPU and not more than available cores
             optimal_cpus = max(1, min(optimal_cpus, total_physical_cores))
@@ -462,7 +473,7 @@ class EcoliAMRfinderPlus:
         return hits
     
     def _create_amrfinder_html_report(self, genome_name: str, hits: List[Dict], output_dir: str):
-        """Create comprehensive HTML report for AMRfinderPlus results with beautiful styling"""
+        """Create comprehensive HTML report for AMRfinderPlus results with beautiful styling and ASCII art"""
         
         # Analyze AMR results for E. coli
         analysis = self._analyze_ecoli_amr_results(hits)
@@ -515,6 +526,24 @@ class EcoliAMRfinderPlus:
             margin-bottom: 30px; 
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
+        }}
+        .ascii-container {{
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 0, 0.3);
+        }}
+        .ascii-art {{
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            white-space: pre;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            overflow-x: auto;
         }}
         .card {{ 
             background: rgba(255, 255, 255, 0.95); 
@@ -621,6 +650,11 @@ class EcoliAMRfinderPlus:
 <body>
     <div class="container">
         <div class="header">
+            <div class="ascii-container">
+                <div class="ascii-art">
+{self._get_ascii_art()}
+                </div>
+            </div>
             <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper AMRfinderPlus Analysis Report</h1>
             <p style="color: #666; font-size: 1.2em;">Comprehensive E. coli Antimicrobial Resistance Analysis</p>
         </div>
@@ -833,7 +867,6 @@ class EcoliAMRfinderPlus:
             <p><strong>GitHub:</strong> <a href="https://github.com/bbeckley-hub" target="_blank">https://github.com/bbeckley-hub</a></p>
             <p><strong>Affiliation:</strong> University of Ghana Medical School</p>
             <p style="margin-top: 20px; font-size: 0.9em; color: #ccc;">
-                with bundled AMRfinderPlus database
             </p>
         </div>
     </div>
@@ -1134,7 +1167,7 @@ class EcoliAMRfinderPlus:
                     }, f, indent=2)
     
     def _create_summary_html_report(self, all_results: Dict[str, Any], output_base: str):
-        """Create comprehensive HTML summary report with pattern discovery - UPDATED STYLING"""
+        """Create comprehensive HTML summary report with pattern discovery - UPDATED STYLING and ASCII art"""
         
         # Collect all data for pattern analysis
         all_hits = []
@@ -1232,6 +1265,24 @@ class EcoliAMRfinderPlus:
             margin-bottom: 30px; 
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
+        }}
+        .ascii-container {{
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 0, 0.3);
+        }}
+        .ascii-art {{
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            white-space: pre;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            overflow-x: auto;
         }}
         .card {{ 
             background: rgba(255, 255, 255, 0.95); 
@@ -1362,6 +1413,11 @@ class EcoliAMRfinderPlus:
 <body>
     <div class="container">
         <div class="header">
+            <div class="ascii-container">
+                <div class="ascii-art">
+{self._get_ascii_art()}
+                </div>
+            </div>
             <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper AMRfinderPlus - Summary Report</h1>
             <p style="color: #666; font-size: 1.2em;">Comprehensive E. coli Antimicrobial Resistance Analysis Across All Genomes</p>
             <p style="color: #666; font-size: 1.1em;">AMRfinderPlus {self.metadata['amrfinder_version']} | Database: {self.metadata['database_version']}</p>
@@ -1593,6 +1649,13 @@ class EcoliAMRfinderPlus:
     
     def process_multiple_genomes(self, genome_pattern: str, output_base: str = "ecoli_amrfinder_results") -> Dict[str, Any]:
         """Process multiple E. coli genomes using wildcard pattern - MAXIMUM SPEED"""
+        
+        # Print ASCII art banner at start (console)
+        print("\n" + "="*80)
+        print(self._get_ascii_art())
+        print("="*80)
+        print("🧬 EcoliTyper AMRfinderPlus - MAXIMUM SPEED MODE")
+        print("="*80)
         
         # Find genome files (support all FASTA extensions)
         fasta_patterns = [genome_pattern, f"{genome_pattern}.fasta", f"{genome_pattern}.fa", 

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 ECOLITYPER FASTA QC - Comprehensive Quality Control for E. coli with HTML Reports
+Includes species confirmation using fastANI (multi‑reference, treats Shigella as E. coli)
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School - Department of Medical Biochemistry
-Date: 2026-04-18
+Date: 2026-05-14 (Enhanced with proper Shigella handling)
 """
 
 import os
@@ -12,12 +13,13 @@ import glob
 import json
 import math
 import statistics
+import tempfile
+import subprocess
 from pathlib import Path
 from datetime import datetime
 from collections import Counter, defaultdict
 import argparse
 import logging
-import subprocess
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -25,9 +27,9 @@ from Bio import SeqIO
 from Bio.SeqUtils import gc_fraction
 
 class ECOLITYPER_QC:
-    """Comprehensive FASTA QC for Escherichia coli with HTML reporting"""
+    """Comprehensive FASTA QC for Escherichia coli with HTML reporting and species confirmation (ANI)"""
 
-    def __init__(self, cpus: int = None):
+    def __init__(self, cpus: int = None, ref_dir: str = "ref_db"):
         self.logger = self._setup_logging()
 
         self.science_quotes = [
@@ -45,7 +47,7 @@ class ECOLITYPER_QC:
 
         self.metadata = {
             "tool_name": "ECOLITYPER FASTA QC Analysis",
-            "version": "1.1.1",
+            "version": "1.2.0",
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -66,6 +68,10 @@ class ECOLITYPER_QC:
 
         self.cpus = cpus or os.cpu_count() or 1
 
+        # Species confirmation setup
+        self.ref_dir = Path(ref_dir)
+        self.species_refs = self._load_references()
+
     def _setup_logging(self):
         logging.basicConfig(
             level=logging.INFO,
@@ -84,8 +90,77 @@ class ECOLITYPER_QC:
         import random
         return random.choice(self.science_quotes)
 
+    def _load_references(self) -> Dict[str, Path]:
+        """Load reference genomes from ref_dir (expected: escherichia_coli_k12.fna, shigella_flexneri.fna, etc.)"""
+        refs = {}
+        if not self.ref_dir.exists():
+            self.logger.warning(f"Reference directory {self.ref_dir} not found. Species check disabled.")
+            return refs
+        for f in self.ref_dir.glob("*.fna"):
+            # Convert filename stem to readable species name (e.g., "escherichia_coli_k12" -> "Escherichia Coli K12")
+            species = f.stem.replace('_', ' ').title()
+            refs[species] = f
+        self.logger.info(f"Loaded {len(refs)} reference genomes for species check: {', '.join(refs.keys())}")
+        return refs
+
+    def _is_ecoli_or_shigella(self, species_name: str) -> bool:
+        """Return True if the species name indicates E. coli or Shigella (both are treated as E. coli)."""
+        s = species_name.lower()
+        return 'escherichia' in s or 'ecoli' in s or 'shigella' in s
+
+    def _run_species_ani(self, query_fasta: str, threads: int = 4) -> Optional[Dict]:
+        """Run fastANI against all references, return best match, ANI, and contamination flag.
+        Treats Shigella as E. coli for confirmation, and only flags contamination if the second best
+        is not also E. coli / Shigella."""
+        if not self.species_refs:
+            return None
+        results = []
+        for species, ref_path in self.species_refs.items():
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=True) as tmp_out:
+                cmd = ['fastANI', '-q', query_fasta, '-r', str(ref_path),
+                       '-o', tmp_out.name, '-t', str(threads)]
+                try:
+                    subprocess.run(cmd, capture_output=True, text=True, check=True)
+                    with open(tmp_out.name, 'r') as f:
+                        line = f.readline().strip()
+                        if line:
+                            # fastANI output is tab-separated: query, ref, ani, fragments, ...
+                            parts = line.split('\t')
+                            if len(parts) >= 3:
+                                try:
+                                    ani = float(parts[2])
+                                    results.append((species, ani))
+                                except ValueError:
+                                    self.logger.warning(f"Could not parse ANI from line: {line}")
+                except subprocess.CalledProcessError:
+                    self.logger.warning(f"fastANI failed for {Path(query_fasta).name} vs {species}")
+                    continue
+        if not results:
+            return None
+        results.sort(key=lambda x: x[1], reverse=True)
+        best_species, best_ani = results[0]
+        second_ani = results[1][1] if len(results) > 1 else None
+
+        # Pass if best match is E. coli/Shigella with ANI ≥95%
+        passed = (best_ani >= 95.0 and self._is_ecoli_or_shigella(best_species))
+
+        # Contamination only if the second best is NOT also E. coli/Shigella and still high
+        contamination = False
+        if second_ani and second_ani > 90.0 and (best_ani - second_ani) < 5.0:
+            if not self._is_ecoli_or_shigella(results[1][0]):
+                contamination = True
+
+        return {
+            'best_match': best_species,
+            'ani_percent': round(best_ani, 2),
+            'passed': passed,
+            'contamination_suspected': contamination,
+            'second_best_ani': round(second_ani, 2) if second_ani else None,
+            'all_matches': {sp: round(ani,2) for sp, ani in results}
+        }
+
     def analyze_file(self, fasta_file: str) -> Dict[str, Any]:
-        """Perform complete QC analysis on a FASTA file"""
+        """Perform complete QC analysis on a FASTA file, including species confirmation."""
         try:
             self.logger.info(f"🔬 Analyzing {os.path.basename(fasta_file)}...")
 
@@ -140,9 +215,9 @@ class ECOLITYPER_QC:
 
             max_n_run = 0
             n_runs = []
+            import re
             for seq in sequences:
                 seq_str = str(seq.seq).upper()
-                import re
                 for match in re.finditer(r'N+', seq_str):
                     run_len = len(match.group())
                     n_runs.append(run_len)
@@ -178,6 +253,9 @@ class ECOLITYPER_QC:
             length_distribution = self._create_length_bins(seq_lengths)
 
             ecoli_status = self._check_ecoli_specific(gc_percent, gc_contents, total_length, seq_lengths)
+
+            # ----- Species confirmation using fastANI -----
+            species_result = self._run_species_ani(fasta_file, self.cpus)
 
             results = {
                 'filename': os.path.basename(fasta_file),
@@ -223,10 +301,11 @@ class ECOLITYPER_QC:
                 'base_counts': dict(base_counts),
                 'n_runs': n_runs,
                 'ecoli_status': ecoli_status,
+                'species_check': species_result if species_result else {'error': 'Species check not available'},
                 'warnings': self._generate_warnings(
                     gc_percent, ambiguous_percent, max_n_run, max_homopolymer,
                     short_sequences, long_sequences, duplicate_sequences, len(sequences),
-                    ecoli_status
+                    ecoli_status, species_result
                 )
             }
 
@@ -243,15 +322,12 @@ class ECOLITYPER_QC:
 
     def _check_ecoli_specific(self, gc_percent: float, gc_contents: List[float],
                               total_length: int, seq_lengths: List[int]) -> Dict:
-        """Evaluate genome characteristics against E. coli reference ranges"""
         genome_size_ok = total_length >= 4500000 and total_length <= 5500000
         gc_ok = self.thresholds['gc_normal'][0] <= gc_percent <= self.thresholds['gc_normal'][1]
-
         if len(seq_lengths) <= 200:
             assembly_quality = "Good" if len(seq_lengths) <= 100 else "Moderate"
         else:
             assembly_quality = "Fragmented"
-
         return {
             'genome_size_mbp': total_length / 1000000,
             'genome_size_status': 'Normal' if genome_size_ok else 'Atypical',
@@ -286,16 +362,9 @@ class ECOLITYPER_QC:
 
     def _create_length_bins(self, lengths: List[int]) -> Dict[str, int]:
         bins = {
-            '< 100 bp': 0,
-            '100-500 bp': 0,
-            '500-1k bp': 0,
-            '1k-5k bp': 0,
-            '5k-10k bp': 0,
-            '10k-50k bp': 0,
-            '50k-100k bp': 0,
-            '100k-500k bp': 0,
-            '500k-1M bp': 0,
-            '> 1M bp': 0
+            '< 100 bp': 0, '100-500 bp': 0, '500-1k bp': 0, '1k-5k bp': 0,
+            '5k-10k bp': 0, '10k-50k bp': 0, '50k-100k bp': 0, '100k-500k bp': 0,
+            '500k-1M bp': 0, '> 1M bp': 0
         }
         for length in lengths:
             if length < 100:
@@ -324,90 +393,52 @@ class ECOLITYPER_QC:
                           max_n_run: int, max_homopolymer: int,
                           short_sequences: int, long_sequences: int,
                           duplicate_sequences: int, total_sequences: int,
-                          ecoli_status: Dict) -> List[Dict]:
+                          ecoli_status: Dict, species_result: Optional[Dict]) -> List[Dict]:
         warnings = []
-
         low, high = self.thresholds['gc_normal']
         if gc_percent < low:
-            warnings.append({
-                'level': 'warning',
-                'message': f'Low GC content ({gc_percent:.1f}%) - below E. coli range ({low}-{high}%)'
-            })
+            warnings.append({'level': 'warning', 'message': f'Low GC content ({gc_percent:.1f}%) - below E. coli range ({low}-{high}%)'})
         elif gc_percent > high:
-            warnings.append({
-                'level': 'warning',
-                'message': f'High GC content ({gc_percent:.1f}%) - above E. coli range ({low}-{high}%)'
-            })
+            warnings.append({'level': 'warning', 'message': f'High GC content ({gc_percent:.1f}%) - above E. coli range ({low}-{high}%)'})
 
         if ambiguous_percent > self.thresholds['ambiguous_critical']:
-            warnings.append({
-                'level': 'danger',
-                'message': f'High ambiguous bases ({ambiguous_percent:.2f}%) - may indicate poor quality'
-            })
+            warnings.append({'level': 'danger', 'message': f'High ambiguous bases ({ambiguous_percent:.2f}%) - may indicate poor quality'})
         elif ambiguous_percent > self.thresholds['ambiguous_warning']:
-            warnings.append({
-                'level': 'warning',
-                'message': f'Elevated ambiguous bases ({ambiguous_percent:.2f}%)'
-            })
+            warnings.append({'level': 'warning', 'message': f'Elevated ambiguous bases ({ambiguous_percent:.2f}%)'})
 
         if max_n_run > 100:
-            warnings.append({
-                'level': 'danger',
-                'message': f'Very long N-run detected ({max_n_run} bases) - may indicate assembly gaps'
-            })
+            warnings.append({'level': 'danger', 'message': f'Very long N-run detected ({max_n_run} bases) - may indicate assembly gaps'})
         elif max_n_run > 10:
-            warnings.append({
-                'level': 'warning',
-                'message': f'Long N-run detected ({max_n_run} bases)'
-            })
+            warnings.append({'level': 'warning', 'message': f'Long N-run detected ({max_n_run} bases)'})
 
         if max_homopolymer > 20:
-            warnings.append({
-                'level': 'danger',
-                'message': f'Very long homopolymer ({max_homopolymer} bases) - may cause sequencing errors'
-            })
+            warnings.append({'level': 'danger', 'message': f'Very long homopolymer ({max_homopolymer} bases) - may cause sequencing errors'})
         elif max_homopolymer > 10:
-            warnings.append({
-                'level': 'warning',
-                'message': f'Long homopolymer ({max_homopolymer} bases)'
-            })
+            warnings.append({'level': 'warning', 'message': f'Long homopolymer ({max_homopolymer} bases)'})
 
         if short_sequences > total_sequences * 0.5:
-            warnings.append({
-                'level': 'danger',
-                'message': f'Many short sequences ({short_sequences}) - may indicate poor assembly'
-            })
+            warnings.append({'level': 'danger', 'message': f'Many short sequences ({short_sequences}) - may indicate poor assembly'})
         elif short_sequences > total_sequences * 0.1:
-            warnings.append({
-                'level': 'warning',
-                'message': f'Some short sequences ({short_sequences})'
-            })
+            warnings.append({'level': 'warning', 'message': f'Some short sequences ({short_sequences})'})
 
         if long_sequences > 0:
-            warnings.append({
-                'level': 'warning',
-                'message': f'Very long sequences detected ({long_sequences}) - may indicate contamination'
-            })
+            warnings.append({'level': 'warning', 'message': f'Very long sequences detected ({long_sequences}) - may indicate contamination'})
 
         duplicate_percent = (duplicate_sequences / total_sequences) * 100 if total_sequences > 0 else 0
         if duplicate_percent > 10:
-            warnings.append({
-                'level': 'warning',
-                'message': f'Duplicate sequences detected ({duplicate_sequences}, {duplicate_percent:.1f}%)'
-            })
+            warnings.append({'level': 'warning', 'message': f'Duplicate sequences detected ({duplicate_sequences}, {duplicate_percent:.1f}%)'})
 
         if ecoli_status.get('genome_size_status') == 'Atypical':
-            warnings.append({
-                'level': 'warning',
-                'message': f'Atypical genome size ({ecoli_status["genome_size_mbp"]:.2f} Mbp) for E. coli (expected: {ecoli_status["expected_genome_size"]})'
-            })
+            warnings.append({'level': 'warning', 'message': f'Atypical genome size ({ecoli_status["genome_size_mbp"]:.2f} Mbp) for E. coli'})
 
         if ecoli_status.get('assembly_quality') == 'Fragmented':
-            warnings.append({
-                'level': 'warning',
-                'message': f'High contig count ({ecoli_status["contig_count"]}) - consider additional assembly polishing'
-            })
+            warnings.append({'level': 'warning', 'message': f'High contig count ({ecoli_status["contig_count"]}) - consider additional assembly polishing'})
 
+        if species_result and 'error' not in species_result:
+            if not species_result['passed']:
+                warnings.append({'level': 'danger', 'message': f"Species mismatch: best match is {species_result['best_match']} (ANI {species_result['ani_percent']}%). Expected E. coli/Shigella."})
+            if species_result['contamination_suspected']:
+                warnings.append({'level': 'danger', 'message': f"Contamination suspected: second best match is {results[1][0] if len(results)>1 else 'unknown'} (ANI {species_result['second_best_ani']}%), which is not E. coli/Shigella."})
         return warnings
 
     def create_individual_html_report(self, results: Dict[str, Any], output_dir: str) -> str:
@@ -426,6 +457,7 @@ class ECOLITYPER_QC:
         at_percent = results['at_percent']
         ambiguous_percent = results['ambiguous_percent']
         ecoli_status = results.get('ecoli_status', {})
+        species_check = results.get('species_check', {})
 
         warnings_html = ''
         if results.get('warnings'):
@@ -482,34 +514,40 @@ class ECOLITYPER_QC:
             genome_color = '#10b981' if ecoli_status['genome_size_status'] == 'Normal' else '#f59e0b'
             gc_color = '#10b981' if ecoli_status['gc_status'] == 'Normal' else '#f59e0b'
             assembly_color = '#10b981' if ecoli_status['assembly_quality'] == 'Good' else '#f59e0b' if ecoli_status['assembly_quality'] == 'Moderate' else '#dc2626'
-
             ecoli_html = f'''
             <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 10px; color: white;">
                 <h3 style="color: white; margin-bottom: 15px;">🧬 Escherichia coli Specific Analysis</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <div>
-                        <div style="font-size: 12px; opacity: 0.8;">Genome Size</div>
-                        <div style="font-size: 18px; font-weight: bold; color: {genome_color};">{ecoli_status['genome_size_mbp']:.2f} Mbp</div>
-                        <div style="font-size: 11px; opacity: 0.7;">Status: {ecoli_status['genome_size_status']}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 12px; opacity: 0.8;">GC Content</div>
-                        <div style="font-size: 18px; font-weight: bold; color: {gc_color};">{results['gc_percent']:.1f}%</div>
-                        <div style="font-size: 11px; opacity: 0.7;">Expected: {ecoli_status['expected_gc_range']}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 12px; opacity: 0.8;">Assembly Quality</div>
-                        <div style="font-size: 18px; font-weight: bold; color: {assembly_color};">{ecoli_status['assembly_quality']}</div>
-                        <div style="font-size: 11px; opacity: 0.7;">Contigs: {ecoli_status['contig_count']}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 12px; opacity: 0.8;">Expected Size</div>
-                        <div style="font-size: 18px; font-weight: bold;">{ecoli_status['expected_genome_size']}</div>
-                        <div style="font-size: 11px; opacity: 0.7;">Typical E. coli</div>
-                    </div>
+                    <div><div style="font-size: 12px; opacity: 0.8;">Genome Size</div><div style="font-size: 18px; font-weight: bold; color: {genome_color};">{ecoli_status['genome_size_mbp']:.2f} Mbp</div><div style="font-size: 11px; opacity: 0.7;">Status: {ecoli_status['genome_size_status']}</div></div>
+                    <div><div style="font-size: 12px; opacity: 0.8;">GC Content</div><div style="font-size: 18px; font-weight: bold; color: {gc_color};">{results['gc_percent']:.1f}%</div><div style="font-size: 11px; opacity: 0.7;">Expected: {ecoli_status['expected_gc_range']}</div></div>
+                    <div><div style="font-size: 12px; opacity: 0.8;">Assembly Quality</div><div style="font-size: 18px; font-weight: bold; color: {assembly_color};">{ecoli_status['assembly_quality']}</div><div style="font-size: 11px; opacity: 0.7;">Contigs: {ecoli_status['contig_count']}</div></div>
+                    <div><div style="font-size: 12px; opacity: 0.8;">Expected Size</div><div style="font-size: 18px; font-weight: bold;">{ecoli_status['expected_genome_size']}</div><div style="font-size: 11px; opacity: 0.7;">Typical E. coli</div></div>
                 </div>
             </div>
 '''
+
+        species_html = ''
+        if species_check and 'error' not in species_check:
+            pass_color = '#10b981' if species_check['passed'] else '#dc2626'
+            contam_color = '#f59e0b' if species_check['contamination_suspected'] else '#10b981'
+            # Explanatory note if Shigella is the best match
+            note = ''
+            if 'shigella' in species_check['best_match'].lower() and species_check['passed']:
+                note = '<p style="margin-top:10px; color:#fbbf24;"><i class="fas fa-info-circle"></i> Note: <em>Shigella</em> is genomically indistinguishable from <em>E. coli</em>. For the purpose of this pipeline, a best match to Shigella with ANI ≥95% is considered a confirmed <em>E. coli</em> / <em>Shigella</em> complex member.</p>'
+            species_html = f'''
+            <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 10px; color: white;">
+                <h3 style="color: white; margin-bottom: 15px;">🧬 Species Confirmation (fastANI)</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div><div style="font-size: 12px; opacity: 0.8;">Best Match</div><div style="font-size: 18px; font-weight: bold;">{species_check['best_match']}</div><div style="font-size: 11px;">ANI: {species_check['ani_percent']}%</div></div>
+                    <div><div style="font-size: 12px; opacity: 0.8;">E. coli / Shigella Confirmed</div><div style="font-size: 18px; font-weight: bold; color: {pass_color};">{'✓ Yes' if species_check['passed'] else '✗ No'}</div><div style="font-size: 11px;">Threshold ≥95% (E. coli or Shigella)</div></div>
+                    <div><div style="font-size: 12px; opacity: 0.8;">Contamination Suspected</div><div style="font-size: 18px; font-weight: bold; color: {contam_color};">{'⚠️ Yes' if species_check['contamination_suspected'] else '✓ No'}</div><div style="font-size: 11px;">Second best ANI >90% and not E. coli/Shigella</div></div>
+                </div>
+                {note}
+                <details style="margin-top: 15px;"><summary style="cursor: pointer; color: #3b82f6;">All ANI values</summary><ul>
+'''
+            for sp, ani in species_check['all_matches'].items():
+                species_html += f'<li>{sp}: {ani}%</li>'
+            species_html += '</ul></details></div>'
 
         html_content = f'''<!DOCTYPE html>
 <html lang="en">
@@ -518,354 +556,163 @@ class ECOLITYPER_QC:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ECOLITYPER - FASTA QC Report</title>
     <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
-        body {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #ffffff;
-            padding: 20px;
-            min-height: 100vh;
-        }}
-        .container {{
-            max-width: 1600px;
-            margin: 0 auto;
-        }}
-        .header {{
-            text-align: center;
-            margin-bottom: 30px;
-        }}
-        .ascii-container {{
-            background: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            border: 2px solid rgba(0, 255, 0, 0.3);
-        }}
-        .ascii-art {{
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.2;
-            white-space: pre;
-            color: #00ff00;
-            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-            overflow-x: auto;
-        }}
-        .quote-container {{
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            text-align: center;
-            min-height: 100px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: opacity 0.5s ease-in-out;
-        }}
-        .quote-text {{
-            font-size: 18px;
-            font-style: italic;
-            margin-bottom: 10px;
-            color: #ffffff;
-        }}
-        .quote-author {{
-            font-size: 14px;
-            color: #fbbf24;
-            font-weight: bold;
-        }}
-        .report-section {{
-            background: rgba(255, 255, 255, 0.95);
-            color: #1f2937;
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }}
-        .report-section h2 {{
-            color: #1e3a8a;
-            border-bottom: 3px solid #3b82f6;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            font-size: 24px;
-        }}
-        .metrics-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 15px;
-        }}
-        .metric-card {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }}
-        .metric-label {{
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 5px;
-        }}
-        .metric-value {{
-            font-size: 24px;
-            font-weight: bold;
-        }}
-        .stat-table {{
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }}
-        .stat-table th {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: bold;
-        }}
-        .stat-table td {{
-            padding: 10px;
-            border-bottom: 1px solid #e5e7eb;
-        }}
-        .stat-table tr:nth-child(even) {{
-            background-color: #f8fafc;
-        }}
-        .stat-table tr:hover {{
-            background-color: #e0f2fe;
-        }}
-        .footer {{
-            text-align: center;
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            font-size: 14px;
-        }}
-        .timestamp {{
-            color: #fbbf24;
-            font-weight: bold;
-        }}
-        .authorship {{
-            margin-top: 15px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            font-size: 12px;
-        }}
-        @media (max-width: 768px) {{
-            .ascii-art {{
-                font-size: 8px;
-            }}
-            .metrics-grid {{
-                grid-template-columns: 1fr;
-            }}
-        }}
+        *{{margin:0;padding:0;box-sizing:border-box}}
+        body{{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#fff;padding:20px;min-height:100vh}}
+        .container{{max-width:1600px;margin:0 auto}}
+        .header{{text-align:center;margin-bottom:30px}}
+        .ascii-container{{background:rgba(0,0,0,0.7);padding:20px;border-radius:15px;margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:2px solid rgba(0,255,0,0.3)}}
+        .ascii-art{{font-family:'Courier New',monospace;font-size:12px;line-height:1.2;white-space:pre;color:#0f0;text-shadow:0 0 10px rgba(0,255,0,0.5);overflow-x:auto}}
+        .quote-container{{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);padding:20px;border-radius:10px;margin-bottom:30px;text-align:center;min-height:100px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);transition:opacity 0.5s}}
+        .quote-text{{font-size:18px;font-style:italic;margin-bottom:10px;color:#fff}}
+        .quote-author{{font-size:14px;color:#fbbf24;font-weight:bold}}
+        .report-section{{background:rgba(255,255,255,0.95);color:#1f2937;padding:25px;border-radius:10px;margin-bottom:20px;box-shadow:0 4px 15px rgba(0,0,0,0.2)}}
+        .report-section h2{{color:#1e3a8a;border-bottom:3px solid #3b82f6;padding-bottom:10px;margin-bottom:20px;font-size:24px}}
+        .metrics-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-top:15px}}
+        .metric-card{{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15)}}
+        .metric-label{{font-size:14px;opacity:0.9;margin-bottom:5px}}
+        .metric-value{{font-size:24px;font-weight:bold}}
+        .stat-table{{width:100%;border-collapse:collapse;margin:20px 0;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.1)}}
+        .stat-table th{{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:12px;text-align:left;font-weight:bold}}
+        .stat-table td{{padding:10px;border-bottom:1px solid #e5e7eb}}
+        .stat-table tr:nth-child(even){{background-color:#f8fafc}}
+        .stat-table tr:hover{{background-color:#e0f2fe}}
+        .footer{{text-align:center;margin-top:30px;padding:20px;background:rgba(0,0,0,0.3);border-radius:10px;font-size:14px}}
+        .timestamp{{color:#fbbf24;font-weight:bold}}
+        .authorship{{margin-top:15px;padding:15px;background:rgba(255,255,255,0.1);border-radius:8px;font-size:12px}}
+        @media (max-width:768px){{.ascii-art{{font-size:8px}}.metrics-grid{{grid-template-columns:1fr}}}}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="ascii-container">
-                <div class="ascii-art">
+<div class="container">
+    <div class="header">
+        <div class="ascii-container"><div class="ascii-art">
 ███████╗ ██████╗ ██████╗ ██╗     ██╗████████╗██╗   ██╗██████╗ ███████╗██████╗ 
 ██╔════╝██╔════╝██╔═══██╗██║     ██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
 █████╗  ██║     ██║   ██║██║     ██║   ██║    ╚████╔╝ ██████╔╝█████╗  ██████╔╝
 ██╔══╝  ██║     ██║   ██║██║     ██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗
 ███████╗╚██████╗╚██████╔╝███████╗██║   ██║      ██║   ██║     ███████╗██║  ██║
 ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
-                </div>
-            </div>
-
-            <div class="quote-container" id="quoteContainer">
-                <div class="quote-text" id="quoteText">"{random_quote['text']}"</div>
-                <div class="quote-author" id="quoteAuthor">— {random_quote['author']}</div>
-            </div>
-        </div>
-
-        <div class="report-section">
-            <h2>📊 Sample Information</h2>
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-label">Sample Name</div>
-                    <div class="metric-value">{sample}</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Analysis Date</div>
-                    <div class="metric-value">{results['analysis_date']}</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">File Size</div>
-                    <div class="metric-value">{results['file_size_mb']:.2f} MB</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="report-section">
-            <h2>🎯 FASTA QC Summary</h2>
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-label">Total Sequences</div>
-                    <div class="metric-value">{total_sequences:,}</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Total Length</div>
-                    <div class="metric-value">{total_length:,}</div>
-                    <div class="metric-label">base pairs</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">N50</div>
-                    <div class="metric-value">{n50:,}</div>
-                    <div class="metric-label">base pairs</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">GC Content</div>
-                    <div class="metric-value">{gc_percent:.1f}%</div>
-                    <div class="metric-label">E. coli: 49-51%</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">AT Content</div>
-                    <div class="metric-value">{at_percent:.1f}%</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Ambiguous Bases</div>
-                    <div class="metric-value">{ambiguous_percent:.2f}%</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="report-section">
-            <h2>📈 Basic Statistics</h2>
-            <table class="stat-table">
-                <thead>
-                    <tr><th>Metric</th><th>Value</th><th>Description</th></tr>
-                </thead>
-                <tbody>
-                    <tr><td><strong>Total Sequences</strong></td><td>{results['total_sequences']:,}</td><td>Number of sequences in the file</td></tr>
-                    <tr><td><strong>Total Length</strong></td><td>{results['total_length']:,} bp</td><td>Total number of bases</td></tr>
-                    <tr><td><strong>Total Bases</strong></td><td>{results['total_bases']:,} bp</td><td>Total bases excluding ambiguous characters</td></tr>
-                    <tr><td><strong>Longest Sequence</strong></td><td>{results['longest_sequence']:,} bp</td><td>Length of the longest sequence</td></tr>
-                    <tr><td><strong>Shortest Sequence</strong></td><td>{results['shortest_sequence']:,} bp</td><td>Length of the shortest sequence</td></tr>
-                    <tr><td><strong>Mean Length</strong></td><td>{results['mean_length']:,.0f} bp</td><td>Average sequence length</td></tr>
-                    <tr><td><strong>Median Length</strong></td><td>{results['median_length']:,} bp</td><td>Median sequence length</td></tr>
-                    <tr><td><strong>N50</strong></td><td>{results['n50']:,} bp</td><td>Length for which 50% of total bases are in longer sequences</td></tr>
-                    <tr><td><strong>N75</strong></td><td>{results['n75']:,} bp</td><td>Length for which 75% of total bases are in longer sequences</td></tr>
-                    <tr><td><strong>N90</strong></td><td>{results['n90']:,} bp</td><td>Length for which 90% of total bases are in longer sequences</td></tr>
-                    <tr><td><strong>L50</strong></td><td>{results['l50']:,}</td><td>Number of sequences that make up 50% of total length</td></tr>
-                    <tr><td><strong>L75</strong></td><td>{results['l75']:,}</td><td>Number of sequences that make up 75% of total length</td></tr>
-                    <tr><td><strong>L90</strong></td><td>{results['l90']:,}</td><td>Number of sequences that make up 90% of total length</td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="report-section">
-            <h2>🧬 Nucleotide Composition</h2>
-            {composition_html}
-        </div>
-
-        <div class="report-section">
-            <h2>📊 Length Distribution</h2>
-            <table class="stat-table">
-                <thead><tr><th>Length Range</th><th>Count</th><th>Percentage</th></tr></thead>
-                <tbody>{length_dist_html}</tbody>
-            </table>
-        </div>
-
-        {ecoli_html}
-
-        <div class="report-section">
-            <h2>⚠️ Quality Warnings</h2>
-            {warnings_html if warnings_html else '<p style="color: #10b981; font-weight: bold;">✅ No quality warnings detected</p>'}
-        </div>
-
-        <div class="report-section">
-            <h2>📋 Additional Statistics</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
-                <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; color: #0369a1; border: 1px solid #bae6fd;">
-                    <div style="font-size: 16px; font-weight: bold;">{results['sequences_with_n']:,}</div>
-                    <div style="font-size: 12px;">Sequences with Ns</div>
-                </div>
-                <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; color: #0369a1; border: 1px solid #bae6fd;">
-                    <div style="font-size: 16px; font-weight: bold;">{results['total_n_bases']:,}</div>
-                    <div style="font-size: 12px;">Total N Bases</div>
-                </div>
-                <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; color: #0369a1; border: 1px solid #bae6fd;">
-                    <div style="font-size: 16px; font-weight: bold;">{results['max_n_run']:,}</div>
-                    <div style="font-size: 12px;">Max N-run</div>
-                </div>
-                <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; color: #0369a1; border: 1px solid #bae6fd;">
-                    <div style="font-size: 16px; font-weight: bold;">{results['homopolymers_count']:,}</div>
-                    <div style="font-size: 12px;">Homopolymers</div>
-                </div>
-                <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; color: #0369a1; border: 1px solid #bae6fd;">
-                    <div style="font-size: 16px; font-weight: bold;">{results['max_homopolymer']:,}</div>
-                    <div style="font-size: 12px;">Max Homopolymer</div>
-                </div>
-                <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; color: #0369a1; border: 1px solid #bae6fd;">
-                    <div style="font-size: 16px; font-weight: bold;">{results['duplicate_sequences']:,}</div>
-                    <div style="font-size: 12px;">Duplicate Sequences</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p><strong>ECOLITYPER</strong> - FASTA QC Analysis Module</p>
-            <p class="timestamp">Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
-            <div class="authorship">
-                <p><strong>Technical Support & Inquiries:</strong></p>
-                <p>Author: Brown Beckley | GitHub: bbeckley-hub</p>
-                <p>Email: brownbeckley94@gmail.com</p>
-                <p>Affiliation: University of Ghana Medical School - Department of Medical Biochemistry</p>
-            </div>
+        </div></div>
+        <div class="quote-container" id="quoteContainer">
+            <div class="quote-text" id="quoteText">"{random_quote['text']}"</div>
+            <div class="quote-author" id="quoteAuthor">— {random_quote['author']}</div>
         </div>
     </div>
 
-    <script>
-        const quotes = {json.dumps(self.science_quotes)};
-        function getRandomQuote() {{
-            return quotes[Math.floor(Math.random() * quotes.length)];
-        }}
-        function displayQuote() {{
-            const quoteContainer = document.getElementById('quoteContainer');
-            const quoteText = document.getElementById('quoteText');
-            const quoteAuthor = document.getElementById('quoteAuthor');
-            quoteContainer.style.opacity = '0';
-            setTimeout(() => {{
-                const quote = getRandomQuote();
-                quoteText.textContent = '"' + quote.text + '"';
-                quoteAuthor.textContent = '— ' + quote.author;
-                quoteContainer.style.opacity = '1';
-            }}, 500);
-        }}
-        setInterval(displayQuote, 10000);
-        function printReport() {{ window.print(); }}
-        function exportToJSON() {{
-            const reportData = {json.dumps(results, indent=2)};
-            const dataStr = JSON.stringify(reportData, null, 2);
-            const dataBlob = new Blob([dataStr], {{ type: 'application/json' }});
-            const url = URL.createObjectURL(dataBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = '{filename_no_ext}_ecolityper_qc_report.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }}
-    </script>
+    <div class="report-section">
+        <h2>📊 Sample Information</h2>
+        <div class="metrics-grid">
+            <div class="metric-card"><div class="metric-label">Sample Name</div><div class="metric-value">{sample}</div></div>
+            <div class="metric-card"><div class="metric-label">Analysis Date</div><div class="metric-value">{results['analysis_date']}</div></div>
+            <div class="metric-card"><div class="metric-label">File Size</div><div class="metric-value">{results['file_size_mb']:.2f} MB</div></div>
+        </div>
+    </div>
+
+    <div class="report-section">
+        <h2>🎯 FASTA QC Summary</h2>
+        <div class="metrics-grid">
+            <div class="metric-card"><div class="metric-label">Total Sequences</div><div class="metric-value">{total_sequences:,}</div></div>
+            <div class="metric-card"><div class="metric-label">Total Length</div><div class="metric-value">{total_length:,}</div><div class="metric-label">bp</div></div>
+            <div class="metric-card"><div class="metric-label">N50</div><div class="metric-value">{n50:,}</div><div class="metric-label">bp</div></div>
+            <div class="metric-card"><div class="metric-label">GC Content</div><div class="metric-value">{gc_percent:.1f}%</div><div class="metric-label">E. coli: 49-51%</div></div>
+            <div class="metric-card"><div class="metric-label">AT Content</div><div class="metric-value">{at_percent:.1f}%</div></div>
+            <div class="metric-card"><div class="metric-label">Ambiguous Bases</div><div class="metric-value">{ambiguous_percent:.2f}%</div></div>
+        </div>
+    </div>
+
+    <div class="report-section">
+        <h2>📈 Basic Statistics</h2>
+        <table class="stat-table"><thead><tr><th>Metric</th><th>Value</th><th>Description</th></tr></thead><tbody>
+            <tr><td><strong>Total Sequences</strong></td><td>{results['total_sequences']:,}</td><td>Number of sequences in the file</th></tr>
+            <tr><td><strong>Total Length</strong></td><td>{results['total_length']:,} bp</td><td>Total number of bases</th></tr>
+            <tr><td><strong>Total Bases</strong></td><td>{results['total_bases']:,} bp</th><td>Total bases excluding ambiguous characters</th></tr>
+            <tr><td><strong>Longest Sequence</strong></td><td>{results['longest_sequence']:,} bp</th><td>Length of the longest sequence</th></tr>
+            <tr><td><strong>Shortest Sequence</strong></td><td>{results['shortest_sequence']:,} bp</th><td>Length of the shortest sequence</th></tr>
+            <tr><td><strong>Mean Length</strong></td><td>{results['mean_length']:,.0f} bp</th><td>Average sequence length</th></tr>
+            <tr><td><strong>Median Length</strong></td><td>{results['median_length']:,} bp</th><td>Median sequence length</th></tr>
+            <tr><td><strong>N50</strong></td><td>{results['n50']:,} bp</th><td>Length for which 50% of total bases are in longer sequences</th></tr>
+            <tr><td><strong>N75</strong></td><td>{results['n75']:,} bp</th><td>Length for which 75% of total bases are in longer sequences</th></tr>
+            <tr><td><strong>N90</strong></td><td>{results['n90']:,} bp</th><td>Length for which 90% of total bases are in longer sequences</th></tr>
+            <tr><td><strong>L50</strong></td><td>{results['l50']:,}</th><td>Number of sequences that make up 50% of total length</th></tr>
+            <tr><td><strong>L75</strong></td><td>{results['l75']:,}</th><td>Number of sequences that make up 75% of total length</th></tr>
+            <tr><td><strong>L90</strong></td><td>{results['l90']:,}</th><td>Number of sequences that make up 90% of total length</th></tr>
+        </tbody></table>
+    </div>
+
+    <div class="report-section">
+        <h2>🧬 Nucleotide Composition</h2>
+        {composition_html}
+    </div>
+
+    <div class="report-section">
+        <h2>📊 Length Distribution</h2>
+        <table class="stat-table"><thead><tr><th>Length Range</th><th>Count</th><th>Percentage</th></tr></thead><tbody>{length_dist_html}</tbody></table>
+    </div>
+
+    {ecoli_html}
+    {species_html}
+
+    <div class="report-section">
+        <h2>⚠️ Quality Warnings</h2>
+        {warnings_html if warnings_html else '<p style="color: #10b981; font-weight: bold;">✅ No quality warnings detected</p>'}
+    </div>
+
+    <div class="report-section">
+        <h2>📋 Additional Statistics</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div style="background:#f0f9ff;padding:15px;border-radius:8px;color:#0369a1;border:1px solid #bae6fd;"><div style="font-size:16px;font-weight:bold">{results['sequences_with_n']:,}</div><div>Sequences with Ns</div></div>
+            <div style="background:#f0f9ff;padding:15px;border-radius:8px;color:#0369a1;border:1px solid #bae6fd;"><div style="font-size:16px;font-weight:bold">{results['total_n_bases']:,}</div><div>Total N Bases</div></div>
+            <div style="background:#f0f9ff;padding:15px;border-radius:8px;color:#0369a1;border:1px solid #bae6fd;"><div style="font-size:16px;font-weight:bold">{results['max_n_run']:,}</div><div>Max N-run</div></div>
+            <div style="background:#f0f9ff;padding:15px;border-radius:8px;color:#0369a1;border:1px solid #bae6fd;"><div style="font-size:16px;font-weight:bold">{results['homopolymers_count']:,}</div><div>Homopolymers</div></div>
+            <div style="background:#f0f9ff;padding:15px;border-radius:8px;color:#0369a1;border:1px solid #bae6fd;"><div style="font-size:16px;font-weight:bold">{results['max_homopolymer']:,}</div><div>Max Homopolymer</div></div>
+            <div style="background:#f0f9ff;padding:15px;border-radius:8px;color:#0369a1;border:1px solid #bae6fd;"><div style="font-size:16px;font-weight:bold">{results['duplicate_sequences']:,}</div><div>Duplicate Sequences</div></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p><strong>ECOLITYPER</strong> - FASTA QC Analysis Module</p>
+        <p class="timestamp">Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+        <div class="authorship">
+            <p><strong>Technical Support & Inquiries:</strong></p>
+            <p>Author: Brown Beckley | GitHub: bbeckley-hub</p>
+            <p>Email: brownbeckley94@gmail.com</p>
+            <p>Affiliation: University of Ghana Medical School - Department of Medical Biochemistry</p>
+        </div>
+    </div>
+</div>
+<script>
+    const quotes = {json.dumps(self.science_quotes)};
+    function getRandomQuote() {{ return quotes[Math.floor(Math.random() * quotes.length)]; }}
+    function displayQuote() {{
+        const quoteContainer = document.getElementById('quoteContainer');
+        const quoteText = document.getElementById('quoteText');
+        const quoteAuthor = document.getElementById('quoteAuthor');
+        quoteContainer.style.opacity = '0';
+        setTimeout(() => {{
+            const quote = getRandomQuote();
+            quoteText.textContent = '"' + quote.text + '"';
+            quoteAuthor.textContent = '— ' + quote.author;
+            quoteContainer.style.opacity = '1';
+        }}, 500);
+    }}
+    setInterval(displayQuote, 10000);
+    function printReport() {{ window.print(); }}
+    function exportToJSON() {{
+        const reportData = {json.dumps(results, indent=2)};
+        const dataStr = JSON.stringify(reportData, null, 2);
+        const dataBlob = new Blob([dataStr], {{ type: 'application/json' }});
+        const url = URL.createObjectURL(dataBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '{filename_no_ext}_ecolityper_qc_report.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }}
+</script>
 </body>
 </html>'''
-
         with open(html_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
 
@@ -883,21 +730,28 @@ class ECOLITYPER_QC:
             self.logger.warning("No successful analyses to create summary report")
             return
 
+        # Build TSV with species columns
         tsv_file = os.path.join(output_dir, "FASTA_QC_summary.tsv")
+        headers = [
+            'Filename', 'Total Sequences', 'Total Length', 'Total Bases',
+            'GC Content (%)', 'AT Content (%)', 'N50', 'N75', 'N90',
+            'Median Length', 'Mean Length', 'Longest Sequence', 'Shortest Sequence',
+            'Ambiguous Bases (%)', 'Sequences with Ns', 'Max N-run',
+            'Homopolymers', 'Max Homopolymer', 'Duplicate Sequences',
+            'Short Sequences (<100 bp)', 'Long Sequences (>1M bp)',
+            'File Size (MB)', 'Warnings', 'E. coli Status',
+            'Best Species', 'ANI (%)', 'E. coli / Shigella Confirmed', 'Contamination Suspected'
+        ]
         with open(tsv_file, 'w', encoding='utf-8') as f:
-            headers = [
-                'Filename', 'Total Sequences', 'Total Length', 'Total Bases',
-                'GC Content (%)', 'AT Content (%)', 'N50', 'N75', 'N90',
-                'Median Length', 'Mean Length', 'Longest Sequence', 'Shortest Sequence',
-                'Ambiguous Bases (%)', 'Sequences with Ns', 'Max N-run',
-                'Homopolymers', 'Max Homopolymer', 'Duplicate Sequences',
-                'Short Sequences (<100 bp)', 'Long Sequences (>1M bp)',
-                'File Size (MB)', 'Warnings', 'E. coli Status'
-            ]
             f.write('\t'.join(headers) + '\n')
             for result in successful_results:
                 ecoli_status = result.get('ecoli_status', {})
                 status_str = f"GC:{ecoli_status.get('gc_status', 'Unknown')},Size:{ecoli_status.get('genome_size_status', 'Unknown')}"
+                sc = result.get('species_check', {})
+                best_species = sc.get('best_match', 'ND')
+                ani = sc.get('ani_percent', 'ND')
+                ec_confirmed = 'Yes' if sc.get('passed') else 'No'
+                contam = 'Yes' if sc.get('contamination_suspected') else 'No'
                 row = [
                     result['filename'],
                     str(result['total_sequences']),
@@ -922,15 +776,21 @@ class ECOLITYPER_QC:
                     str(result['long_sequences']),
                     f"{result['file_size_mb']:.2f}",
                     str(len(result.get('warnings', []))),
-                    status_str
+                    status_str,
+                    best_species,
+                    str(ani),
+                    ec_confirmed,
+                    contam
                 ]
                 f.write('\t'.join(row) + '\n')
 
+        # JSON summary (unchanged)
         json_summary = self._create_json_summary(successful_results)
         json_file = os.path.join(output_dir, "FASTA_QC_summary.json")
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(json_summary, f, indent=2, default=str)
 
+        # HTML summary (update to include species columns)
         html_file = os.path.join(output_dir, "FASTA_QC_summary.html")
         self._create_summary_html_report(successful_results, html_file, json_summary)
 
@@ -966,6 +826,7 @@ class ECOLITYPER_QC:
                 'total_warnings': sum(len(r.get('warnings', [])) for r in successful_results),
                 'files_with_high_gc': sum(1 for r in successful_results if r['gc_percent'] > self.thresholds['gc_normal'][1]),
                 'files_with_low_gc': sum(1 for r in successful_results if r['gc_percent'] < self.thresholds['gc_normal'][0]),
+                'files_confirmed_ecoli': sum(1 for r in successful_results if r.get('species_check', {}).get('passed', False))
             },
             'files': successful_results
         }
@@ -977,83 +838,92 @@ class ECOLITYPER_QC:
         for result in successful_results:
             warning_count = len(result.get('warnings', []))
             warning_class = 'none' if warning_count == 0 else 'low' if warning_count < 3 else 'high'
+            sc = result.get('species_check', {})
+            best_species = sc.get('best_match', 'ND')
+            ani = sc.get('ani_percent', 'ND')
+            ec_confirmed = '✓' if sc.get('passed') else '✗'
+            contam_flag = '⚠️' if sc.get('contamination_suspected') else ''
+            # Species display remains as before
+            species_display = f"{best_species} {ec_confirmed} {contam_flag}"
+            # Format ANI display (add % sign)
+            ani_display = f"{ani}%" if ani != 'ND' else 'ND'
             table_rows += f'''
-                        <tr>
-                            <td><strong>{result['filename']}</strong></td>
-                            <td>{result['total_sequences']:,}</td>
-                            <td>{result['total_length']:,}</td>
-                            <td>{result['total_bases']:,}</td>
-                            <td>{result['gc_percent']:.1f}</td>
-                            <td>{result['at_percent']:.1f}</td>
-                            <td>{result['n50']:,}</td>
-                            <td>{result['n75']:,}</td>
-                            <td>{result['n90']:,}</td>
-                            <td>{result['median_length']:,}</td>
-                            <td>{result['mean_length']:.0f}</td>
-                            <td>{result['longest_sequence']:,}</td>
-                            <td>{result['shortest_sequence']:,}</td>
-                            <td>{result['ambiguous_percent']:.2f}</td>
-                            <td>{result['sequences_with_n']:,}</td>
-                            <td>{result['max_n_run']:,}</td>
-                            <td>{result['homopolymers_count']:,}</td>
-                            <td>{result['max_homopolymer']:,}</td>
-                            <td>{result['duplicate_sequences']:,}</td>
-                            <td>{result['short_sequences']:,}</td>
-                            <td>{result['long_sequences']:,}</td>
-                            <td>{result['file_size_mb']:.2f}</td>
-                            <td><span style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; background: {'#d4edda' if warning_class == 'none' else '#fff3cd' if warning_class == 'low' else '#f8d7da'}; color: {'#155724' if warning_class == 'none' else '#856404' if warning_class == 'low' else '#721c24'};">{warning_count}</span></td>
-                        </tr>
-'''
+                            <tr>
+                                <td><strong>{result['filename']}</strong></td>
+                                <td>{result['total_sequences']:,}</td>
+                                <td>{result['total_length']:,}</td>
+                                <td>{result['total_bases']:,}</td>
+                                <td>{result['gc_percent']:.1f}</td>
+                                <td>{result['at_percent']:.1f}</td>
+                                <td>{result['n50']:,}</td>
+                                <td>{result['n75']:,}</td>
+                                <td>{result['n90']:,}</td>
+                                <td>{result['median_length']:,}</td>
+                                <td>{result['mean_length']:.0f}</td>
+                                <td>{result['longest_sequence']:,}</td>
+                                <td>{result['shortest_sequence']:,}</td>
+                                <td>{result['ambiguous_percent']:.2f}</td>
+                                <td>{result['sequences_with_n']:,}</td>
+                                <td>{result['max_n_run']:,}</td>
+                                <td>{result['homopolymers_count']:,}</td>
+                                <td>{result['max_homopolymer']:,}</td>
+                                <td>{result['duplicate_sequences']:,}</td>
+                                <td>{result['short_sequences']:,}</td>
+                                <td>{result['long_sequences']:,}</td>
+                                <td>{result['file_size_mb']:.2f}</td>
+                                <td><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:bold;background:{'#d4edda' if warning_class=='none' else '#fff3cd' if warning_class=='low' else '#f8d7da'};color:{'#155724' if warning_class=='none' else '#856404' if warning_class=='low' else '#721c24'};">{warning_count}</span></td>
+                                <td>{ani_display}</td>
+                                <td>{species_display}</td>
+                            </tr>
+    '''
         total_sequences = sum(r['total_sequences'] for r in successful_results)
         total_length = sum(r['total_length'] for r in successful_results)
         total_warnings = sum(len(r.get('warnings', [])) for r in successful_results)
 
         html_content = f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ECOLITYPER - FASTA QC Summary Report</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #ffffff; padding: 20px; min-height: 100vh; }}
-        .container {{ max-width: 1800px; margin: 0 auto; }}
-        .header {{ text-align: center; margin-bottom: 30px; }}
-        .ascii-container {{ background: rgba(0, 0, 0, 0.7); padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); border: 2px solid rgba(0, 255, 0, 0.3); }}
-        .ascii-art {{ font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2; white-space: pre; color: #00ff00; text-shadow: 0 0 10px rgba(0, 255, 0, 0.5); overflow-x: auto; }}
-        .quote-container {{ background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 20px; border-radius: 10px; margin-bottom: 30px; text-align: center; min-height: 100px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); transition: opacity 0.5s ease-in-out; }}
-        .quote-text {{ font-size: 18px; font-style: italic; margin-bottom: 10px; color: #ffffff; }}
-        .quote-author {{ font-size: 14px; color: #fbbf24; font-weight: bold; }}
-        .report-section {{ background: rgba(255, 255, 255, 0.95); color: #1f2937; padding: 25px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }}
-        .report-section h2 {{ color: #1e3a8a; border-bottom: 3px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; font-size: 24px; }}
-        .summary-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }}
-        .summary-table th {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px; text-align: left; font-weight: bold; position: sticky; top: 0; }}
-        .summary-table td {{ padding: 10px; border-bottom: 1px solid #e5e7eb; }}
-        .summary-table tr:nth-child(even) {{ background-color: #f8fafc; }}
-        .summary-table tr:hover {{ background-color: #e0f2fe; }}
-        .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }}
-        .stat-card {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }}
-        .stat-value {{ font-size: 24px; font-weight: bold; margin-bottom: 5px; }}
-        .stat-label {{ font-size: 12px; opacity: 0.9; }}
-        .footer {{ text-align: center; margin-top: 30px; padding: 20px; background: rgba(0, 0, 0, 0.3); border-radius: 10px; font-size: 14px; }}
-        .timestamp {{ color: #fbbf24; font-weight: bold; }}
-        .table-container {{ overflow-x: auto; margin: 20px 0; max-height: 600px; overflow-y: auto; }}
-        @media (max-width: 768px) {{ .ascii-art {{ font-size: 8px; }} .summary-table {{ font-size: 11px; }} }}
-    </style>
-</head>
-<body>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ECOLITYPER - FASTA QC Summary Report</title>
+        <style>
+            *{{margin:0;padding:0;box-sizing:border-box}}
+            body{{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#fff;padding:20px;min-height:100vh}}
+            .container{{max-width:1800px;margin:0 auto}}
+            .header{{text-align:center;margin-bottom:30px}}
+            .ascii-container{{background:rgba(0,0,0,0.7);padding:20px;border-radius:15px;margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:2px solid rgba(0,255,0,0.3)}}
+            .ascii-art{{font-family:'Courier New',monospace;font-size:12px;line-height:1.2;white-space:pre;color:#0f0;text-shadow:0 0 10px rgba(0,255,0,0.5);overflow-x:auto}}
+            .quote-container{{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);padding:20px;border-radius:10px;margin-bottom:30px;text-align:center;min-height:100px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);transition:opacity 0.5s}}
+            .quote-text{{font-size:18px;font-style:italic;margin-bottom:10px;color:#fff}}
+            .quote-author{{font-size:14px;color:#fbbf24;font-weight:bold}}
+            .report-section{{background:rgba(255,255,255,0.95);color:#1f2937;padding:25px;border-radius:10px;margin-bottom:20px;box-shadow:0 4px 15px rgba(0,0,0,0.2)}}
+            .report-section h2{{color:#1e3a8a;border-bottom:3px solid #3b82f6;padding-bottom:10px;margin-bottom:20px;font-size:24px}}
+            .stats-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:20px}}
+            .stat-card{{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:15px;border-radius:8px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15)}}
+            .stat-value{{font-size:24px;font-weight:bold;margin-bottom:5px}}
+            .stat-label{{font-size:12px;opacity:0.9}}
+            .summary-table{{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px}}
+            .summary-table th{{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:12px;text-align:left;font-weight:bold;position:sticky;top:0}}
+            .summary-table td{{padding:10px;border-bottom:1px solid #e5e7eb}}
+            .summary-table tr:nth-child(even){{background-color:#f8fafc}}
+            .summary-table tr:hover{{background-color:#e0f2fe}}
+            .table-container{{overflow-x:auto;margin:20px 0;max-height:600px;overflow-y:auto}}
+            .footer{{text-align:center;margin-top:30px;padding:20px;background:rgba(0,0,0,0.3);border-radius:10px;font-size:14px}}
+            .timestamp{{color:#fbbf24;font-weight:bold}}
+            @media (max-width:768px){{.ascii-art{{font-size:8px}}.summary-table{{font-size:11px}}}}
+        </style>
+    </head>
+    <body>
     <div class="container">
         <div class="header">
-            <div class="ascii-container">
-                <div class="ascii-art">
-███████╗ ██████╗ ██████╗ ██╗     ██╗████████╗██╗   ██╗██████╗ ███████╗██████╗ 
-██╔════╝██╔════╝██╔═══██╗██║     ██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
-█████╗  ██║     ██║   ██║██║     ██║   ██║    ╚████╔╝ ██████╔╝█████╗  ██████╔╝
-██╔══╝  ██║     ██║   ██║██║     ██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗
-███████╗╚██████╗╚██████╔╝███████╗██║   ██║      ██║   ██║     ███████╗██║  ██║
-╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
-                </div>
-            </div>
+            <div class="ascii-container"><div class="ascii-art">
+    ███████╗ ██████╗ ██████╗ ██╗     ██╗████████╗██╗   ██╗██████╗ ███████╗██████╗ 
+    ██╔════╝██╔════╝██╔═══██╗██║     ██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
+    █████╗  ██║     ██║   ██║██║     ██║   ██║    ╚████╔╝ ██████╔╝█████╗  ██████╔╝
+    ██╔══╝  ██║     ██║   ██║██║     ██║   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗
+    ███████╗╚██████╗╚██████╔╝███████╗██║   ██║      ██║   ██║     ███████╗██║  ██║
+    ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝
+            </div></div>
             <div class="quote-container" id="quoteContainer">
                 <div class="quote-text" id="quoteText">"{random_quote['text']}"</div>
                 <div class="quote-author" id="quoteAuthor">— {random_quote['author']}</div>
@@ -1067,33 +937,30 @@ class ECOLITYPER_QC:
                 <div class="stat-card"><div class="stat-value">{total_length:,}</div><div class="stat-label">TOTAL BASES</div></div>
                 <div class="stat-card"><div class="stat-value">{total_warnings}</div><div class="stat-label">TOTAL WARNINGS</div></div>
             </div>
-            <h3>Escherichia coli Analysis Statistics</h3>
             <p><strong>Analysis Date:</strong> {self.metadata['analysis_date']}</p>
             <p><strong>Tool Version:</strong> {self.metadata['version']}</p>
-            <p><strong>BioPython Version:</strong> {self.metadata['biopython_version']}</p>
         </div>
         <div class="report-section">
-            <h2>📈 Detailed FASTA QC Results</h2>
-            <p style="color: #666; margin-bottom: 15px;">Scroll horizontally to view all columns.</p>
+            <h2>📈 Detailed FASTA QC Results + Species Check</h2>
+            <p style="color:#666;margin-bottom:15px;">Scroll horizontally to view all columns. Species column shows best match, E. coli/Shigella confirmation (✓/✗), and contamination warning (⚠️). ANI (%) column displays the identity to the best match.</p>
             <div class="table-container">
                 <table class="summary-table" id="qc-summary-table">
-                    <thead><tr>
-                        <th>Filename</th><th>Total Sequences</th><th>Total Length</th><th>Total Bases</th>
-                        <th>GC Content (%)</th><th>AT Content (%)</th><th>N50</th><th>N75</th><th>N90</th>
-                        <th>Median Length</th><th>Mean Length</th><th>Longest Sequence</th><th>Shortest Sequence</th>
-                        <th>Ambiguous Bases (%)</th><th>Sequences with Ns</th><th>Max N-run</th>
-                        <th>Homopolymers</th><th>Max Homopolymer</th><th>Duplicate Sequences</th>
-                        <th>Short Sequences (<100 bp)</th><th>Long Sequences (>1M bp)</th>
-                        <th>File Size (MB)</th><th>Warnings</th>
-                    </tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Filename</th><th>Seq</th><th>Length</th><th>Bases</th><th>GC%</th><th>AT%</th><th>N50</th><th>N75</th><th>N90</th>
+                            <th>Median</th><th>Mean</th><th>Longest</th><th>Shortest</th><th>Amb%</th><th>SeqNs</th><th>MaxNrun</th>
+                            <th>Homopol</th><th>MaxHomo</th><th>Dup</th><th>Short</th><th>Long</th><th>MB</th><th>Warnings</th>
+                            <th>ANI (%)</th><th>Species</th>
+                        </tr>
+                    </thead>
                     <tbody>{table_rows}</tbody>
                 </table>
             </div>
         </div>
         <div class="footer">
-            <p><strong>ECOLITYPER</strong> - FASTA QC Summary Report</p>
+            <p><strong>ECOLITYPER</strong> - FASTA QC Summary Report (with ANI species confirmation)</p>
             <p class="timestamp">Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
-            <p>Github: bbeckley-hub | Email: brownbeckley94@gmail.com</p>
+            <p>GitHub: bbeckley-hub | Email: brownbeckley94@gmail.com</p>
         </div>
     </div>
     <script>
@@ -1113,20 +980,25 @@ class ECOLITYPER_QC:
         }}
         setInterval(displayQuote, 10000);
     </script>
-</body>
-</html>'''
+    </body>
+    </html>'''
         with open(html_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
 
     def process_files(self, pattern: str, output_dir: str = "ecolityper_qc_results") -> List[Dict[str, Any]]:
         print("\n" + "="*80)
-        print("🔬 ECOLITYPER FASTA QC - Escherichia coli Quality Control")
+        print("🔬 ECOLITYPER FASTA QC - Escherichia coli Quality Control + Species Confirmation")
         print("="*80)
         print(f"Author: Brown Beckley | Email: brownbeckley94@gmail.com")
         print(f"Affiliation: University of Ghana Medical School - Department of Medical Biochemistry")
         print("="*80)
         print(f"Output directory: {output_dir}")
         print(f"Using {self.cpus} CPU cores")
+        if self.species_refs:
+            print(f"Species references: {', '.join(self.species_refs.keys())}")
+            print("Note: Shigella is treated as E. coli for species confirmation (as they are the same species complex).")
+        else:
+            print("⚠️  Species check disabled (no references found in ref_db/)")
         print("="*80)
 
         fasta_extensions = ['.fna', '.fasta', '.fa', '.faa', '.fn', '.fna.gz', '.fasta.gz', '.fa.gz']
@@ -1185,22 +1057,27 @@ class ECOLITYPER_QC:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='ECOLITYPER FASTA QC - E. coli Quality Control with HTML Reports',
+        description='ECOLITYPER FASTA QC - E. coli Quality Control with HTML Reports and Species Confirmation (fastANI)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   python ecolityper_fasta_qc.py "*.fna"
-  python ecolityper_fasta_qc.py "genomes/*.fasta"
-  python ecolityper_fasta_qc.py "*.fa" --output my_qc_results
+  python ecolityper_fasta_qc.py "genomes/*.fasta" --output my_qc_results
+  # For species check, put reference genomes in 'ref_db/':
+  #   escherichia_coli_k12.fna
+  #   shigella_flexneri.fna
+  #   klebsiella_pneumoniae.fna
+  #   salmonella_enterica.fna
         """
     )
     parser.add_argument('pattern', help='File pattern for FASTA files (e.g., "*.fasta", "genomes/*.fna")')
     parser.add_argument('--output', '-o', default='ecolityper_qc_results', help='Output directory (default: ecolityper_qc_results)')
     parser.add_argument('--cpus', '-c', type=int, default=None, help='Number of CPU cores to use (default: all available)')
+    parser.add_argument('--ref_dir', default='ref_db', help='Directory containing reference genomes (default: ref_db)')
     args = parser.parse_args()
 
     try:
-        qc = ECOLITYPER_QC(cpus=args.cpus)
+        qc = ECOLITYPER_QC(cpus=args.cpus, ref_dir=args.ref_dir)
         results = qc.process_files(args.pattern, args.output)
     except Exception as e:
         print(f"❌ FASTA QC analysis failed: {e}")
