@@ -152,6 +152,8 @@ conda activate ecolityper
 1. Run abricate --setupdb
 2. Run pip install ezclermont (⚠️  WARNING: Phylogrouping analysis had warnings)
 3. Run ecolityper --update-amr-db
+4. conda install -c bioconda fastani
+With minor fixes in our bioconda recipe you won't be bothere to install external tools.
 ```
 
 ### 🐳 Docker Installation (Alternative)
