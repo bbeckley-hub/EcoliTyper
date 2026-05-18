@@ -81,7 +81,6 @@
 - [🤖 AI Integration Guide](#-ai-integration-guide)
 - [🌍 EcoliDB Lineage Database](#-ecolityper-ecolidb-lineage-database)
 - [⚡ Performance Benchmarks](#-performance-benchmarks)
-- [🆚 Competitive Comparison](#-competitive-comparison)
 - [📚 Citation](#-citation)
 - [❓ Frequently Asked Questions](#-frequently-asked-questions)
 - [🤝 Contributing](#-contributing)
@@ -620,30 +619,6 @@ This interactive HTML file provides:
 - **100% concordance** with standalone reference tools (mlst, SerotypeFinder, ezClermont)
 - **Perfect typing** of reference strains (K-12 MG1655, O157:H7, O18ac:H7)
 - **Robust performance** across diverse clinical and reference isolates
-
----
-
-## 🆚 **Competitive Comparison**
-
-| Feature | EcoliTyper | ECTyper | Bactopia | Mykrobe |
-|---------|------------|---------|----------|---------|
-| **Primary Focus** | *E. coli* integrated genotyping | *E. coli* serotyping | Multi-species generalist | AMR prediction |
-| **MLST** | ✅ Achtman scheme | ❌ | ✅ | ❌ |
-| **Serotyping** | ✅ O:H (SerotypeFinder) | ✅ | Limited | ❌ |
-| **CH Typing** | ✅ *fumC/fimH* | ❌ | ❌ | ❌ |
-| **Clermont Phylogrouping** | ✅ 2013 scheme | ❌ | ✅ | ❌ |
-| **AMR Profiling** | ✅ ABRicate + AMRFinderPlus | Limited | ✅ AMRFinder | ✅ Core function |
-| **Virulence Screening** | ✅ 9 databases | Shiga toxins only | Limited | ❌ |
-| **Cross-genome Analysis** | ✅ Automated pattern discovery | ❌ | ❌ | ❌ |
-| **Lineage Database** | ✅ Curated high-risk clones | ❌ | ❌ | ❌ |
-| **Output Formats** | HTML, TSV, JSON, text | Various | Various | Various |
-| **Installation** | ⚡ Single Conda package | Moderate | Complex (Nextflow) | Simple |
-| **Typing Speed (30 genomes)** | **41 minutes** | N/A | ~120 minutes | N/A |
-
-**Reference Tools:**
-- **Mykrobe:** [https://github.com/Mykrobe-tools/mykrobe](https://github.com/Mykrobe-tools/mykrobe)
-- **Bactopia:** [https://github.com/bactopia/bactopia](https://github.com/bactopia/bactopia)
-- **ECTyper:** [https://github.com/phac-nml/irida-plugin-ectyper](https://github.com/phac-nml/irida-plugin-ectyper)
 
 ---
 
