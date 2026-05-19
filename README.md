@@ -150,11 +150,7 @@ conda activate ecolityper
 
 # Highly recommended prior first analysis (Conda users only)
 1. Run abricate --setupdb
-2. Run pip install ezclermont (⚠️  WARNING: Phylogrouping analysis had warnings)
 3. Run ecolityper --update-amr-db
-4. conda install -c bioconda fastani
-NB: With minor fixes in our bioconda recipe, you won't be bothered to install external tools.
-EcoliTyper v1.2.0 build 2 solves step 2 and 4
 ```
 
 ### 🐳 Docker Installation (Alternative)
