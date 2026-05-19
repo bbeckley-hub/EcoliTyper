@@ -11,14 +11,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Version](https://anaconda.org/bioconda/ecolityper/badges/version.svg)](https://github.com/bbeckley-hub/EcoliTyper)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17761775.svg)](https://doi.org/10.5281/zenodo.17761775)
 [![GitHub stars](https://img.shields.io/github/stars/bbeckley-hub/EcoliTyper)](https://github.com/bbeckley-hub/EcoliTyper/stargazers)
 [![Docker Pulls](https://img.shields.io/docker/pulls/bbeckleyhub/ecolityper)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 [![Docker Image Size](https://img.shields.io/docker/image-size/bbeckleyhub/ecolityper/latest)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 [![Docker Version](https://img.shields.io/docker/v/bbeckleyhub/ecolityper?sort=semver)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 
 
-[![bioconda Downloads](https://anaconda.org/bioconda/ecolityper/badges/downloads.svg)](#)
+[![Bioconda](https://anaconda.org/bioconda/ecolityper/badges/downloads.svg)](https://github.com/bbeckley-hub/EcoliTyper)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub Issues](https://img.shields.io/github/issues/bbeckley-hub/EcoliTyper)](https://github.com/bbeckley-hub/EcoliTyper/issues)
 ![Latest Release Date](https://anaconda.org/bioconda/ecolityper/badges/latest_release_relative_date.svg)
