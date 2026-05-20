@@ -22,6 +22,8 @@
 ![Latest Release Date](https://anaconda.org/bioconda/ecolityper/badges/latest_release_relative_date.svg)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](#)
 [![Stage](https://img.shields.io/badge/status-active-brightgreen)](#)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/ecolityper/badges/downloads.svg)](https://anaconda.org/bioconda/ecolityper)
+
 
 
 [![Powered by 🧠](https://img.shields.io/badge/powered%20by-science%20🔬-purple)](https://github.com/bbeckley-hub/EcoliTyper)
