@@ -4,7 +4,7 @@
 
 <div align="center">
 
-### 🧬 A species-optimized computational pipeline for comprehensive genotyping and surveillance of **_Escherichia coli_**
+### 🧬 A species‑optimized computational pipeline for comprehensive genotyping and surveillance of **_Escherichia coli_**
 
 **Complete *E. coli* genomic analysis in minutes — not hours**
 
@@ -50,7 +50,7 @@
 
 
 [![Conda](https://img.shields.io/badge/conda-✓-green.svg)](https://docs.conda.io/en/latest/)
-[![Sample Report](https://img.shields.io/badge/📊-View_Sample_Report-blue)](https://htmlpreview.github.io/?https://bbeckley-hub.github.io/EcoliTyper/#summary)
+[![Sample Report](https://img.shields.io/badge/📊-View_Sample_Report-blue)](#sample-output)
 ![Profile Views](https://komarev.com/ghpvc/?username=bbeckley-hub&label=Profile%20Views&color=0e75b6&style=flat)
 [![Google Scholar](https://img.shields.io/badge/Google%20Scholar-Profile-4285F4?style=flat&logo=googlescholar&logoColor=white)](https://scholar.google.com/citations?user=CYNOsqIAAAAJ&hl=en)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Profile-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/brown-beckley-190315319)
@@ -69,7 +69,7 @@
 
 ---
 
-## 📋 **Table of Contents**
+## 📋 Table of Contents
 
 - [🌟 Overview](#-overview)
 - [✨ Core Features](#-core-features)
@@ -77,6 +77,8 @@
 - [🎯 Usage Examples](#-usage-examples)
 - [📊 Output Structure](#-output-structure)
 - [🎨 Interactive Report Features](#-interactive-report-features)
+- [⚡ Performance Optimized Architecture](#-performance-optimized-architecture)
+- [📊 Sample Output](#-sample-output)
 - [🔗 Integrated External Tools & Dependencies](#-integrated-external-tools--dependencies)
 - [🤖 AI Integration Guide](#-ai-integration-guide)
 - [🌍 EcoliDB Lineage Database](#-ecolityper-ecolidb-lineage-database)
@@ -94,280 +96,193 @@
 
 ---
 
-## 🌟 **Overview**
+## 🌟 Overview
 
-**EcoliTyper** is a revolutionary bioinformatics pipeline designed to eliminate workflow fragmentation in *E. coli* genomic surveillance. By integrating **seven core genotyping analyses** into a single automated workflow, EcoliTyper transforms disconnected genomic data into coherent biological narratives with actionable public health intelligence.
+**EcoliTyper** is a revolutionary bioinformatics pipeline that eliminates workflow fragmentation in *E. coli* genomic surveillance. By integrating **nine core analyses** into a single automated workflow, EcoliTyper transforms disconnected genomic data into coherent biological narratives with actionable public health intelligence.
 
 > *"From fragmented analysis to integrated insight in one command"*
 
-### 🚀 **The EcoliTyper Advantage**
+### 🚀 The EcoliTyper Advantage
 
 | Traditional Workflow 😫 | EcoliTyper Solution 🎉 |
 |------------------------|-----------------------|
-| 7+ independent tools required | **Single unified pipeline** |
+| 9+ independent tools required | **Single unified pipeline** |
 | Manual data integration & synthesis | **Automated cross-genome pattern discovery** |
 | Hours of manual curation | **Intelligent risk assessment & alerting** |
 | Disconnected epidemiological context | **Integrated lineage database of high-risk clones** |
 | Multiple output formats to reconcile | **Consolidated HTML report + structured data (TSV/JSON)** |
 | Complex installation & dependencies | **Self-contained Conda package** |
+| No point mutation tracking | **AMRfinderPlus mutation reporting** |
+| No pathotype classification | **Automated pathotype prediction (STEC, EPEC, EHEC, EAEC, ETEC, DAEC, EIEC)** |
 
 **Key Achievement:** Processes 30 *E. coli* genomes in **~41 minutes** on 16 CPU cores with **perfect concordance** against reference tools.
 
 ---
 
-## ✨ **Core Features**
+## ✨ Core Features
 
-### 🧩 **Comprehensive *E. coli* Typing Suite**
+### 🧩 Comprehensive *E. coli* Typing Suite
 - **🧬 Multi-Locus Sequence Typing (MLST)** – Achtman scheme with PubMLST database
 - **🔍 In silico Serotyping** – O and H antigen determination via SerotypeFinder (≥90% coverage/identity)
-- **🎯 CH Typing** – High-resolution *fumC/fimH* typing for fine-scale discrimination
+- **🎯 CH Typing** – High-resolution *fumC/fimH* typing for fine‑scale discrimination
 - **🌳 Clermont Phylogrouping** – Evolutionary context with 2013 scheme (8 phylogroups)
-- **💊 Antimicrobial Resistance Profiling** – Dual screening via ABRicate (9 databases) & NCBI-AMRFinderPlus
+- **💊 Antimicrobial Resistance Profiling** – Dual screening via ABRicate (9 databases) & NCBI AMRFinderPlus
 - **🦠 Virulence Factor Detection** – Comprehensive pathogenicity assessment
 - **📊 Plasmid Replicon Typing** – Mobile genetic element characterization
+- **🔬 Point Mutation Detection** – AMRfinderPlus mutation reporting (gyrA, parC, rpoB, 23S, etc.)
+- **📈 Pathotype Classification** – Automatic STEC, EPEC, EHEC, EAEC, ETEC, DAEC, EIEC prediction
+- **🖼️ Visualisation** – Publication‑ready charts (distribution plots, stacked combinations, database statistics)
 
-### 🧠 **Intelligent Analytics Layer**
-- **🔬 Cross-genome pattern discovery** – Automated gene frequency analysis & distribution mapping
-- **⚠️ Rule-based clinical risk assessment** – Hierarchical alerting (CARBAPENEMASE > ESBL > COLISTIN-RES)
-- **🌍 Integrated lineage database** – Manually curated reference of high-risk clones (ST131, ST1193, etc.)
-- **📈 Population-level insights** – Immediate epidemiological overview of resistance cassettes & virulence profiles
+### 🧠 Intelligent Analytics Layer
+- **🔬 Cross‑genome pattern discovery** – Automated gene frequency analysis & distribution mapping
+- **⚠️ Rule‑based clinical risk assessment** – Hierarchical alerting (CARBAPENEMASE > ESBL > COLISTIN‑RES)
+- **🌍 Integrated lineage database** – Manually curated reference of high‑risk clones (ST131, ST1193, etc.)
+- **📈 Population‑level insights** – Immediate epidemiological overview of resistance cassettes & virulence profiles
 
-### ⚡ **Performance Optimized Architecture**
-- **🚀 Hybrid parallel execution** – Inter-module & intra-module parallelization
+### ⚡ Performance Optimized Architecture
+- **🚀 Sequential module execution** – Clean terminal output with per‑module headers
 - **🎛️ Dynamic resource allocation** – Automatic scaling with genome complexity
-- **⚖️ Memory-aware processing** – Strategic sequential execution for resource-intensive operations
+- **⚖️ Temporary directory isolation** – All modules run in `/tmp`, automatically cleaned up
 - **🔄 Robust error handling** – Graceful recovery with checkpointing & automated cleanup
+- **🐳 Docker & Singularity support** – Run without installation, HPC‑friendly
 
 ---
 
-## 🛠️ **Installation**
+## 📊 Sample Output
 
-### Quick Install (Recommended)
+See a complete interactive report generated by EcoliTyper:
+
+[![Sample Report](https://img.shields.io/badge/🔗-Open_Sample_Report-red)](https://htmlpreview.github.io/?https://bbeckley-hub.github.io/EcoliTyper/#summary)
+
+*The report includes AMR/virulence tables, filter buttons, dynamic grouping by typing, mutation analysis, and pathotype prevalence.*
+
+---
+
+## 🛠️ Installation
+
+### Quick Install (Conda – Recommended)
+
 ```bash
 # Create and activate environment
 conda create -n ecolityper -c conda-forge -c bioconda ecolityper -y
 conda activate ecolityper
 
-# Highly recommended prior first analysis (Conda users only)
-1. Run abricate --setupdb
-3. Run ecolityper --update-amr-db
+# First‑time setup (Conda only)
+abricate --setupdb
+ecolityper --update-amr-db
 ```
 
-### 🐳 Docker Installation (Alternative)
-
-If you prefer a containerized environment or cannot install Conda, use our Docker image. It includes all dependencies and pre‑configured databases – **no setup required**. Run the complete E. coli typing pipeline with zero installation – just Docker.
-
----
-
-## 🚀 Quick Start
-
-### Pull the image
+### 🐳 Docker (No Installation)
 
 ```bash
+# Pull the latest image
 docker pull bbeckleyhub/ecolityper:latest
+
+# Run a single genome (files owned by your user – no padlock!)
+docker run --rm \
+  -u $(id -u):$(id -g) \
+  -v "$(pwd):/data" \
+  bbeckleyhub/ecolityper:latest \
+  -i "/data/genome.fna" -o /data/results
+
+# Batch processing
+docker run --rm \
+  -u $(id -u):$(id -g) \
+  -v "$(pwd):/data" \
+  bbeckleyhub/ecolityper:latest \
+  -i "/data/*.fna" -o /data/results --threads 8
 ```
 
-### Run on a single FASTA file
+> **Why `-u $(id -u):$(id -g)`?**  
+> It ensures that all output files are owned by **your** host user – no `sudo chown` needed, no padlock icons.
+
+### 🖥️ Singularity (HPC, no `sudo`)
 
 ```bash
-docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest -i "/data/genome.fna" -o /data/output
-```
-
-After the run, output files are owned by `root` on your host. To reclaim ownership:
-
-```bash
-sudo chown -R $USER:$USER ./output
-```
-
-### Run on all FASTA files in the current directory
-
-```bash
-docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest -i "/data/*.fna" -o /data/output
-```
-
----
-
-## 📖 Detailed Usage
-
-### Basic syntax
-
-```bash
-docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest [ECOLITYPER_OPTIONS]
-```
-
-- `--rm` : remove container after exit
-- `-v $(pwd):/data` : mount current directory to `/data` inside container
-- Input files must be under `/data` (e.g., `/data/*.fna`)
-- Output directory must also be under `/data` (e.g., `/data/output`)
-
-### All EcoliTyper options work
-
-```bash
-docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest \
-  -i "/data/*.fna" -o /data/output \
-  --threads 8 --skip-visualization
-```
-
-### Using custom threads
-
-```bash
-docker run --rm -v $(pwd):/data bbeckleyhub/ecolityper:latest \
-  -i "/data/*.fna" -o /data/output -t 16
-```
-
----
-
-## 🔧 Handling File Permissions (The “Padlock” Issue)
-
-By default, Docker runs as `root` inside the container. Any files written to your mounted directory will be owned by `root:root`.  
-You have three options:
-
-### 1. Change ownership after the run (easiest)
-
-```bash
-sudo chown -R $USER:$USER ./output
-```
-
-### 2. Run with your host user ID (requires a small code fix – coming soon)
-
-Currently not fully supported because EcoliTyper needs to write to its own installation directory. A future update will fix this.
-
-### 3. Use Singularity (recommended for HPC, no `sudo` needed)
-
-See the [Singularity section](#singularity-for-hpc-no-sudo) below.
-
----
-
-## 🧪 Testing Your Docker Setup
-
-### Check help message
-
-```bash
-docker run --rm bbeckleyhub/ecolityper:latest -h
-```
-
-### Verify ABRicate databases are installed
-
-```bash
-docker run --rm --entrypoint /bin/bash bbeckleyhub/ecolityper:latest -c "abricate --list | head -5"
-```
-
-Expected output: list of databases (ncbi, card, vfdb, etc.)
-
----
-
-## 🖥️ Singularity for HPC (no `sudo`, correct ownership)
-
-On HPC clusters that support [Singularity/Apptainer](https://sylabs.io/singularity/), you can run EcoliTyper **without `sudo`** and output files will be owned by your user automatically.
-
-> **Important:** EcoliTyper writes temporary files inside its own installation directory (e.g., `/opt/ecolityper/...`). Singularity mounts containers as read‑only by default, so you **must** add the `--writable-tmpfs` flag to allow these writes. The flag creates an ephemeral, writable overlay in memory – no permanent changes are made to the container.
-
-### Option A: Direct pull (if network allows)
-
-```bash
+# Build or pull the SIF image
 singularity pull ecolityper.sif docker://bbeckleyhub/ecolityper:latest
-singularity run --writable-tmpfs -B $(pwd):/data ecolityper.sif -i "/data/*.fna" -o /data/output
-```
 
-### Option B: Convert from a local Docker image (when `singularity pull` fails)
-
-If you encounter TLS timeouts or other network errors (common on some HPCs), convert an existing Docker image to a Singularity SIF file on a machine with Docker, then transfer the `.sif` file to the HPC.
-
-**Step 1 – on a machine with Docker (e.g., your laptop):**
-
-```bash
-docker pull bbeckleyhub/ecolityper:latest
-docker save bbeckleyhub/ecolityper:latest -o ecolityper.tar
-singularity build ecolityper.sif docker-archive://ecolityper.tar
-```
-
-Now copy `ecolityper.sif` to your HPC home or project directory (e.g., using `scp`).
-
-**Step 2 – on the HPC (no sudo needed):**
-
-```bash
-singularity run --writable-tmpfs -B $(pwd):/data ecolityper.sif -i "/data/*.fna" -o /data/output
-```
-
-### Explanation of flags
-
-| Flag | Purpose |
-|------|---------|
-| `--writable-tmpfs` | Creates a temporary writable overlay – **required** for EcoliTyper to write intermediate files to `/opt/...` |
-| `-B $(pwd):/data` | Binds your current directory to `/data` inside the container (input files are read from here, output is written here) |
-| `-i "/data/*.fna"` | Input pattern – use quotes to prevent shell expansion on the host |
-| `-o /data/output` | Output directory (will appear as `./output` on your host) |
-
-### Additional options
-
-You can use any EcoliTyper flag, e.g.:
-
-```bash
+# Run (add `--writable-tmpfs` if `/tmp` is read‑only)
 singularity run --writable-tmpfs -B $(pwd):/data ecolityper.sif \
-    -i "/data/*.fna" -o /data/output --threads 8 --skip-visualization
+  -i "/data/*.fna" -o /data/output --threads 8
 ```
 
-### Verify it works
-
-After a successful run, you will see output indicating each module completed. All result files in `./output` will be owned by **your HPC user** – no `sudo chown` needed.
-
-
-#### Docker Hub Repository
-
-All releases are available at:  
-[https://hub.docker.com/r/bbeckleyhub/ecolityper](https://hub.docker.com/r/bbeckleyhub/ecolityper)
+All result files are owned by your HPC user automatically.
 
 ---
 
-### System Requirements
-- **Minimum:** 2 CPU cores, 8 GB RAM
-- **Recommended:** 8+ CPU cores, 16+ GB RAM for batch processing
-- **OS:** Linux, macOS, or Windows (WSL2 recommended for Windows)
-
----
-
-## 🎯 **Usage Examples**
+## 🎯 Usage Examples
 
 ### Basic Single Genome Analysis
 ```bash
-ecolityper -i genome.fasta -o results_directory/
+ecolityper -i genome.fasta -o results/
 ```
 
-### High-Throughput Batch Processing
+### High‑Throughput Batch Processing
 ```bash
-# Process all FASTA files in current directory
 ecolityper -i "*.fasta" -o batch_results --threads 8
-
-# Process specific pattern
-ecolityper -i "GCF_*.fna" -o surveillance_run --threads 16
 ```
 
-### Customized Analysis Workflows
+### Skip Modules for Faster Processing
 ```bash
-# Skip specific modules for faster processing
 ecolityper -i isolates/ -o quick_typing --skip-amrfinder --skip-visualization
+```
 
-# Minimum typing only
-ecolityper -i sample.fna -o basic_results --skip-lineage --skip-summary
+### AMR with Custom Thresholds & Mutation Reporting
+```bash
+ecolityper -i "*.fna" -o results \
+  --amr-min-identity 0.95 --amr-min-coverage 0.9 --skip-amr-mutations
+```
+
+### Force AMR Database Update Before Analysis
+```bash
+ecolityper -i "*.fna" -o results --amr-force-update
+```
+
+### Standalone Database Update
+```bash
+ecolityper --update-amr-db          # incremental
+ecolityper --force-update-amr-db    # full overwrite
+```
+
+### Clean Output Directory Before Run
+```bash
+ecolityper -i "*.fna" -o results --clean-output
 ```
 
 ### Complete Command Reference
-```
-usage: ecolityper [-h] -i INPUT -o OUTPUT [-t THREADS] [--skip-amrfinder]
-                  [--skip-abricate] [--skip-mlst] [--skip-serotyping]
-                  [--skip-chtyper] [--skip-phylogrouping] [--skip-lineage]
-                  [--skip-summary] [--skip-visualization]
 
-EcoliTyper: Complete E. coli Typing Pipeline
+```text
+usage: ecolityper [-h] -i INPUT -o OUTPUT [-t THREADS] [--keep-temp]
+                  [--update-amr-db] [--force-update-amr-db]
+                  [--amr-min-identity AMR_MIN_IDENTITY]
+                  [--amr-min-coverage AMR_MIN_COVERAGE]
+                  [--skip-amr-mutations] [--amr-force-update]
+                  [--skip-fasta-qc] [--skip-amrfinder] [--skip-abricate]
+                  [--skip-mlst] [--skip-serotyping] [--skip-chtyper]
+                  [--skip-phylogrouping] [--skip-lineage] [--skip-summary]
+                  [--skip-visualization]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -i INPUT, --input INPUT
-                        Input FASTA file(s) - can use glob patterns like "*.fna" or "*.fasta"
+                        Input FASTA file(s) - glob patterns like "*.fna"
   -o OUTPUT, --output OUTPUT
                         Output directory for all results
   -t THREADS, --threads THREADS
                         Number of threads (default: 2)
+  --keep-temp           Do not delete temporary directories (for debugging)
+  --update-amr-db       Update AMRfinderPlus database (incremental) and exit
+  --force-update-amr-db Force complete AMR database update and exit
+  --amr-min-identity AMR_MIN_IDENTITY
+                        Minimum identity for AMR hits (0..1)
+  --amr-min-coverage AMR_MIN_COVERAGE
+                        Minimum coverage for AMR hits (0..1)
+  --skip-amr-mutations  Disable point mutation reporting (enabled by default)
+  --amr-force-update    Force update AMR database before analysis
+
+Skip Options:
+  --skip-fasta-qc       Skip FASTA QC analysis
   --skip-amrfinder      Skip AMRfinderPlus analysis
   --skip-abricate       Skip ABRicate analysis
   --skip-mlst           Skip MLST analysis
@@ -378,439 +293,288 @@ optional arguments:
   --skip-summary        Skip summary report generation
   --skip-visualization  Skip visualization generation
 
-Examples:
-  ecolityper -i genome.fna -o results/
-  ecolityper -i "*.fna" -o batch_results --threads 8
-  ecolityper -i "*.fasta" -o analysis --threads 16 --skip-lineage
-  ecolityper -i "genome*.fa" -o results/ --threads 4
-
 Supported FASTA formats: .fna, .fasta, .fa, .fsa
 
 Analysis Modules:
+  • FASTA QC (Sequence Quality Control & Statistics)
   • MLST (Multi-Locus Sequence Typing)
   • Serotyping (O and H antigen determination)
   • CH Typing (FumC and FimH typing)
-  • Phylogrouping (Clermont algorithm)
+  • Phylogrouping (ezClermont algorithm)
   • ABRicate (Resistance/Virulence/Plasmid screening)
-  • AMRfinderPlus (NCBI AMR gene detection)
+  • AMRfinderPlus (NCBI AMR gene detection) – with optional thresholds and mutation reporting
   • Lineage reference database
   • Summary Reports (HTML summary reports)
   • Visualizations (Charts and visualizations)
-
-Output: Comprehensive results for all analyses in organized directories
 ```
 
 ---
 
-## 📊 **Output Structure**
+## 📊 Output Structure
 
 ```
-results_directory/
-├── 📄 abricate_results/              # Multi-database screening (CARD, ResFinder, VFDB, etc.)
-│   ├── ecoli_*_summary.json         # Consolidated JSON summaries
-│   ├── ecoli_*_summary_report.html  # Interactive HTML reports
-│   └── per_sample/                  # Individual genome results
-├── 🔬 amrfinder_results/             # NCBI AMRFinderPlus outputs
-│   ├── ecoli_amrfinder_summary.tsv
-│   ├── ecoli_amrfinder_summary_report.html
-│   └── per_sample/
-├── 🎯 chtyper_results/               # High-resolution CH typing
-│   ├── chtyper_results.tsv
-│   ├── chtyper_results.html
-│   └── per_sample/
-├── 🧬 mlst_results/                  # Multi-Locus Sequence Typing
-│   ├── mlst_summary.tsv
-│   ├── mlst_summary.html
-│   └── per_sample/
-├── 🌳 phylogrouping_results/         # Clermont phylogrouping
-│   ├── phylogrouping_results.tsv
-│   ├── phylogrouping_results.html
-│   └── per_sample/
-├── 🔍 serotyping_results/            # O:H antigen typing
-│   ├── serotype_analysis_report.tsv
-│   ├── serotype_analysis_report.html
-│   └── per_sample/
-├── 🌍 lineage_results/               # Epidemiological context
-│   └── ecoli_comprehensive_reference.html
-├── 📈 summary_results/               # Consolidated reports
-│   └── GENIUS_ULTIMATE_REPORTS/
-│       ├── genius_ultimate_report.html     # Main interactive report
-│       ├── genius_ultimate_report.json
-│       ├── amr_genes.csv
-│       ├── virulence_genes.csv
-│       └── pattern_discovery.csv
-└── 🎨 visualization_results/         # Publication-ready figures
-    └── ECOLI_VISUALIZATIONS/
-        ├── PDF/     # Vector graphics
-        ├── PNG/     # Raster images
-        ├── SVG/     # Scalable vector graphics
-        └── DATA/    # Source data for figures
+results/
+├── abricate_results/              # Multi‑database screening (CARD, ResFinder, VFDB, etc.)
+├── amrfinder_results/             # NCBI AMRFinderPlus + mutation reports
+├── chtyper_results/               # High‑resolution CH typing (FumC:FimH)
+├── mlst_results/                  # Multi‑Locus Sequence Typing
+├── phylogrouping_results/         # Clermont phylogrouping
+├── serotyping_results/            # O:H antigen determination
+├── lineage_results/               # EcoliDB lineage reference
+├── summary_results/               # 🧠 MAIN REPORT: genius_ecoli_ultimate_report.html
+└── visualization_results/         # Publication‑ready charts (PNG, SVG, PDF)
 ```
 
-## 📊 Sample Output
-
-See a complete interactive report generated by EcoliTyper:
-
-[![Sample Report](https://img.shields.io/badge/📊-View_Sample_Report-red)](https://htmlpreview.github.io/?https://bbeckley-hub.github.io/EcoliTyper/#summary)
-
-*The report includes AMR and virulence gene tables, filter buttons, combination tables, and FASTA QC metrics.*
+> The **only file you need** is `summary_results/genius_ecoli_ultimate_report.html` – a complete interactive dashboard.
 
 ---
 
-## 🎨 **Interactive Report Features**
+## 🎨 Interactive Report Features
 
-### **Main Dashboard**
-- **Sample Overview**: Quick glance at typing results across all genomes
-- **Risk Alert Panel**: Automatic flagging of high-priority resistance markers
-- **Epidemiological Context**: Lineage information for identified clones
-
-### **Cross-Genome Analysis**
-- **Gene Frequency Tables**: Prevalence of AMR/virulence genes across population
-- **Pattern Discovery**: Identification of common resistance cassettes
-- **Distribution Maps**: Visual representation of gene carriage
-
-### **Visualization Gallery**
-- **Stacked Bar Charts**: MLST, serotype, and phylogroup distributions
-- **Violin Plots**: Quantitative metrics distribution
-- **Pie Charts**: Phylogroup and serotype proportions
-- **Heatmaps**: Gene presence/absence patterns
+- **Sample Overview** – MLST, serotype, phylogroup, CH type, pathotype
+- **AMR & Virulence gene tables** – gene‑centric, with genome tags and dynamic grouping
+- **Mutation tab** – all point mutations with grouping by typing
+- **Pathotype Analysis** – prevalence and sample details with EHEC detection
+- **Plasmid & Bacmet2** – biocide/heavy metal resistance
+- **Dynamic grouping** – reorganise genome lists by MLST, serotype, phylogroup, CH type, or combinations
+- **CSV/JSON export** – all data exportable for downstream analysis
+- **AI‑friendly HTML structure** – upload to ChatGPT, Claude, or Gemini for instant insights
 
 ---
 
-## 🔗 **Integrated External Tools & Dependencies**
+## 🔗 Integrated External Tools & Dependencies
 
-EcoliTyper integrates several powerful open-source tools and databases. These are **not bundled directly in this repository**. Instead, they are automatically installed as **dependencies via Conda** (as defined in `environment.yml`). The MIT license that applies to the EcoliTyper pipeline code does not cover these external tools. Each tool is used under the terms of its own license, and we gratefully acknowledge their authors.
+EcoliTyper integrates several powerful open‑source tools and databases. They are automatically installed via Conda.
 
-| Tool/Database | Purpose | Source | License |
-|---------------|---------|--------|---------|
-| **MLST** | Multi-locus sequence typing | [tseemann/mlst](https://github.com/tseemann/mlst) | GPL v2 |
-| **ABRicate** | Mass screening for resistance/virulence | [tseemann/abricate](https://github.com/tseemann/abricate) | GPL v2 |
-| **AMRFinderPlus** | AMR gene detection | [ncbi/amr](https://github.com/ncbi/amr) | Public Domain |
-| **SerotypeFinder** | O:H antigen typing | [CGE](https://bitbucket.org/genomicepidemiology/serotypefinder_db/) | Apache 2.0 |
-| **CHTyper DB** | *fumC/fimH* typing | [CGE](https://bitbucket.org/genomicepidemiology/chtyper_db/) | Free for research |
-| **ezClermont** | Phylogrouping | [https://github.com/nickp60/ezClermont](https://github.com/nickp60/ezClermont) | MIT |
-
-### **AMR & Virulence Databases (via ABRicate)**
-| Database | Purpose | License |
-|----------|---------|---------|
-| **CARD** | Comprehensive antibiotic resistance | Free for research |
-| **ResFinder** | Acquired antimicrobial resistance | Free for research |
-| **NCBI** | NCBI bacterial AMR reference | Public Domain |
-| **ARG-ANNOT** | Antibiotic resistance gene annotation | Free for research |
-| **MEGARES** | Comprehensive resistance database | Free for research |
-| **VFDB** | Virulence factors | Free for research |
-| **EcoH** | *E. coli* hemolysins | Free for research |
-| **Ecoli_VF** | *E. coli* virulence factors | Free for research |
-| **PlasmidFinder** | Plasmid replicons | Free for research |
-
----
-## 🤖 **AI Integration Guide**
-
-EcoliTyper generates comprehensive HTML reports that are **perfect for AI analysis**. Here's how to use AI tools to get more from your data.
-
-### 🚀 Quick Start
-1. **Install any AI browser extension** (ChatGPT, Claude, Gemini)
-2. **Open your report**: `genius_ultimate_report.html`
-3. **Select text** in any section (AMR Genes, MLST Analysis,Serotype analysis, CH type etc.)
-4. **Right-click → Ask AI** with your question
-
-### 💡 Example Questions
-
-**For MLST Analysis:**
-- "What is the clinical significance of ST21 vs ST10?"
-- "Which ST-Serotype-Phylogrouping-CH types combinations are hypervirulent?"
-
-**For AMR Genes:**
-- "Explain the OmpA gene and its importance"
-- "Which samples have multiple resistance genes?"
-- "What treatment implications do these genes have?"
-
-**For Virulence Factors:**
-- "Which samples carry espK?"
-- "Are there any high-risk virulence combinations?"
-
-**For Pattern Discovery:**
-- "Are there correlations between ST and specific genes?"
-- "Identify any concerning patterns in this dataset"
-- 
-**For Publication & Manuscript Summary:**
-- Select the sample overview section and ask AI "Summarize the population overview for my E. coli results"
-
-**SUPER-TRICK FOR CHATGPT & CLAUDE AI USERS:**
-- Upload the `genius_ultimate_report.html` reporter and ask any question in any section.
-- From interaction to insights in minutes...."Summarize the Sample overview section as the First results for my Manuscript"
-
-### 📊 Pro Tips
-- **Provide context**: "I'm analyzing *E. coli* genomics data..."
-- **Be specific**: Instead of "tell me about this", ask "what does ST21 	O26:H11-B1-fumC4:fimH440 combination indicate?"
-- **Ask for interpretations**: "What are the clinical implications of these findings?"
-- **Request summaries**: "Summarize the resistance profile of sample XYZ"
-
-### ⚡ Why This Works
-EcoliTyper reports are structured with clear tables and organized data that AI can easily understand. Each gene is shown with all genomes that contain it, making pattern analysis straightforward.
-
-> *"AI provides powerful insights but always verify critical findings with domain experts."*
+| Tool/Database | Purpose | License |
+|---------------|---------|---------|
+| **MLST** | Multi‑locus sequence typing | GPL v2 |
+| **ABRicate** | Mass screening for resistance/virulence | GPL v2 |
+| **AMRFinderPlus** | AMR gene detection + mutations | Public Domain |
+| **SerotypeFinder** | O:H antigen typing | Apache 2.0 |
+| **CHTyper DB** | *fumC/fimH* typing | Free for research |
+| **ezClermont** | Phylogrouping | MIT |
+| **CARD, ResFinder, VFDB, etc.** | Databases (via ABRicate) | Free for research |
 
 ---
 
-## 🌍 **EcoliDB Lineage Database** (EcoliTyper)
+## 🤖 AI Integration Guide
 
-### **Overview**
-EcoliTyper includes **EcoliDB**, a manually curated comprehensive reference database for rapid *E. coli* lineage contextualization. This database associates sequence types with clinical pathotypes, serotypes, and risk profiles to inform public health analysis.
+EcoliTyper reports are structured for easy AI analysis.
 
-### **Database Statistics**
-- **12 Sequence Types** with detailed epidemiological profiles
-- **13 Pathotypes** categorized (Diarrheagenic, Extraintestinal, Hybrid, Animal, Mucosal)
-- **13 Serotypes** with clinical associations
-- **8 Phylogroups** according to Clermont scheme
-- **4 Carbapenemase Types** for resistance profiling
-- **79 Scientific References** supporting the data
+### Quick Start
+1. Open `genius_ecoli_ultimate_report.html` in your browser
+2. Select any text (table, paragraph, or entire section)
+3. Right‑click → “Ask AI” (or use your AI extension)
+4. Ask questions like:
+   - “What is the clinical significance of ST95?”
+   - “Which samples carry ESBL genes?”
+   - “Summarise the resistance profile of sample XYZ”
 
-### **Included High-Risk Clones**
-| Sequence Type | Risk Level | Primary Pathotype | Key Features |
-|--------------|------------|-------------------|--------------|
-| **ST131** | VERY HIGH | UPEC/ExPEC | Global MDR pandemic clone, CTX-M-15, fluoroquinolone resistance |
-| **ST1193** | HIGH | UPEC/ExPEC | Emerging fluoroquinolone-resistant, community-associated UTIs |
-| **ST95** | VERY HIGH | NMEC/ExPEC | Neonatal meningitis, high virulence, O18:H7 serotype |
-| **ST405** | VERY HIGH | ExPEC | Global MDR, carbapenemase producers (OXA-48, NDM) |
-| **ST410** | VERY HIGH | ExPEC | Emerging MDR, OXA-181/NDM-5 carbapenemases |
-| **ST648** | VERY HIGH | Zoonotic MDR | Pan-drug resistance emerging, significant One Health concern |
-| **ST11** | VERY HIGH | EHEC | O157:H7, hemorrhagic colitis, HUS risk |
-| **ST10** | LOW-MODERATE | Commensal/Pathogenic | Diverse genetic background for horizontal gene transfer |
-| **ST117** | MODERATE | APEC | Avian pathogenic, poultry industry concern |
-| **ST69** | HIGH | Hybrid UPEC/EAEC | Uropathogenic/diarrheagenic hybrid |
-| **ST73** | HIGH | Classic UPEC | Community-associated UTIs, high virulence |
-| **ST88** | HIGH | NMEC/ExPEC | Meningitis-associated, less common than ST95 |
-
-### **Accessing the Lineage Database**
-The lineage database is automatically generated during analysis and can be found at:
-```
-lineage_results/ecoli_comprehensive_reference.html
-```
-
-This interactive HTML file provides:
-- **Search functionality** by sequence type, serotype, or resistance profile
-- **Risk categorization** (HIGH, MODERATE, LOW)
-- **Geographical distribution** maps
-- **Treatment recommendations** based on resistance profiles
-- **Key references** for each lineage
+### Upload the HTML file directly
+- ChatGPT Plus / Claude / Gemini accept file uploads
+- Ask: “From this report, create a summary table of pathotypes and their associated STs”
 
 ---
 
-## ⚡ **Performance Benchmarks**
+## 🌍 EcoliDB Lineage Database
 
-| Scenario | Genomes | Time | Hardware | Speed per Genome |
-|----------|---------|------|----------|------------------|
-| Standard Workstation | 30 genomes | 80-150 min | 2 CPU cores, 8GB RAM | 3-6 min |
-| High-Performance Server | 30 genomes | **41 min** | 16 CPU cores, 16GB RAM | **1.2 min** |
-| Single Genome | 1 genome | 1-6 min | Variable | - |
-
-### **Validation Accuracy**
-- **100% concordance** with standalone reference tools (mlst, SerotypeFinder, ezClermont)
-- **Perfect typing** of reference strains (K-12 MG1655, O157:H7, O18ac:H7)
-- **Robust performance** across diverse clinical and reference isolates
+EcoliTyper includes **EcoliDB**, a manually curated reference of high‑risk *E. coli* clones (ST131, ST1193, ST95, etc.) with pathotype, serotype, phylogroup, and risk level. The database is automatically generated as `lineage_results/ecoli_comprehensive_reference.html`.
 
 ---
 
-## 📚 **Citation**
+## ⚡ Performance Benchmarks
 
-If you use EcoliTyper in your research, please cite:
+| Scenario | Genomes | Time | Hardware |
+|----------|---------|------|----------|
+| Standard Workstation | 30 | 80‑150 min | 2 cores, 8GB RAM |
+| High‑Performance Server | 30 | **41 min** | 16 cores, 16GB RAM |
+| Single Genome | 1 | 1‑6 min | Variable |
 
-```bibtex
-@software{beckley2025ecolityper,
-  title = {EcoliTyper: A species-optimized computational pipeline for comprehensive genotyping and surveillance of Escherichia coli},
-  author = {Beckley, B. and Amarh, V.},
-  year = {2025},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/bbeckley-hub/EcoliTyper}},
-  doi = {10.5281/zenodo.17761775}
-}
-```
-
-### **Third-Party Tool Citations**
-EcoliTyper integrates several third-party tools. Please cite them when using corresponding modules:
-
-**Serotyping & CH Typing**
-```bibtex
-@article{joensen2015rapid,
-  author = {Joensen, K. G. et al.},
-  title = {Rapid and easy in silico serotyping of Escherichia coli using whole genome sequencing data},
-  journal = {Journal of Clinical Microbiology},
-  year = {2015}
-}
-
-@article{roer2018chtyper,
-  author = {Roer, L. et al.},
-  title = {CHTyper, a web tool for subtyping of extraintestinal pathogenic Escherichia coli},
-  journal = {Journal of Clinical Microbiology},
-  year = {2018}
-}
-```
-**PubMLST (Jolley et al.)**
-```bibtex
-@article{jolley_pubmlst_2018,
-  author = {Jolley, K. A. and Bray, J. E. and Maiden, M. C. J.},
-  title = {Open-access bacterial population genomics: {BIGSdb} software, the {PubMLST.org} website and their applications},
-  journal = {Wellcome Open Research},
-  volume = {3},
-  pages = {124},
-  year = {2018},
-  doi = {10.12688/wellcomeopenres.14826.1}
-}
-```
-**ABRicate & MLST (Torsten Seemann)**
-```bibtex
-@software{seemann_abricate_2018,
-  author = {Seemann, T.},
-  title = {ABRicate: Mass screening of contigs for antimicrobial resistance and virulence genes},
-  year = {2028},
-  publisher = {GitHub},
-  url = {https://github.com/tseemann/abricate}
-}
-@software{seemann_mlst_2018,
-  author = {Seemann, T.},
-  title = {MLST: Scan contig files against traditional PubMLST typing schemes},
-  year = {2018},
-  publisher = {GitHub},
-  url = {https://github.com/tseemann/mlst}
-}
-
-```
-**AMR (NCBI)**
-```bibtex
-@article{feldgarden2019validating,
-  author = {Feldgarden, M. et al.},
-  title = {Validating the AMRFinder Tool and Resistance Gene Database},
-  journal = {Antimicrobial Agents and Chemotherapy},
-  year = {2019}
-}
-```
-
-**Phylogrouping**
-```bibtex
-@article{waters2020easy,
-  author = {Waters, N. R. et al.},
-  title = {Easy phylotyping of Escherichia coli via the EzClermont web app},
-  journal = {Access Microbiology},
-  year = {2020}
-}
-```
+**Validation:** 100% concordance with standalone tools (mlst, SerotypeFinder, ezClermont).
 
 ---
 
-## ❓ **Frequently Asked Questions**
+## 📚 Citation
 
-### **General Questions**
+If you use EcoliTyper in your research, please cite the main paper and the relevant third‑party tools:
 
-**Q: What makes EcoliTyper different from other typing tools?**
-A: EcoliTyper is specifically optimized for *E. coli* and integrates 7 complementary typing methods into a single pipeline with automated cross-genome pattern discovery and a curated lineage database for epidemiological context.
+### 🧬 EcoliTyper – Main Citation
 
-**Q: Can I use EcoliTyper for other bacterial species?**
-A: No, EcoliTyper is specifically optimized for *Escherichia coli*. The algorithms, thresholds, and databases are tailored for this species.
+> Beckley B, Amarh V. **EcoliTyper: a species‑optimized computational pipeline for comprehensive genotyping and surveillance of *Escherichia coli***. *BMC Bioinformatics*. 2026.  
+> DOI: [10.1186/s12859-026-06529-6](https://doi.org/10.1186/s12859-026-06529-6)
 
-### **Installation & Setup**
+### 🔬 CHTyper
+Roer L, et al. CHTyper, a Web Tool for Subtyping of Extraintestinal Pathogenic *Escherichia coli* Based on the *fumC* and *fimH* Alleles. *J Clin Microbiol*. 2018;56(4):e00063-18.  
+DOI: [10.1128/JCM.00063-18](https://doi.org/10.1128/JCM.00063-18)
 
-**Q: How much disk space is required?**
-A: Approximately 5-10 GB for the Conda environment and databases. Additional space is needed for input genomes and output files.
+### 🧬 AMRFinderPlus
+Feldgarden M, et al. AMRFinderPlus and the Reference Gene Catalog facilitate examination of the genomic links among antimicrobial resistance, stress response, and virulence. *Sci Rep*. 2021;11(1):12728.  
+DOI: [10.1038/s41598-021-91456-0](https://doi.org/10.1038/s41598-021-91456-0)
 
-### **Analysis & Results**
+### 🛡️ CARD
+McArthur AG, et al. The comprehensive antibiotic resistance database. *Antimicrob Agents Chemother*. 2013;57(7):3348-57.  
+DOI: [10.1128/AAC.00419-13](https://doi.org/10.1128/AAC.00419-13)
 
-**Q: How accurate is EcoliTyper compared to standalone tools?**
-A: EcoliTyper shows **100% concordance** with standalone reference tools (mlst, SerotypeFinder, ezClermont) for standard typing methods on validated reference strains.
+### 🧬 ARG-ANNOT
+Gupta SK, et al. ARG-ANNOT, a new bioinformatic tool to discover antibiotic resistance genes in bacterial genomes. *Antimicrob Agents Chemother*. 2014;58(1):212-20.  
+DOI: [10.1128/AAC.01310-13](https://doi.org/10.1128/AAC.01310-13)
 
-**Q: What should I do if I find a novel sequence type not in the database?**
-A: Please report it as a GitHub issue with supporting references. We actively maintain and expand the lineage database.
+### 🌊 MEGARes 2.0
+Doster E, et al. MEGARes 2.0: a database for classification of antimicrobial drug, biocide and metal resistance determinants in metagenomic sequence data. *Nucleic Acids Res*. 2020;48(D1):D561-D569.  
+DOI: [10.1093/nar/gkz1010](https://doi.org/10.1093/nar/gkz1010)
+
+### 🦠 VFDB
+Chen L, et al. VFDB 2012 update: toward the genetic diversity and molecular evolution of bacterial virulence factors. *Nucleic Acids Res*. 2012;40(D1):D641-5.  
+DOI: [10.1093/nar/gkr989](https://doi.org/10.1093/nar/gkr989)
+
+### 🧬 PlasmidFinder
+Carattoli A, et al. *In silico* detection and typing of plasmids using PlasmidFinder and plasmid multilocus sequence typing. *Antimicrob Agents Chemother*. 2014;58(7):3895-903.  
+DOI: [10.1128/AAC.02412-14](https://doi.org/10.1128/AAC.02412-14)
+
+### 🔬 EcoH (serotyping)
+Ingle DJ, et al. In silico serotyping of *E. coli* from short read data identifies limited novel O‑loci but extensive diversity of O:H serotype combinations within and between pathogenic lineages. *Microb Genom*. 2016;2(7):e000064.  
+DOI: [10.1099/mgen.0.000064](https://doi.org/10.1099/mgen.0.000064)
+
+### 🧪 BacMet
+Pal C, et al. BacMet: antibacterial biocide and metal resistance genes database. *Nucleic Acids Res*. 2014;42(D1):D737-43.  
+DOI: [10.1093/nar/gkt1252](https://doi.org/10.1093/nar/gkt1252)
+
+### 🐍 Biopython
+Cock PJ, et al. Biopython: freely available Python tools for computational molecular biology and bioinformatics. *Bioinformatics*. 2009;25(11):1422-3.  
+DOI: [10.1093/bioinformatics/btp163](https://doi.org/10.1093/bioinformatics/btp163)
+
+### 🌐 PubMLST / BIGSdb
+Jolley KA, et al. Open‑access bacterial population genomics: BIGSdb software, the PubMLST.org website and their applications. *Wellcome Open Res*. 2018;3:124.  
+DOI: [10.12688/wellcomeopenres.14826.1](https://doi.org/10.12688/wellcomeopenres.14826.1)
+
+### 🔍 ResFinder
+Florensa AF, et al. ResFinder – an open online resource for identification of antimicrobial resistance genes in next‑generation sequencing data and prediction of phenotypes from genotypes. *Microb Genom*. 2022;8(1):000748.  
+DOI: [10.1099/mgen.0.000748](https://doi.org/10.1099/mgen.0.000748)
+
+### 🔧 MLST (Seemann)
+Seemann T. MLST: Scan contig files against PubMLST typing schemes. [GitHub repository](https://github.com/tseemann/mlst).
+
+### 📦 ABRicate
+Seemann T. ABRicate: mass screening of contigs for antibiotic resistance genes. [GitHub repository](https://github.com/tseemann/abricate).
+
+### ⚡ BLAST+
+Camacho C, et al. BLAST+: architecture and applications. *BMC Bioinformatics*. 2009;10:421.  
+DOI: [10.1186/1471-2105-10-421](https://doi.org/10.1186/1471-2105-10-421)
+
+### 🔬 KMA
+Clausen PTLC, et al. Rapid and precise alignment of raw reads against redundant databases with KMA. *BMC Bioinformatics*. 2018;19:307.  
+DOI: [10.1186/s12859-018-2336-6](https://doi.org/10.1186/s12859-018-2336-6)
+
+### 🩺 E. coli Serotyping (Joensen)
+Joensen KG, et al. Rapid and easy in silico serotyping of *Escherichia coli* using whole genome sequencing (WGS) data. *J Clin Microbiol*. 2015;53(8):2410-2426.  
+DOI: [10.1128/JCM.00008-15](https://doi.org/10.1128/JCM.00008-15)
+
+### 🌿 Clermont Phylo‑typing
+Clermont O, et al. The Clermont *Escherichia coli* phylo‑typing method revisited: improvement of specificity and detection of new phylo‑groups. *Environ Microbiol Rep*. 2013;5(1):58-65.  
+DOI: [10.1111/1758-2229.12019](https://doi.org/10.1111/1758-2229.12019)
 
 ---
 
-## 🤝 **Contributing**
+## ❓ Frequently Asked Questions
 
-We welcome contributions from the community! Here's how you can help:
+**Q: What makes EcoliTyper different?**  
+A: Single‑command integration of 9 analyses (MLST, serotyping, CH typing, phylogrouping, AMR, virulence, plasmids, mutations, pathotype) + cross‑genome patterns + dynamic grouping + curated lineage database.
 
-1. 🍴 Fork the repository
-2. 🌿 Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. 💾 Commit your changes (`git commit -m 'Add amazing feature'`)
-4. 🚀 Push to the branch (`git push origin feature/amazing-feature`)
-5. 🔔 Open a Pull Request
+**Q: Can I use it for other bacteria?**  
+A: No – optimised for *E. coli* only.
 
-**Areas for Contribution:**
-- Database expansion and curation
-- Additional typing schemes
-- Performance optimizations
-- Visualization enhancements
-- Documentation improvements
+**Q: How much disk space is needed?**  
+A: ~5–10 GB for Conda + databases, plus ~10–50 MB per genome for results.
 
----
+**Q: How accurate is it?**  
+A: 100% concordance with standalone reference tools (mlst, SerotypeFinder, ezClermont, AMRFinderPlus) on validated strains.
 
-## 📜 **License & Third-Party Components**
+**Q: How long does it take?**  
+A: 1–6 min per genome (2 cores) or ~41 min for 30 genomes (16 cores).
 
-### **EcoliTyper Core Code**
-The EcoliTyper pipeline code (the workflow engine, report generation, HTML templates, and Python modules written by the authors) is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
+**Q: Can I run only some modules?**  
+A: Yes – use skip flags like `--skip-amrfinder`, `--skip-visualization`.
 
-### **Third-Party Tool Licenses**
-EcoliTyper executes several external bioinformatics tools, which are installed as Conda dependencies. Each tool is the property of its respective developers and is used under its own license:
+**Q: How do I adjust AMR stringency?**  
+A: Use `--amr-min-identity` and `--amr-min-coverage` (e.g., 0.95 and 0.9 for high stringency).
 
-| Tool | License |
-|------|---------|
-| **MLST** (Torsten Seemann) | GPL v2 |
-| **ABRicate** (Torsten Seemann) | GPL v2 |
-| **AMRFinderPlus** (NCBI) | Public Domain |
-| **SerotypeFinder** (CGE) | Apache 2.0 |
-| **CH Typing databases** (CGE) | Free for research |
-| **ezClermont** | MIT |
+**Q: Where is the main report?**  
+A: `summary_results/genius_ecoli_ultimate_report.html` – open in any browser.
 
-By using EcoliTyper, you agree to comply with the licenses of these third-party tools and databases.
+**Q: Can I use the HTML report with ChatGPT/Claude?**  
+A: Yes – upload the HTML file and ask questions about your data.
 
----
+**Q: What if I find a novel ST or missing lineage?**  
+A: Report it via GitHub issues – we actively maintain the database.
 
-## 👥 **Authors & Affiliations**
+**Q: How do I update AMR databases?**  
+A: Run `ecolityper --update-amr-db` (incremental) or `--force-update-amr-db` (full).
 
-### **Primary Authors**
-- **Brown Beckley** – *Creator & Lead Developer*
-  Department of Medical Biochemistry, University of Ghana Medical School, Accra, Ghana
-  Department of Biochemistry and Biotechnology, Kwame Nkrumah University of Science and Technology, Kumasi, Ghana
-  📧 [brownbeckley94@gmail.com](mailto:brownbeckley94@gmail.com)
-
-- **Dr. Vincent Amarh** – *Supervisor & Advisor*
-  Department of Medical Biochemistry, University of Ghana Medical School, Accra, Ghana
+**Q: Where can I get help or report bugs?**  
+A: GitHub Issues or email brownbeckley94@gmail.com.
 
 ---
 
-## 🔮 **Future Development Roadmap**
+## 🤝 Contributing
 
-### **Short-term Goals (2025)**
-- Regular database updates
-- Enhanced visualization capabilities
-- Improved documentation and tutorials
+We welcome contributions!  
+1. Fork the repo  
+2. Create a feature branch  
+3. Commit your changes  
+4. Push and open a Pull Request  
 
-### **Medium-term Goals (2026)**
-- Integration with raw read analysis pipelines
-- Real-time database update mechanisms
-- Cloud deployment options (Docker, Singularity)
+Areas: database expansion, new typing schemes, performance, visualisations, documentation.
 
-### **Long-term Vision**
-- AI/ML models for predictive analytics
-- Web interface for non-command-line users
-- Expanded lineage database with global collaborations
-- Integration with public health surveillance systems
+---
+
+## 📜 License & Third‑Party Components
+
+EcoliTyper core code is **MIT licensed**. Third‑party tools (MLST, ABRicate, AMRFinderPlus, SerotypeFinder, etc.) are subject to their own licenses (GPL, Apache, Public Domain, etc.). By using EcoliTyper you agree to comply with those licenses.
+
+---
+
+## 👥 Authors & Affiliations
+
+- **Brown Beckley** – Creator & Lead Developer  
+  University of Ghana Medical School & KNUST  
+  📧 brownbeckley94@gmail.com
+
+- **Dr. Vincent Amarh** – Lead Advisor
+  University of Ghana Medical School
+
+---
+
+## 🔮 Future Development Roadmap
+
+| Quarter | Goal |
+|---------|------|
+| **Q3 2026** | Raw read integration (fastq → assemblies + typing) |
+| **Q4 2026** | Real‑time database updates, enhanced visualisation dashboard |
+| **2027+** | AI/ML predictive models, web interface, global surveillance integration |
+
+---
+
+## 📞 Support & Community
+
+- **GitHub Issues**: [https://github.com/bbeckley-hub/EcoliTyper/issues](https://github.com/bbeckley-hub/EcoliTyper/issues)
+- **Email**: brownbeckley94@gmail.com
+- **Docker Hub**: [bbeckleyhub/ecolityper](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 
 ---
 
 <div align="center">
 
-## **⭐ Star us on GitHub if you find EcoliTyper useful!**
+## ⭐ Star us on GitHub if you find EcoliTyper useful!
 
 *Transforming fragmented genomic surveillance into integrated public health intelligence* 🧬✨
 
-**"From sequences to surveillance in one command"**
+**“From sequences to surveillance in one command”**
 
 ---
 
 **Join the Fight Against Antimicrobial Resistance**
 
-Antimicrobial resistance (AMR) represents one of the most significant global health threats of our time. We invite researchers, clinicians, and public health professionals to collaborate with us in expanding and validating our *E. coli* database, sharing regional epidemiological data, and advancing AMR surveillance.
-
-**Together, we can enhance global AMR monitoring and develop more effective treatment strategies.**
+We invite researchers, clinicians, and public health professionals to collaborate – share regional epidemiological data, validate the database, and advance AMR surveillance together.
 
 </div>
