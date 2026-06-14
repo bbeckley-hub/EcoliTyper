@@ -4,7 +4,7 @@ EcoliTyper AMRfinderPlus - E. coli AMR Analysis with Dynamic Database
 Comprehensive AMR analysis for E. coli with beautiful HTML reporting - MAXIMUM SPEED VERSION
 Author: Beckley Brown <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025 / Updated 2026-05-15
+Date: 2025 / Updated 2026-06-20
 Send a quick mail for any issues or further explanations.
 """
 
@@ -22,6 +22,7 @@ from datetime import datetime
 import psutil
 import math
 import json
+import random
 from collections import defaultdict
 
 class EcoliAMRfinderPlus:
@@ -54,7 +55,7 @@ class EcoliAMRfinderPlus:
         
         self.metadata = {
             "tool_name": "EcoliTyper AMRfinderPlus",
-            "version": "1.2.0",   # Updated version to reflect dynamic DB
+            "version": "1.2.1",   
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -191,7 +192,7 @@ class EcoliAMRfinderPlus:
         else:
             self.logger.info(f"Using user-specified CPU cores: {cpus}")
         
-        # Performance recommendations - MAXIMUM SPEED FOCUS (EcoliTyper style)
+        # Performance recommendations - MAXIMUM SPEED FOCUS 
         if cpus == 1:
             self.logger.info("💡 Performance: Single-core (max speed for 1-core systems)")
         elif cpus <= 4:
@@ -310,8 +311,10 @@ class EcoliAMRfinderPlus:
             self.logger.error(f"Bundled AMRfinderPlus check failed: {e}")
             return False
 
-    def run_amrfinder_single_genome(self, genome_file: str, output_dir: str) -> Dict[str, Any]:
-        """Run AMRfinderPlus on a single E. coli genome - USING BUNDLED BINARY with dynamic DB"""
+    def run_amrfinder_single_genome(self, genome_file: str, output_dir: str,
+                                    min_identity: float = None, min_coverage: float = None,
+                                    report_mutations: bool = True) -> Dict[str, Any]:
+        """Run AMRfinderPlus on a single E. coli genome - with optional mutation reporting and thresholds"""
         genome_name = Path(genome_file).stem
         output_file = os.path.join(output_dir, f"{genome_name}_amrfinder.txt")
         
@@ -323,6 +326,7 @@ class EcoliAMRfinderPlus:
                 'output_file': output_file,
                 'hits': [],
                 'hit_count': 0,
+                'mutations_file': None,
                 'status': 'failed',
                 'error': 'AMRfinder binary not found'
             }
@@ -346,7 +350,23 @@ class EcoliAMRfinderPlus:
         else:
             self.logger.warning("Using default AMRfinderPlus database location")
         
+        # Add min identity and min coverage if provided
+        if min_identity is not None:
+            cmd.extend(['--ident_min', str(min_identity)])
+            self.logger.info(f"Using minimum identity: {min_identity}")
+        if min_coverage is not None:
+            cmd.extend(['--coverage_min', str(min_coverage)])
+            self.logger.info(f"Using minimum coverage: {min_coverage}")
+        
+        # Mutation output file
+        mut_file = None
+        if report_mutations:
+            mut_file = os.path.join(output_dir, f"{genome_name}_mutations.tsv")
+            cmd.extend(['--mutation_all', mut_file])
+            self.logger.info(f"Will report point mutations to {mut_file}")
+        
         self.logger.info("🚀 MAXIMUM SPEED: Running AMRfinderPlus on %s (using ALL %d CORES)", genome_name, run_threads)
+        self.logger.debug(f"Command: {' '.join(cmd)}")
         
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -360,11 +380,16 @@ class EcoliAMRfinderPlus:
             # Create individual JSON report
             self._create_amrfinder_json_report(genome_name, hits, output_dir)
             
+            # If mutations were requested and file exists, create mutation HTML report
+            if mut_file and os.path.exists(mut_file):
+                self._create_mutation_html_report(genome_name, mut_file, output_dir)
+            
             return {
                 'genome': genome_name,
                 'output_file': output_file,
                 'hits': hits,
                 'hit_count': len(hits),
+                'mutations_file': mut_file,
                 'status': 'success'
             }
             
@@ -375,11 +400,12 @@ class EcoliAMRfinderPlus:
                 'output_file': output_file,
                 'hits': [],
                 'hit_count': 0,
+                'mutations_file': None,
                 'status': 'failed'
             }
     
     def _parse_amrfinder_output(self, amrfinder_file: str) -> List[Dict]:
-        """Parse AMRfinderPlus 4.2.4 output file into structured data - KEEPING OLD HEADERS"""
+        """Parse AMRfinderPlus 4.2.4 output file into structured data"""
         hits = []
         try:
             with open(amrfinder_file, 'r') as f:
@@ -409,17 +435,16 @@ class EcoliAMRfinderPlus:
                     
                     # Map to consistent field names - BOTH OLD AND NEW HEADERS
                     processed_hit = {
-                        # NEW headers from AMRFinderPlus 4.2.4
                         'Protein id': hit.get('Protein id', ''),
                         'Contig id': hit.get('Contig id', ''),
                         'Start': hit.get('Start', ''),
                         'Stop': hit.get('Stop', ''),
                         'Strand': hit.get('Strand', ''),
-                        'Element symbol': hit.get('Element symbol', ''),  # NEW: Element symbol
-                        'Element name': hit.get('Element name', ''),      # NEW: Element name
+                        'Element symbol': hit.get('Element symbol', ''),
+                        'Element name': hit.get('Element name', ''),
                         'Scope': hit.get('Scope', ''),
-                        'Type': hit.get('Type', ''),                      # NEW: Type
-                        'Subtype': hit.get('Subtype', ''),                # NEW: Subtype
+                        'Type': hit.get('Type', ''),
+                        'Subtype': hit.get('Subtype', ''),
                         'Class': hit.get('Class', ''),
                         'Subclass': hit.get('Subclass', ''),
                         'Method': hit.get('Method', ''),
@@ -433,17 +458,17 @@ class EcoliAMRfinderPlus:
                         'HMM accession': hit.get('HMM accession', ''),
                         'HMM description': hit.get('HMM description', ''),
                         
-                        # KEEP OLD HEADERS FOR BACKWARD COMPATIBILITY
+                        # Old header compatibility
                         'protein_id': hit.get('Protein id', ''),
                         'contig_id': hit.get('Contig id', ''),
                         'start': hit.get('Start', ''),
                         'stop': hit.get('Stop', ''),
                         'strand': hit.get('Strand', ''),
-                        'gene_symbol': hit.get('Element symbol', ''),  # Map new to old
-                        'sequence_name': hit.get('Element name', ''),   # Map new to old
+                        'gene_symbol': hit.get('Element symbol', ''),
+                        'sequence_name': hit.get('Element name', ''),
                         'scope': hit.get('Scope', ''),
-                        'element_type': hit.get('Type', ''),           # Map new to old
-                        'element_subtype': hit.get('Subtype', ''),     # Map new to old
+                        'element_type': hit.get('Type', ''),
+                        'element_subtype': hit.get('Subtype', ''),
                         'class': hit.get('Class', ''),
                         'subclass': hit.get('Subclass', ''),
                         'method': hit.get('Method', ''),
@@ -457,7 +482,6 @@ class EcoliAMRfinderPlus:
                         'hmm_id': hit.get('HMM accession', ''),
                         'hmm_description': hit.get('HMM description', ''),
                         
-                        # Also store original headers for reference
                         '_original_headers': headers,
                         '_original_values': parts
                     }
@@ -471,6 +495,173 @@ class EcoliAMRfinderPlus:
             
         self.logger.info("Parsed %d AMR hits from %s", len(hits), amrfinder_file)
         return hits
+    
+    def _parse_mutations_file(self, mut_file: str) -> List[Dict]:
+        """Parse mutations TSV file (same format as AMRfinder output)"""
+        return self._parse_amrfinder_output(mut_file)
+    
+    def _create_mutation_html_report(self, genome_name: str, mutations_file: str, output_dir: str):
+        """Create a beautiful HTML report for point mutations"""
+        mutations = self._parse_mutations_file(mutations_file)
+        if not mutations:
+            self.logger.info(f"No mutations found for {genome_name}, skipping mutation HTML.")
+            return
+        
+        random_quote = random.choice(self.science_quotes)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        html = f"""<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>EcoliTyper - Mutation Report: {genome_name}</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: #ffffff;
+                padding: 20px;
+                min-height: 100vh;
+            }}
+            .container {{ max-width: 1400px; margin: 0 auto; }}
+            .header {{ text-align: center; margin-bottom: 30px; }}
+            .ascii-container {{
+                background: rgba(0, 0, 0, 0.7);
+                padding: 20px;
+                border-radius: 15px;
+                margin-bottom: 20px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+                border: 2px solid rgba(0, 255, 0, 0.3);
+            }}
+            .ascii-art {{
+                font-family: 'Courier New', monospace;
+                font-size: 10px;
+                line-height: 1.1;
+                white-space: pre;
+                color: #00ff00;
+                text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+                overflow-x: auto;
+            }}
+            .quote-container {{
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                padding: 20px;
+                border-radius: 10px;
+                margin-bottom: 30px;
+                text-align: center;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }}
+            .quote-text {{ font-size: 18px; font-style: italic; margin-bottom: 10px; }}
+            .quote-author {{ font-size: 14px; color: #fbbf24; font-weight: bold; }}
+            .report-section {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1f2937;
+                padding: 25px;
+                border-radius: 10px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            }}
+            .report-section h2 {{
+                color: #1e3a8a;
+                border-bottom: 3px solid #3b82f6;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+                font-size: 24px;
+            }}
+            .table-responsive {{ width: 100%; overflow-x: auto; margin: 20px 0; }}
+            .mutation-table {{
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+                min-width: 1000px;
+            }}
+            .mutation-table th {{
+                background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+                color: white;
+                padding: 12px;
+                text-align: left;
+            }}
+            .mutation-table td {{
+                padding: 10px;
+                border-bottom: 1px solid #e5e7eb;
+            }}
+            .mutation-table tr:nth-child(even) {{ background-color: #f8fafc; }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                padding: 20px;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 10px;
+                font-size: 14px;
+            }}
+            .timestamp {{ color: #fbbf24; font-weight: bold; }}
+            .authorship {{ margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+    <div class="container">
+        <div class="header">
+            <div class="ascii-container">
+                <div class="ascii-art">{self._get_ascii_art()}</div>
+            </div>
+            <div class="quote-container">
+                <div class="quote-text">"{random_quote}"</div>
+            </div>
+        </div>
+
+        <div class="report-section">
+            <h2>🧬 Point Mutation Report: {genome_name}</h2>
+            <p>All point mutations detected by AMRfinderPlus (including synonymous variants).</p>
+            <div class="table-responsive">
+                <table class="mutation-table">
+                    <thead>
+                        <tr><th>Gene Symbol</th><th>Mutation</th><th>Class</th><th>Subclass</th>
+                        <th>Contig</th><th>Start</th><th>Stop</th><th>Strand</th>
+                        <th>Coverage (%)</th><th>Identity (%)</th><th>Accession</th></tr>
+                    </thead>
+                    <tbody>
+    """
+        for m in mutations:
+            html += f"""
+                        <tr>
+                            <td>{m.get('gene_symbol', '')}</td>
+                            <td>{m.get('element_name', '')}</td>
+                            <td>{m.get('class', '')}</td>
+                            <td>{m.get('subclass', '')}</td>
+                            <td>{m.get('contig_id', '')}</td>
+                            <td>{m.get('start', '')}</td>
+                            <td>{m.get('stop', '')}</td>
+                            <td>{m.get('strand', '')}</td>
+                            <td>{m.get('coverage', '')}</td>
+                            <td>{m.get('identity', '')}</td>
+                            <td>{m.get('accession', '')}</td>
+                        </tr>
+    """
+        html += f"""
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>ECOLITYPER</strong> - Mutation Analysis Module</p>
+            <p class="timestamp">Generated: {current_time}</p>
+            <div class="authorship">
+                <p>Author: Brown Beckley | GitHub: bbeckley-hub</p>
+                <p>Email: brownbeckley94@gmail.com</p>
+                <p>Affiliation: University of Ghana Medical School - Department of Medical Biochemistry</p>
+            </div>
+        </div>
+    </div>
+    </body>
+    </html>"""
+        out_file = os.path.join(output_dir, f"{genome_name}_mutations.html")
+        with open(out_file, 'w') as f:
+            f.write(html)
+        self.logger.info(f"✓ Mutation HTML report: {out_file}")
     
     def _create_amrfinder_html_report(self, genome_name: str, hits: List[Dict], output_dir: str):
         """Create comprehensive HTML report for AMRfinderPlus results with beautiful styling and ASCII art"""
@@ -1072,9 +1263,262 @@ class EcoliAMRfinderPlus:
         
         # Create comprehensive HTML summary report
         self._create_summary_html_report(all_results, output_base)
+        
+        # Create mutation batch summary if any mutations exist
+        self.create_mutation_summary(all_results, output_base)
+    
+    def create_mutation_summary(self, all_results: Dict[str, Any], output_base: str):
+        """Create mutation batch summary across all genomes (TSV, HTML, JSON)"""
+        self.logger.info("Creating mutation batch summaries...")
+        all_mutations = []
+        genome_mutation_counts = {}
+        
+        for genome_name, result in all_results.items():
+            if 'mutations_file' in result and result['mutations_file'] and os.path.exists(result['mutations_file']):
+                muts = self._parse_mutations_file(result['mutations_file'])
+                if muts:
+                    genome_mutation_counts[genome_name] = len(muts)
+                    for m in muts:
+                        m_copy = m.copy()
+                        m_copy['genome'] = genome_name
+                        all_mutations.append(m_copy)
+                else:
+                    genome_mutation_counts[genome_name] = 0
+            else:
+                genome_mutation_counts[genome_name] = 0
+        
+        if not all_mutations:
+            self.logger.info("No mutations found in any genome; skipping mutation summaries.")
+            return
+        
+        # TSV summary
+        tsv_file = os.path.join(output_base, "mutation_summary.tsv")
+        with open(tsv_file, 'w') as f:
+            fieldnames = ['genome', 'gene_symbol', 'element_name', 'class', 'subclass',
+                          'contig_id', 'start', 'stop', 'strand', 'coverage', 'identity', 'accession']
+            f.write('\t'.join(fieldnames) + '\n')
+            for m in all_mutations:
+                row = [m.get('genome', ''),
+                       m.get('gene_symbol', ''),
+                       m.get('element_name', ''),
+                       m.get('class', ''),
+                       m.get('subclass', ''),
+                       m.get('contig_id', ''),
+                       m.get('start', ''),
+                       m.get('stop', ''),
+                       m.get('strand', ''),
+                       m.get('coverage', ''),
+                       m.get('identity', ''),
+                       m.get('accession', '')]
+                f.write('\t'.join(str(x) for x in row) + '\n')
+        self.logger.info(f"✓ Mutation TSV: {tsv_file}")
+        
+        # HTML summary
+        self._create_mutation_summary_html(all_mutations, genome_mutation_counts, output_base)
+        # JSON summary
+        self._create_mutation_json_summaries(all_mutations, genome_mutation_counts, output_base)
+    
+    def _create_mutation_summary_html(self, all_mutations: List[Dict], genome_counts: Dict[str, int], output_base: str):
+        """Create HTML summary for mutations across all genomes"""
+        # Group by gene and mutation
+        gene_freq = {}
+        for m in all_mutations:
+            gene = m.get('gene_symbol', 'unknown')
+            mutation = m.get('element_name', '')
+            key = f"{gene}_{mutation}" if mutation else gene
+            if key not in gene_freq:
+                gene_freq[key] = {'count': 0, 'genomes': set(), 'gene': gene, 'mutation': mutation,
+                                'class': m.get('class',''), 'subclass': m.get('subclass','')}
+            gene_freq[key]['count'] += 1
+            gene_freq[key]['genomes'].add(m.get('genome',''))
+        for k in gene_freq:
+            gene_freq[k]['genomes'] = ', '.join(sorted(gene_freq[k]['genomes']))
+        sorted_freq = sorted(gene_freq.values(), key=lambda x: x['count'], reverse=True)
+        
+        random_quote = random.choice(self.science_quotes)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        html = f"""<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>EcoliTyper - Mutation Batch Summary</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: #ffffff;
+                padding: 20px;
+                min-height: 100vh;
+            }}
+            .container {{ max-width: 1400px; margin: 0 auto; }}
+            .header {{ text-align: center; margin-bottom: 30px; }}
+            .ascii-container {{
+                background: rgba(0, 0, 0, 0.7);
+                padding: 20px;
+                border-radius: 15px;
+                margin-bottom: 20px;
+                border: 2px solid rgba(0, 255, 0, 0.3);
+            }}
+            .ascii-art {{
+                font-family: 'Courier New', monospace;
+                font-size: 10px;
+                line-height: 1.1;
+                white-space: pre;
+                color: #00ff00;
+                overflow-x: auto;
+            }}
+            .quote-container {{
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                padding: 20px;
+                border-radius: 10px;
+                margin-bottom: 30px;
+                text-align: center;
+            }}
+            .report-section {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1f2937;
+                padding: 25px;
+                border-radius: 10px;
+                margin-bottom: 20px;
+            }}
+            .report-section h2 {{
+                color: #1e3a8a;
+                border-bottom: 3px solid #3b82f6;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+            }}
+            .summary-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+                font-size: 14px;
+            }}
+            .summary-table th {{
+                background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+                color: white;
+                padding: 12px;
+                text-align: left;
+            }}
+            .summary-table td {{
+                padding: 12px;
+                border-bottom: 1px solid #e5e7eb;
+            }}
+            .summary-table tr:nth-child(even) {{ background-color: #f8fafc; }}
+            .table-responsive {{ overflow-x: auto; margin: 20px 0; }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                padding: 20px;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 10px;
+            }}
+            .timestamp {{ color: #fbbf24; }}
+            .authorship {{ margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+    <div class="container">
+        <div class="header">
+            <div class="ascii-container">
+                <div class="ascii-art">{self._get_ascii_art()}</div>
+            </div>
+            <div class="quote-container">
+                <div class="quote-text">"{random_quote}"</div>
+            </div>
+        </div>
+
+        <div class="report-section">
+            <h2>🧬 Mutation Summary Across All Genomes</h2>
+            <p>Total genomes with mutations: {len([c for c in genome_counts.values() if c > 0])} / {len(genome_counts)}<br>
+            Total mutation events: {len(all_mutations)}</p>
+        </div>
+
+        <div class="report-section">
+            <h2>📊 Mutation Frequency by Gene/Mutation</h2>
+            <div class="table-responsive">
+                <table class="summary-table">
+                    <thead><tr><th>Gene</th><th>Mutation</th><th>Count</th><th>Genomes</th><th>Class</th><th>Subclass</th></tr></thead>
+                    <tbody>
+    """
+        for item in sorted_freq:
+            html += f"""
+                        <tr>
+                            <td><strong>{item['gene']}</strong></td>
+                            <td>{item['mutation']}</td>
+                            <td>{item['count']}</td>
+                            <td class="sequence-cell">{item['genomes']}</td>
+                            <td>{item['class']}</td>
+                            <td>{item['subclass']}</td>
+                        </tr>
+    """
+        html += f"""
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>ECOLITYPER</strong> - Mutation Batch Summary Module</p>
+            <p class="timestamp">Generated: {current_time}</p>
+            <div class="authorship">
+                <p>Author: Brown Beckley | GitHub: bbeckley-hub</p>
+                <p>Email: brownbeckley94@gmail.com</p>
+                <p>Affiliation: University of Ghana Medical School - Department of Medical Biochemistry</p>
+            </div>
+        </div>
+    </div>
+    </body>
+    </html>"""
+        out_file = os.path.join(output_base, "mutation_summary.html")
+        with open(out_file, 'w') as f:
+            f.write(html)
+        self.logger.info(f"✓ Mutation HTML summary: {out_file}")
+    
+    def _create_mutation_json_summaries(self, all_mutations: List[Dict], genome_counts: Dict[str, int], output_base: str):
+        """Create JSON summaries for mutations"""
+        genome_summary = {genome: {'total_mutations': count} for genome, count in genome_counts.items()}
+        gene_mutation_map = defaultdict(lambda: {'count': 0, 'genomes': set(), 'details': []})
+        for m in all_mutations:
+            gene = m.get('gene_symbol', 'unknown')
+            mut_name = m.get('element_name', '')
+            key = f"{gene}_{mut_name}"
+            gene_mutation_map[key]['count'] += 1
+            gene_mutation_map[key]['genomes'].add(m.get('genome',''))
+            gene_mutation_map[key]['details'].append({
+                'genome': m.get('genome'),
+                'gene': gene,
+                'mutation': mut_name,
+                'class': m.get('class'),
+                'subclass': m.get('subclass'),
+                'contig': m.get('contig_id'),
+                'start': m.get('start'),
+                'stop': m.get('stop')
+            })
+        for v in gene_mutation_map.values():
+            v['genomes'] = list(v['genomes'])
+        master_json = {
+            'metadata': {
+                'tool': 'EcoliTyper AMRfinderPlus Mutation Module',
+                'version': self.metadata['version'],
+                'analysis_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'total_genomes_analyzed': len(genome_counts),
+                'total_mutations_detected': len(all_mutations)
+            },
+            'genome_summary': genome_summary,
+            'mutation_frequency': {k: {'count': v['count'], 'genomes': v['genomes']} for k, v in gene_mutation_map.items()},
+            'all_mutations': all_mutations
+        }
+        json_file = os.path.join(output_base, "mutation_master_summary.json")
+        with open(json_file, 'w') as f:
+            json.dump(master_json, f, indent=2)
+        self.logger.info(f"✓ Mutation master JSON: {json_file}")
     
     def create_json_summaries(self, all_results: Dict[str, Any], output_base: str):
-        """Create JSON summary files"""
+        """Create JSON summary files (master and per‑genome)"""
         self.logger.info("Creating JSON summaries...")
         
         # Create master JSON summary
@@ -1391,17 +1835,14 @@ class EcoliAMRfinderPlus:
             margin: 2px;
             font-size: 0.9em;
         }}
-        /* EXACT ABRICATE STYLING - Keep your functionality, match ABRICATE style */
         .present {{ background-color: #d4edda; }}
         .critical {{ background-color: #f8d7da; font-weight: bold; }}
         .high-risk {{ background-color: #fff3cd; }}
-        /* SIMPLIFIED GENE LIST - Matches ABRICATE exactly */
         .gene-list-container {{
             font-size: 0.9em;
             line-height: 1.4;
             word-wrap: break-word;
         }}
-        /* REMOVE special genome-cell styling - Use simple comma-separated list like ABRICATE */
         .genome-list-simple {{
             font-size: 0.9em;
             line-height: 1.4;
@@ -1591,6 +2032,9 @@ class EcoliAMRfinderPlus:
                 <li><strong>ecoli_amrfinder_summary.tsv</strong> - Complete AMR data for all genomes</li>
                 <li><strong>ecoli_amrfinder_statistics_summary.tsv</strong> - Statistical summary</li>
                 <li><strong>ecoli_amrfinder_master_summary.json</strong> - Master JSON summary</li>
+                <li><strong>mutation_summary.tsv</strong> - All point mutations across genomes</li>
+                <li><strong>mutation_summary.html</strong> - Mutation summary report</li>
+                <li><strong>mutation_master_summary.json</strong> - Mutation JSON summary</li>
                 <li><strong>Individual genome HTML reports</strong> - Detailed analysis per genome</li>
                 <li><strong>Individual genome JSON reports</strong> - JSON data per genome</li>
                 <li><strong>This summary report</strong> - Cross-genome analysis with pattern discovery</li>
@@ -1618,7 +2062,9 @@ class EcoliAMRfinderPlus:
         
         self.logger.info("✓ E. coli AMRfinderPlus summary HTML report created: %s", html_file)   
     
-    def process_single_genome(self, genome_file: str, output_base: str = "ecoli_amrfinder_results") -> Dict[str, Any]:
+    def process_single_genome(self, genome_file: str, output_base: str = "ecoli_amrfinder_results",
+                              min_identity: float = None, min_coverage: float = None,
+                              report_mutations: bool = True) -> Dict[str, Any]:
         """Process a single E. coli genome with AMRfinderPlus"""
         genome_name = Path(genome_file).stem
         results_dir = os.path.join(output_base, genome_name)
@@ -1635,19 +2081,25 @@ class EcoliAMRfinderPlus:
                 'genome': genome_name,
                 'hits': [],
                 'hit_count': 0,
+                'mutations_file': None,
                 'status': 'failed',
                 'error': 'Bundled AMRfinderPlus not available'
             }
         
         # Run AMRfinderPlus
-        result = self.run_amrfinder_single_genome(genome_file, results_dir)
+        result = self.run_amrfinder_single_genome(genome_file, results_dir,
+                                                  min_identity=min_identity,
+                                                  min_coverage=min_coverage,
+                                                  report_mutations=report_mutations)
         
         status_icon = "✓" if result['status'] == 'success' else "✗"
         self.logger.info("%s %s: %d AMR hits", status_icon, genome_name, result['hit_count'])
         
         return result
     
-    def process_multiple_genomes(self, genome_pattern: str, output_base: str = "ecoli_amrfinder_results") -> Dict[str, Any]:
+    def process_multiple_genomes(self, genome_pattern: str, output_base: str = "ecoli_amrfinder_results",
+                                 min_identity: float = None, min_coverage: float = None,
+                                 report_mutations: bool = True) -> Dict[str, Any]:
         """Process multiple E. coli genomes using wildcard pattern - MAXIMUM SPEED"""
         
         # Print ASCII art banner at start (console)
@@ -1681,7 +2133,7 @@ class EcoliAMRfinderPlus:
         
         # Calculate optimal concurrent genomes - BE AGGRESSIVE FOR SPEED
         # Use all available CPU cores for concurrent processing
-        max_concurrent = max(1, min(self.cpus, len(genome_files), int(self.available_ram / 2.5)))  # 2.5GB per genome
+        max_concurrent = max(1, min(self.cpus, len(genome_files), int(self.available_ram / 1.5)))  # 1.5GB per genome
         
         self.logger.info("🚀 MAXIMUM SPEED: Using %d concurrent genome processing jobs", max_concurrent)
         self.logger.info("   Using BUNDLED AMRfinderPlus: %s", self.bundled_amrfinder)
@@ -1690,7 +2142,8 @@ class EcoliAMRfinderPlus:
         with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
             # Submit all tasks
             future_to_genome = {
-                executor.submit(self.process_single_genome, genome, output_base): genome 
+                executor.submit(self.process_single_genome, genome, output_base,
+                                min_identity, min_coverage, report_mutations): genome 
                 for genome in genome_files
             }
             
@@ -1707,6 +2160,7 @@ class EcoliAMRfinderPlus:
                         'genome': Path(genome).stem,
                         'hits': [],
                         'hit_count': 0,
+                        'mutations_file': None,
                         'status': 'failed'
                     }
         
@@ -1732,8 +2186,11 @@ Examples:
   # Run on all E. coli FASTA files (auto-detect optimal CPU cores - MAXIMUM SPEED)
   python ecoli_amrfinder.py "*.fna"
   
-  # Run on specific pattern with auto CPU detection
-  python ecoli_amrfinder.py "ECOLI_*.fasta"
+  # Run with custom identity and coverage thresholds
+  python ecoli_amrfinder.py "*.fna" --min-identity 0.95 --min-coverage 0.9
+  
+  # Skip mutation reporting (mutations are reported by default)
+  python ecoli_amrfinder.py "*.fna" --skip-mutations
   
   # Force specific number of CPU cores
   python ecoli_amrfinder.py "*.fa" --cpus 16
@@ -1749,7 +2206,7 @@ MAXIMUM SPEED RESOURCE MANAGEMENT:
   • 5-8 cores: Uses (cores-1) for optimal performance  
   • 9-16 cores: Uses (cores-2) for high performance
   • 17-32 cores: Uses (cores-4) for maximum throughput
-  • 32+ cores: Uses 85% of cores (capped at 32)
+  • 32+ cores: Uses 95% of cores (capped at 32)
 
 Supported FASTA extensions: .fasta, .fa, .fna, .faa
         """
@@ -1761,6 +2218,12 @@ Supported FASTA extensions: .fasta, .fa, .fna, .faa
                        help='Number of CPU cores to use (default: auto-detect optimal for MAXIMUM SPEED)')
     parser.add_argument('--output', '-o', default='ecoli_amrfinder_results', 
                        help='Output directory (default: ecoli_amrfinder_results)')
+    parser.add_argument('--min-identity', type=float, default=None,
+                       help='Minimum identity (0..1) for hits. Default: AMRfinder auto threshold')
+    parser.add_argument('--min-coverage', type=float, default=None,
+                       help='Minimum coverage of reference (0..1). Default: 0.5')
+    parser.add_argument('--skip-mutations', action='store_true',
+                       help='Skip point mutation reporting (mutations are reported by default)')
     parser.add_argument('--update-db', action='store_true', 
                        help='Update AMRfinderPlus database to latest version and exit')
     parser.add_argument('--db-version', action='store_true', 
@@ -1791,7 +2254,10 @@ Supported FASTA extensions: .fasta, .fa, .fna, .faa
     executor = EcoliAMRfinderPlus(cpus=args.cpus)
     
     try:
-        results = executor.process_multiple_genomes(args.pattern, args.output)
+        results = executor.process_multiple_genomes(args.pattern, args.output,
+                                                    min_identity=args.min_identity,
+                                                    min_coverage=args.min_coverage,
+                                                    report_mutations=not args.skip_mutations)
         
         # Print summary
         executor.logger.info("\n" + "="*50)
@@ -1825,6 +2291,9 @@ Supported FASTA extensions: .fasta, .fa, .fna, .faa
         executor.logger.info("   Statistics summary: %s/ecoli_amrfinder_statistics_summary.tsv", args.output)
         executor.logger.info("   Master JSON summary: %s/ecoli_amrfinder_master_summary.json", args.output)
         executor.logger.info("   Summary HTML report: %s/ecoli_amrfinder_summary_report.html", args.output)
+        executor.logger.info("   Mutation TSV: %s/mutation_summary.tsv", args.output)
+        executor.logger.info("   Mutation HTML summary: %s/mutation_summary.html", args.output)
+        executor.logger.info("   Mutation master JSON: %s/mutation_master_summary.json", args.output)
         executor.logger.info("   Individual genome reports in: %s/*/", args.output)
         
         # Performance summary

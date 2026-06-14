@@ -1,0 +1,36 @@
+on:
+  workflow_dispatch
+
+name: manual release noarch
+
+jobs:
+  conda-noarch:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Make conda yaml
+        run: |
+          pip install PyYAML
+          pip install ruamel.yaml
+          python conda/make_conda_no_arch.py
+          cat conda/meta.yaml
+
+      - name: Set up micromamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: envs/linux-build.yml
+
+      - name: Build package
+        run: |
+          conda mambabuild conda -c conda-forge --output-folder ./
+          find . -name '*.tar.bz2'
+
+      - name: Upload conda package
+        run: |
+          anaconda -t ${{ secrets.GENOMICEPIDEMIOLOGY_CONDA_AUTH_TOKEN }} upload --label main noarch/*.tar.bz2
