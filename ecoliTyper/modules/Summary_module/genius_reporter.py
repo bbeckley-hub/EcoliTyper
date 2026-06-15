@@ -1377,8 +1377,14 @@ class UltimateHTMLGenerator:
         st_dist = patterns.get('st_distribution', Counter())
         total = sum(st_dist.values())
         html = f"""
-        <div class="alert-box alert-info"><i class="fas fa-info-circle"></i><div><h3>MLST Analysis</h3><p>Multi‑Locus Sequence Typing (MLST) uses internal fragments of seven housekeeping genes. It is highly reproducible and defines Sequence Types (STs). Closely related STs belong to the same Clonal Complex (CC).</p><p><strong>{len(st_dist)} unique STs</strong> identified. MLST is the gold standard for global epidemiology and outbreak tracking.</p></div></div>
-        <div class="scrollable-table"><table id="mlst-table" class="data-table"><thead><tr><th data-sort="string">ST</th><th data-sort="number">Count</th><th data-sort="number">Percentage</th><th data-sort="string">Associated Serotypes</th></tr></thead><tbody>
+        <div class="alert-box alert-info"><i class="fas fa-info-circle"></i><div><h3>MLST Analysis</h3>
+        <p>Multi‑Locus Sequence Typing (MLST) uses internal fragments of seven housekeeping genes. It is highly reproducible and defines Sequence Types (STs). Closely related STs belong to the same Clonal Complex (CC).</p>
+        <p><strong>{len(st_dist)} unique STs</strong> identified. MLST is the gold standard for global epidemiology and outbreak tracking.</p>
+        </div></div>
+        <div class="scrollable-table">
+        <table id="mlst-table" class="data-table">
+            <thead><tr><th data-sort="string">ST</th><th data-sort="number">Count</th><th data-sort="number">Percentage</th><th data-sort="string">Associated Serotypes</th></tr></thead>
+            <tbody>
         """
         for st, cnt in st_dist.most_common():
             pct = cnt/total*100
@@ -1387,11 +1393,12 @@ class UltimateHTMLGenerator:
                 if f"{st} - " in combo:
                     seros.add(combo.split(" - ")[1])
             sero_str = ', '.join(seros) if seros else 'ND'
-           
             html += f'<tr><td><strong>{st}</strong></td><td>{cnt}</td><td>{pct:.1f}%</td><td>{sero_str}</td></tr>'
-        html += '</tbody></table></div>'
-
-        # Combination tables 
+        html += """
+            </tbody>
+        </table>
+        </div>
+        """
         combos = [
             ('st_o_combinations', 'ST-O', 'ST - O antigen'),
             ('st_h_combinations', 'ST-H', 'ST - H antigen'),
@@ -1405,19 +1412,21 @@ class UltimateHTMLGenerator:
             combo_dict = patterns.get(key, {})
             if not combo_dict:
                 continue
-            html += f'<h3 style="margin-top:30px;">{title} Combinations</h3><input type="text" class="search-box" id="search-{key}" onkeyup="searchTable(\'{key}-table\',\'search-{key}\')" placeholder="🔍 Search...">'
-            html += f'<div class="scrollable-table"><table id="{key}-table" class="data-table"><thead><tr><th data-sort="string">Combination</th><th data-sort="number">Count</th><th data-sort="string">Samples</th></tr></thead><tbody>'
+            html += f'<h3 style="margin-top:30px;">{title} Combinations</h3>'
+            html += f'<input type="text" class="search-box" id="search-{key}" onkeyup="searchTable(\'{key}-table\',\'search-{key}\')" placeholder="🔍 Search...">'
+            html += f'<div class="scrollable-table"><table id="{key}-table" class="data-table"><thead><tr><th data-sort="string">Combination</th><th data-sort="number">Count</th><th data-sort="string" style="min-width: 200px;">Samples</th></tr></thead><tbody>'
             for combo, samples_list in sorted(combo_dict.items(), key=lambda x: len(x[1]), reverse=True):
                 sample_tags = ''.join(f'<span class="genome-tag">{s}</span>' for s in samples_list)
-                html += f'<tr><td><strong>{combo}</strong></td><td>{len(samples_list)}</td><td><div class="genome-list">{sample_tags}</div></td></tr>'
-            html += '</tbody></tr></div>'
+                html += f'<tr><td><strong>{combo}</strong></td><td>{len(samples_list)}</td><td style="max-width: 400px; overflow-x: auto;"><div class="genome-list" style="display: flex; flex-wrap: wrap; gap: 4px;">{sample_tags}</div></td></tr>'
+            html += '</tbody></table></div>'
         full = patterns.get('st_oh_phylo_fumc_fimh_combinations', {})
         if full:
-            html += f'<h3 style="margin-top:30px;">ST - O:H - Phylogroup - FumC:FimH Combinations</h3><input type="text" class="search-box" id="search-full" onkeyup="searchTable(\'full-combo-table\',\'search-full\')" placeholder="🔍 Search...">'
-            html += f'<div class="scrollable-table"><table id="full-combo-table" class="data-table"><thead><tr><th data-sort="string">Full Combination</th><th data-sort="number">Count</th><th data-sort="string">Samples</th></tr></thead><tbody>'
+            html += f'<h3 style="margin-top:30px;">ST - O:H - Phylogroup - FumC:FimH Combinations</h3>'
+            html += f'<input type="text" class="search-box" id="search-full" onkeyup="searchTable(\'full-combo-table\',\'search-full\')" placeholder="🔍 Search...">'
+            html += f'<div class="scrollable-table"><table id="full-combo-table" class="data-table"><thead><tr><th data-sort="string">Full Combination</th><th data-sort="number">Count</th><th data-sort="string" style="min-width: 250px;">Samples</th></tr></thead><tbody>'
             for combo, samples_list in sorted(full.items(), key=lambda x: len(x[1]), reverse=True):
                 sample_tags = ''.join(f'<span class="genome-tag">{s}</span>' for s in samples_list)
-                html += f'<tr><td><strong>{combo}</strong></td><td>{len(samples_list)}</td><td><div class="genome-list">{sample_tags}</div></td></tr>'
+                html += f'<tr><td><strong>{combo}</strong></td><td>{len(samples_list)}</td><td style="max-width: 450px; overflow-x: auto;"><div class="genome-list" style="display: flex; flex-wrap: wrap; gap: 4px;">{sample_tags}</div></td></tr>'
             html += '</tbody></table></div>'
         return html
     
