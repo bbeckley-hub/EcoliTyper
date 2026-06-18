@@ -51,7 +51,7 @@
 
 
 [![Conda](https://img.shields.io/badge/conda-✓-green.svg)](https://docs.conda.io/en/latest/)
-[![Sample Report](https://img.shields.io/badge/📊-View_Sample_Report-blue)](#sample-output)
+[![Sample Report](https://img.shields.io/badge/🔗-Open_Sample_Report-red)](https://htmlpreview.github.io/?https://bbeckley-hub.github.io/EcoliTyper/#summary)
 ![Profile Views](https://komarev.com/ghpvc/?username=bbeckley-hub&label=Profile%20Views&color=0e75b6&style=flat)
 [![Google Scholar](https://img.shields.io/badge/Google%20Scholar-Profile-4285F4?style=flat&logo=googlescholar&logoColor=white)](https://scholar.google.com/citations?user=CYNOsqIAAAAJ&hl=en)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Profile-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/brown-beckley-190315319)
