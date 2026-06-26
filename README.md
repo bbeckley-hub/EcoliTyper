@@ -8,6 +8,7 @@
 
 **Complete *E. coli* genomic analysis in minutes — not hours**
 
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Version](https://anaconda.org/bioconda/ecolityper/badges/version.svg)](https://github.com/bbeckley-hub/EcoliTyper)
