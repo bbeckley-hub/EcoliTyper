@@ -3,7 +3,6 @@ include README.md
 include requirements.txt
 include pyproject.toml
 include CITATION.cff
-include cleanup.sh
 
 # MLST module
 recursive-include ecoliTyper/modules/mlst_module/db *

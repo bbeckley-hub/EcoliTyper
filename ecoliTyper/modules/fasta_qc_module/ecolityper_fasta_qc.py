@@ -4,7 +4,7 @@ ECOLITYPER FASTA QC - Comprehensive Quality Control for E. coli with HTML Report
 Includes species confirmation using fastANI (multi‑reference, treats Shigella as E. coli)
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School - Department of Medical Biochemistry
-Date: 2026-05-14 (Enhanced with proper Shigella handling)
+Date: 2026-07-22 (Enhanced with proper Shigella handling)
 """
 
 import os
@@ -47,7 +47,7 @@ class ECOLITYPER_QC:
 
         self.metadata = {
             "tool_name": "ECOLITYPER FASTA QC Analysis",
-            "version": "1.2.1",
+            "version": "1.3.0",
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",

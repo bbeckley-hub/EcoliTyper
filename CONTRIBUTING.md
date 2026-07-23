@@ -59,7 +59,7 @@ pip install -e .
 # AMR database (if using AMRFinderPlus)
 ecolityper --update-amr-db
 
-# ABRicate databases (if using ABRicate for virulence/plasmid screening)
+# ABRicate databases (if using ABRicate for Resistance/virulence/plasmid screening)
 abricate --setupdb
 ```
 

@@ -1,4 +1,4 @@
-# Core Python dependencies for StaphScope
+# Core Python dependencies for ecolityper
 pandas
 biopython
 psutil

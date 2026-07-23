@@ -5,7 +5,7 @@ E. coli phylogrouping using ezClermont with beautiful reporting
 Author: Brown Beckley
 Email: <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025-12-16 /2026-05-15(Updated with ASCII art in HTML)
+Date: 2025-12-16 /2026-07-22 
 Send a quick mail for any issues or further explanations.
 """
 
@@ -29,7 +29,7 @@ class EnhancedEzClermont:
         self.results = []
         self.metadata = {
             "tool_name": "EcoliTyper Phylogrouping",
-            "version": "1.2.1", 
+            "version": "1.3.0", 
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",

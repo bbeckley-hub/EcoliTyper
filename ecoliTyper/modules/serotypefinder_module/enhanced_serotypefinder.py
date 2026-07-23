@@ -5,7 +5,7 @@ Handles batch processing, automatic directory management, and multi-format repor
 Author: Brown Beckley
 Email: <brownbeckley94@gmail.com>
 Affliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025-12-16/2026-05-15 (Updated with ASCII art in HTML)
+Date: 2025-12-16/2026-07-22 
 Send a quick mail for any issues or further explanations.
 """
 
@@ -28,7 +28,7 @@ class EnhancedSerotypeFinder:
         self.results = []
         self.metadata = {
             "tool_name": "EcoliTyper SerotypeFinder",
-            "version": "1.2.1",
+            "version": "1.3.0",
             "authors": ["Brown Beckley"],
             "email": "brownbeckley94@gmail.com",
             "github": "https://github.com/bbeckley-hub",
@@ -123,57 +123,91 @@ class EnhancedSerotypeFinder:
             return self._create_error_result(sample_name, str(fasta_file), str(e))
     
     def _parse_sample_results(self, sample_name: str, fasta_path: str, output_dir: Path) -> Dict[str, Any]:
-        """Parse results from serotypefinder output files"""
+        """Parse results from serotypefinder output files, robust to JSON variations."""
         try:
-            # Parse JSON results
             json_file = output_dir / "data.json"
-            if json_file.exists():
-                with open(json_file, 'r') as f:
-                    json_data = json.load(f)
-                
-                serotype_data = json_data.get('serotypefinder', {}).get('results', {})
-                run_info = json_data.get('serotypefinder', {}).get('run_info', {})
-                user_input = json_data.get('serotypefinder', {}).get('user_input', {})
-                
-                o_type = "Unknown"
-                h_type = "Unknown"
-                genes_found = []
-                detailed_results = {}
-                
-                # Extract O-type results
-                o_type_results = serotype_data.get('O_type', {})
+            if not json_file.exists():
+                return self._create_error_result(sample_name, fasta_path, "No JSON results file found")
+
+            with open(json_file, 'r') as f:
+                json_data = json.load(f)
+
+            # Navigate safely
+            serotype_data = json_data.get('serotypefinder', {}).get('results', {})
+            if not isinstance(serotype_data, dict):
+                serotype_data = {}
+
+            run_info = json_data.get('serotypefinder', {}).get('run_info', {})
+            user_input = json_data.get('serotypefinder', {}).get('user_input', {})
+
+            o_type = "Unknown"
+            h_type = "Unknown"
+            genes_found = []
+            detailed_results = {'O_type': {}, 'H_type': {}}
+
+            # --- Parse O-type ---
+            o_type_results = serotype_data.get('O_type', {})
+            if isinstance(o_type_results, dict):
                 detailed_results['O_type'] = o_type_results
                 if o_type_results:
-                    o_type = list(o_type_results.values())[0].get('serotype', 'Unknown')
-                    genes_found.extend(list(o_type_results.keys()))
-                
-                # Extract H-type results  
-                h_type_results = serotype_data.get('H_type', {})
+                    # Get first serotype (assume highest hit)
+                    first_result = next(iter(o_type_results.values())) if o_type_results else {}
+                    if isinstance(first_result, dict):
+                        o_type = first_result.get('serotype', 'Unknown')
+                        genes_found.extend(list(o_type_results.keys()))
+            elif isinstance(o_type_results, list):
+                # If it's a list, iterate and collect
+                for item in o_type_results:
+                    if isinstance(item, dict):
+                        detailed_results['O_type'][item.get('gene', 'unknown')] = item
+                        if item.get('serotype') and o_type == "Unknown":
+                            o_type = item.get('serotype')
+                        genes_found.append(item.get('gene', ''))
+                if o_type == "Unknown" and o_type_results:
+                    o_type = o_type_results[0].get('serotype', 'Unknown')
+            else:
+                # It's a string or something else – store as is
+                detailed_results['O_type'] = {'raw': str(o_type_results) if o_type_results else 'None'}
+
+            # --- Parse H-type ---
+            h_type_results = serotype_data.get('H_type', {})
+            if isinstance(h_type_results, dict):
                 detailed_results['H_type'] = h_type_results
                 if h_type_results:
-                    h_type = list(h_type_results.values())[0].get('serotype', 'Unknown')
-                    genes_found.extend(list(h_type_results.keys()))
-                
-                serotype = f"{o_type}:{h_type}" if o_type != "Unknown" and h_type != "Unknown" else "Unknown"
-                
-                return {
-                    "sample_id": sample_name,
-                    "file_path": fasta_path,
-                    "serotype": serotype,
-                    "o_type": o_type,
-                    "h_type": h_type,
-                    "genes_found": genes_found,
-                    "confidence": "High",  # Based on 100% identity in your results
-                    "status": "Completed",
-                    "output_directory": str(output_dir),
-                    "warnings": [],
-                    "detailed_data": detailed_results,
-                    "run_info": run_info,
-                    "user_input": user_input
-                }
+                    first_result = next(iter(h_type_results.values())) if h_type_results else {}
+                    if isinstance(first_result, dict):
+                        h_type = first_result.get('serotype', 'Unknown')
+                        genes_found.extend(list(h_type_results.keys()))
+            elif isinstance(h_type_results, list):
+                for item in h_type_results:
+                    if isinstance(item, dict):
+                        detailed_results['H_type'][item.get('gene', 'unknown')] = item
+                        if item.get('serotype') and h_type == "Unknown":
+                            h_type = item.get('serotype')
+                        genes_found.append(item.get('gene', ''))
+                if h_type == "Unknown" and h_type_results:
+                    h_type = h_type_results[0].get('serotype', 'Unknown')
             else:
-                return self._create_error_result(sample_name, fasta_path, "No JSON results file found")
-                
+                detailed_results['H_type'] = {'raw': str(h_type_results) if h_type_results else 'None'}
+
+            serotype = f"{o_type}:{h_type}" if o_type != "Unknown" and h_type != "Unknown" else "Unknown"
+
+            return {
+                "sample_id": sample_name,
+                "file_path": fasta_path,
+                "serotype": serotype,
+                "o_type": o_type,
+                "h_type": h_type,
+                "genes_found": genes_found,
+                "confidence": "High" if genes_found else "Low",
+                "status": "Completed",
+                "output_directory": str(output_dir),
+                "warnings": [],
+                "detailed_data": detailed_results,
+                "run_info": run_info,
+                "user_input": user_input
+            }
+
         except Exception as e:
             return self._create_error_result(sample_name, fasta_path, f"Error parsing results: {str(e)}")
     
@@ -291,7 +325,6 @@ class EnhancedSerotypeFinder:
     
     def generate_html_report(self, output_dir: Path) -> str:
         """Generate comprehensive HTML report with ASCII art and rotating science quotes"""
-        # JavaScript for rotating quotes
         quotes_js = """
         <script>
             let quotes = %s;
@@ -302,10 +335,8 @@ class EnhancedSerotypeFinder:
                 currentQuote = (currentQuote + 1) %% quotes.length;
             }
             
-            // Rotate every 10 seconds
             setInterval(rotateQuote, 10000);
             
-            // Initial display
             document.addEventListener('DOMContentLoaded', function() {
                 rotateQuote();
             });
@@ -450,7 +481,7 @@ class EnhancedSerotypeFinder:
                 <div class="header">
                     <div class="ascii-container">
                         <div class="ascii-art">
-{self.ascii_art}
+    {self.ascii_art}
                         </div>
                     </div>
                     <h1 style="color: #333; margin: 0; font-size: 2.5em;">🧬 EcoliTyper Serotype Analysis Report</h1>
@@ -545,7 +576,8 @@ class EnhancedSerotypeFinder:
                             <tbody>
                     """
                     for gene, details in result['detailed_data']['O_type'].items():
-                        html_content += f"""
+                        if isinstance(details, dict):
+                            html_content += f"""
                                 <tr>
                                     <td><strong>{gene}</strong></td>
                                     <td>{details.get('serotype', 'N/A')}</td>
@@ -555,7 +587,14 @@ class EnhancedSerotypeFinder:
                                     <td>{details.get('positions_in_contig', 'N/A')}</td>
                                     <td>{details.get('accession', 'N/A')}</td>
                                 </tr>
-                        """
+                            """
+                        else:
+                            # It's a string (e.g., "No hit found") – show a single cell spanning all columns
+                            html_content += f"""
+                                <tr>
+                                    <td colspan="7"><em>{details}</em></td>
+                                </tr>
+                            """
                     html_content += """
                             </tbody>
                         </table>
@@ -580,7 +619,8 @@ class EnhancedSerotypeFinder:
                             <tbody>
                     """
                     for gene, details in result['detailed_data']['H_type'].items():
-                        html_content += f"""
+                        if isinstance(details, dict):
+                            html_content += f"""
                                 <tr>
                                     <td><strong>{gene}</strong></td>
                                     <td>{details.get('serotype', 'N/A')}</td>
@@ -590,7 +630,13 @@ class EnhancedSerotypeFinder:
                                     <td>{details.get('positions_in_contig', 'N/A')}</td>
                                     <td>{details.get('accession', 'N/A')}</td>
                                 </tr>
-                        """
+                            """
+                        else:
+                            html_content += f"""
+                                <tr>
+                                    <td colspan="7"><em>{details}</em></td>
+                                </tr>
+                            """
                     html_content += """
                             </tbody>
                         </table>

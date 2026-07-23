@@ -54,3 +54,5 @@ usage
 # Excluded data folders
 ecoliTyper/modules/Amrfinder_module/data/
 
+ecoliTyper/modules/amrfinder_module/data/amrfinder_db/
+ecoliTyper/modules/amrfinder_module/data/

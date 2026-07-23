@@ -1,5 +1,5 @@
 {% set name = "ecolityper" %}
-{% set version = "1.2.1" %}
+{% set version = "1.3.0" %}
 
 package:
   name: {{ name|lower }}
@@ -11,7 +11,7 @@ source:
 build:
   noarch: python
   script: {{ PYTHON }} -m pip install . -vv
-  number: 2
+  number: 0
   entry_points:
     - ecolityper = ecoliTyper.ecolityper:main
 

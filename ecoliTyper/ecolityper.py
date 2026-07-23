@@ -4,8 +4,8 @@ EcoliTyper Main Orchestrator - Complete E. coli Typing Pipeline (Temp‑dir vers
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School - Department of Medical Biochemistry
 MIT License
-2026-14-06
-Version: 1.2.1
+2026-07-23
+Version: 1.3.0
 """
 
 import os
@@ -138,7 +138,7 @@ class EcoliTyperOrchestrator:
         sys.exit(1)
 
     def update_amr_database(self, force: bool = False) -> bool:
-        amr_module_path = self.base_dir / "modules" / "Amrfinder_module"
+        amr_module_path = self.base_dir / "modules" / "amrfinder_module"
         amr_script = amr_module_path / "ecoli_amrfinder.py"
         if not amr_script.exists():
             self.banner.display_error(f"AMR script not found at: {amr_script}")
@@ -160,7 +160,7 @@ class EcoliTyperOrchestrator:
             return False
 
     def ensure_amr_database(self) -> bool:
-        amr_module_path = self.base_dir / "modules" / "Amrfinder_module"
+        amr_module_path = self.base_dir / "modules" / "amrfinder_module"
         amr_script = amr_module_path / "ecoli_amrfinder.py"
         if not amr_script.exists():
             self.banner.display_error("AMR script not found, cannot check database.")
@@ -302,7 +302,7 @@ class EcoliTyperOrchestrator:
         pattern = self.get_file_pattern(fasta_files)
         cmd = [sys.executable, "enhanced_chtyper.py", "-i", pattern, "-o", "ecolityper_chtyper_results"]
         extra = ["chtyper_results.html", "chtyper_results.tsv", "chtyper_summary.json"]
-        return self.run_module_in_temp("CHTyper_module", fasta_files, cmd,
+        return self.run_module_in_temp("chtyper_module", fasta_files, cmd,
                                        "ecolityper_chtyper_results/chtyper_results",
                                        "chtyper_results", extra)
 
@@ -314,9 +314,14 @@ class EcoliTyperOrchestrator:
                                        "ecolityper_phylo_results/phylogrouping_results",
                                        "phylogrouping_results", extra)
 
-    def run_abricate_analysis(self, fasta_files: List[Path], output_dir: Path, threads: int) -> bool:
+    def run_abricate_analysis(self, fasta_files: List[Path], output_dir: Path, threads: int,
+                              min_identity: int = 80, min_coverage: int = 80) -> bool:
         pattern = self.get_file_pattern(fasta_files)
         cmd = [sys.executable, "ecoli_abricate.py", pattern]
+        if min_identity is not None:
+            cmd.extend(["--minid", str(min_identity)])
+        if min_coverage is not None:
+            cmd.extend(["--mincov", str(min_coverage)])
         extra = [
             "ecoli_abricate_master_summary.json",
             "ecoli_argannot_abricate_summary.tsv", "ecoli_argannot_summary.json", "ecoli_argannot_summary_report.html",
@@ -325,12 +330,12 @@ class EcoliTyperOrchestrator:
             "ecoli_ecoh_abricate_summary.tsv", "ecoli_ecoh_summary.json", "ecoli_ecoh_summary_report.html",
             "ecoli_ecoli_vf_abricate_summary.tsv", "ecoli_ecoli_vf_summary.json", "ecoli_ecoli_vf_summary_report.html",
             "ecoli_megares_abricate_summary.tsv", "ecoli_megares_summary.json", "ecoli_megares_summary_report.html",
-            "ecoli_resfinder_summary_report.tsv", "ecoli_resfinder_summary_report.json", "ecoli_resfinder_summary_report.html",
+            "ecoli_resfinder_abricate_summary.tsv", "ecoli_resfinder_summary.json", "ecoli_resfinder_summary_report.html",
             "ecoli_ncbi_abricate_summary.tsv", "ecoli_ncbi_summary.json", "ecoli_ncbi_summary_report.html",
             "ecoli_plasmidfinder_abricate_summary.tsv", "ecoli_plasmidfinder_summary.json", "ecoli_plasmidfinder_summary_report.html",
             "ecoli_vfdb_abricate_summary.tsv", "ecoli_vfdb_summary.json", "ecoli_vfdb_summary_report.html"
         ]
-        return self.run_module_in_temp("Abricate_module", fasta_files, cmd,
+        return self.run_module_in_temp("abricate_module", fasta_files, cmd,
                                        "ecoli_abricate_results", "abricate_results", extra)
 
     def run_amrfinder_analysis(self, fasta_files: List[Path], output_dir: Path, threads: int,
@@ -354,7 +359,7 @@ class EcoliTyperOrchestrator:
             "ecoli_amrfinder_summary_report.html", "ecoli_amrfinder_summary.tsv", "ecoli_amrfinder_statistics_summary.tsv",
             "ecoli_amrfinder_master_summary.json", "mutation_summary.html", "mutation_summary.tsv", "mutation_master_summary.json"
         ]
-        return self.run_module_in_temp("Amrfinder_module", fasta_files, cmd,
+        return self.run_module_in_temp("amrfinder_module", fasta_files, cmd,
                                        "ecoli_amrfinder_results", "amrfinder_results", extra)
 
     def _copy_required_files_to_temp(self, src_output_dir: Path, temp_work_dir: Path):
@@ -365,13 +370,21 @@ class EcoliTyperOrchestrator:
             ("chtyper_results", ["chtyper_results.html", "chtyper_results.tsv", "chtyper_summary.json"]),
             ("phylogrouping_results", ["phylogrouping_results.html", "phylogrouping_results.tsv", "phylogrouping_results.json"]),
             ("abricate_results", [
+                "ecoli_argannot_abricate_summary.tsv", "ecoli_bacmet2_abricate_summary.tsv",
+                "ecoli_card_abricate_summary.tsv", "ecoli_ecoh_abricate_summary.tsv",
+                "ecoli_ecoli_vf_abricate_summary.tsv", "ecoli_megares_abricate_summary.tsv",
+                "ecoli_ncbi_abricate_summary.tsv", "ecoli_plasmidfinder_abricate_summary.tsv",
+                "ecoli_vfdb_abricate_summary.tsv", "ecoli_resfinder_abricate_summary.tsv",
                 "ecoli_argannot_summary_report.html", "ecoli_bacmet2_summary_report.html",
                 "ecoli_card_summary_report.html", "ecoli_ecoh_summary_report.html",
                 "ecoli_ecoli_vf_summary_report.html", "ecoli_megares_summary_report.html",
                 "ecoli_ncbi_summary_report.html", "ecoli_plasmidfinder_summary_report.html",
                 "ecoli_vfdb_summary_report.html", "ecoli_resfinder_summary_report.html"
             ]),
-            ("amrfinder_results", ["ecoli_amrfinder_summary_report.html", "mutation_summary.html"]),
+            ("amrfinder_results", [
+                "ecoli_amrfinder_summary_report.html", "ecoli_amrfinder_summary.tsv",
+                "ecoli_amrfinder_statistics_summary.tsv", "mutation_summary.html", "mutation_summary.tsv"
+            ]),
         ]
         for dirname, filenames in required_files:
             src_dir = src_output_dir / dirname
@@ -386,54 +399,105 @@ class EcoliTyperOrchestrator:
                 else:
                     self._log_warning(f"Required file not found: {src_file}")
 
-    def run_summary_analysis(self, output_dir: Path) -> bool:
-        module_name = "Summary_module"
+    def run_sample_centric_analysis(self, output_dir: Path) -> bool:
+        module_name = "sample_centric_module"
         module_orig = self.base_dir / "modules" / module_name
         if not module_orig.exists():
             self.banner.display_error(f"Module not found: {module_orig}")
             return False
+
         temp_dir = Path(tempfile.mkdtemp(prefix=f"ecolityper_{module_name}_"))
         try:
             shutil.copytree(module_orig, temp_dir / module_name, dirs_exist_ok=True)
             work_dir = temp_dir / module_name
+
             self._copy_required_files_to_temp(output_dir, work_dir)
-            cmd = [sys.executable, "genius_reporter.py", "-i", "."]
+
+            cmd = [sys.executable, "genius_ecoli_ultimate_sample_centric_reporter.py", "-i", "."]
+            self.banner.display_info("Running Sample-Centric Hybrid Reporter...")
             result = subprocess.run(cmd, cwd=work_dir, capture_output=True, text=True)
+
+            if result.returncode != 0:
+                self.banner.display_error(f"Sample-centric reporter failed: {result.stderr}")
+                if result.stdout:
+                    self._log_info(result.stdout)
+                return False
+
+            results_dir = work_dir / "GENIUS_ECOLI_ULTIMATE_SAMPLE_CENTRIC_REPORTS"
+            if results_dir.exists():
+                dst = output_dir / "GENIUS_ECOLI_ULTIMATE_SAMPLE_CENTRIC_REPORTS"
+                if dst.exists():
+                    shutil.rmtree(dst)
+                shutil.copytree(results_dir, dst)
+                self.banner.display_success(f"Sample-centric reports copied to {dst}")
+            return True
+
+        except Exception as e:
+            self.banner.display_error(f"Sample-centric module error: {e}")
+            return False
+        finally:
+            if not self.keep_temp:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def run_summary_analysis(self, output_dir: Path) -> bool:
+        module_name = "gene_centric_module"
+        module_orig = self.base_dir / "modules" / module_name
+        if not module_orig.exists():
+            self.banner.display_error(f"Module not found: {module_orig}")
+            return False
+
+        temp_dir = Path(tempfile.mkdtemp(prefix=f"ecolityper_{module_name}_"))
+        try:
+            shutil.copytree(module_orig, temp_dir / module_name, dirs_exist_ok=True)
+            work_dir = temp_dir / module_name
+
+            self._copy_required_files_to_temp(output_dir, work_dir)
+
+            cmd = [sys.executable, "genius_ultimate_gene_centric_reporter.py", "-i", "."]
+            result = subprocess.run(cmd, cwd=work_dir, capture_output=True, text=True)
+
             if result.returncode != 0:
                 self.banner.display_error(f"Summary report failed: {result.stderr}")
                 if result.stdout:
                     self._log_info(result.stdout)
                 return False
-            results_dir = work_dir / "GENIUS_ECOLI_ULTIMATE_REPORTS"
+
+            results_dir = work_dir / "GENIUS_ECOLI_ULTIMATE_GENE_CENTRIC_REPORTS"
             if results_dir.exists():
-                dst = output_dir / "summary_results"
+                dst = output_dir / "GENIUS_ECOLI_ULTIMATE_GENE_CENTRIC_REPORTS"
                 if dst.exists():
                     shutil.rmtree(dst)
                 shutil.copytree(results_dir, dst)
-                self.banner.display_success(f"Summary reports copied to {dst}")
+                self.banner.display_success(f"Gene-centric reports copied to {dst}")
             return True
+
         except Exception as e:
-            self.banner.display_error(f"Summary module error: {e}")
+            self.banner.display_error(f"Gene-centric module error: {e}")
             return False
         finally:
             if not self.keep_temp:
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
     def run_visualization_analysis(self, output_dir: Path) -> bool:
-        module_name = "Visualization_module"
+        module_name = "visualization_module"
         module_orig = self.base_dir / "modules" / module_name
         if not module_orig.exists():
             self.banner.display_error(f"Module not found: {module_orig}")
             return False
+
         temp_dir = Path(tempfile.mkdtemp(prefix=f"ecolityper_{module_name}_"))
         try:
             shutil.copytree(module_orig, temp_dir / module_name, dirs_exist_ok=True)
             work_dir = temp_dir / module_name
+
             self._copy_required_files_to_temp(output_dir, work_dir)
+
             cmd = [sys.executable, "visualization_reporter.py"]
             result = subprocess.run(cmd, cwd=work_dir, capture_output=True, text=True)
+
             if result.returncode != 0:
                 self.banner.display_warning(f"Visualization had issues: {result.stderr}")
+
             viz_dir = work_dir / "ECOLI_VISUALIZATIONS"
             if viz_dir.exists():
                 dst = output_dir / "visualization_results"
@@ -442,6 +506,7 @@ class EcoliTyperOrchestrator:
                 shutil.copytree(viz_dir, dst / "ECOLI_VISUALIZATIONS")
                 self.banner.display_success(f"Visualizations copied to {dst}")
             return True
+
         except Exception as e:
             self.banner.display_error(f"Visualization error: {e}")
             return False
@@ -450,19 +515,23 @@ class EcoliTyperOrchestrator:
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
     def run_lineage_analysis(self, output_dir: Path) -> bool:
-        module_name = "Ecoli_lineage"
+        module_name = "ecoli_lineage"
         module_orig = self.base_dir / "modules" / module_name
         if not module_orig.exists():
             self.banner.display_error(f"Lineage module not found: {module_orig}")
             return False
+
         temp_dir = Path(tempfile.mkdtemp(prefix="ecolityper_lineage_"))
         try:
             shutil.copytree(module_orig, temp_dir / module_name, dirs_exist_ok=True)
             work_dir = temp_dir / module_name
+
             cmd = [sys.executable, "ecoli_html_reference.py"]
             result = subprocess.run(cmd, cwd=work_dir, capture_output=True, text=True)
+
             if result.returncode != 0:
                 self.banner.display_warning(f"Lineage generation had warnings: {result.stderr}")
+
             html_src = work_dir / "ecoli_comprehensive_reference.html"
             if html_src.exists():
                 dst_dir = output_dir / "lineage_results"
@@ -470,6 +539,7 @@ class EcoliTyperOrchestrator:
                 shutil.copy2(html_src, dst_dir / "ecoli_comprehensive_reference.html")
                 self.banner.display_success("Lineage reference generated")
             return True
+
         except Exception as e:
             self.banner.display_error(f"Lineage error: {e}")
             return False
@@ -480,7 +550,8 @@ class EcoliTyperOrchestrator:
     def run_sequential_analyses(self, fasta_files: List[Path], output_dir: Path, threads: int,
                                 skip_modules: Dict[str, bool],
                                 amr_min_identity: float, amr_min_coverage: float,
-                                amr_skip_mutations: bool, amr_force_update: bool) -> Dict[str, bool]:
+                                amr_skip_mutations: bool, amr_force_update: bool,
+                                abricate_min_identity: int, abricate_min_coverage: int) -> Dict[str, bool]:
         results = {}
 
         if not skip_modules.get('fasta_qc', False) and not self.interrupted:
@@ -516,7 +587,7 @@ class EcoliTyperOrchestrator:
                 self.banner.display_warning("⚠️ CH Typing completed with issues")
 
         if not skip_modules.get('phylogrouping', False) and not self.interrupted:
-            self.banner.display_module_header("Phylogrouping", "zClermont phylogrouping algorithm")
+            self.banner.display_module_header("Phylogrouping", "ezClermont phylogrouping algorithm")
             results["Phylogrouping"] = self.run_phylogrouping_analysis(fasta_files, output_dir, threads)
             if results["Phylogrouping"]:
                 self.banner.display_success("✅ Phylogrouping completed successfully!")
@@ -525,7 +596,8 @@ class EcoliTyperOrchestrator:
 
         if not skip_modules.get('abricate', False) and not self.interrupted:
             self.banner.display_module_header("ABRicate", "Resistance, Virulence, and Plasmid gene screening")
-            results["ABRicate"] = self.run_abricate_analysis(fasta_files, output_dir, threads)
+            results["ABRicate"] = self.run_abricate_analysis(fasta_files, output_dir, threads,
+                                                             abricate_min_identity, abricate_min_coverage)
             if results["ABRicate"]:
                 self.banner.display_success("✅ ABRicate completed successfully!")
             else:
@@ -551,6 +623,8 @@ class EcoliTyperOrchestrator:
                               amr_min_coverage: float = None,
                               amr_skip_mutations: bool = False,
                               amr_force_update: bool = False,
+                              abricate_min_identity: int = 80,
+                              abricate_min_coverage: int = 80,
                               keep_temp: bool = False):
         if skip_modules is None:
             skip_modules = {}
@@ -591,8 +665,9 @@ class EcoliTyperOrchestrator:
                 ("Phylogrouping", not skip_modules.get('phylogrouping', False)),
                 ("ABRicate", not skip_modules.get('abricate', False)),
                 ("AMRfinderPlus", not skip_modules.get('amrfinder', False)),
+                ("Sample-Centric Reporter", not skip_modules.get('samplecentric', False)),
+                ("Gene-Centric Reporter", not skip_modules.get('summary', False)),
                 ("Lineage Reference", not skip_modules.get('lineage', False)),
-                ("Summary Reports", not skip_modules.get('summary', False)),
                 ("Visualizations", not skip_modules.get('visualization', False))
             ]
             for analysis, enabled in plan:
@@ -601,16 +676,21 @@ class EcoliTyperOrchestrator:
 
             analysis_results = self.run_sequential_analyses(
                 self.fasta_files, output_path, threads, skip_modules,
-                amr_min_identity, amr_min_coverage, amr_skip_mutations, amr_force_update
+                amr_min_identity, amr_min_coverage, amr_skip_mutations, amr_force_update,
+                abricate_min_identity, abricate_min_coverage
             )
+
+            if not skip_modules.get('samplecentric', False) and not self.interrupted:
+                self.banner.display_module_header("Sample-Centric Reporter", "Interactive Isolate Boxes for AMR, Virulence, Plasmids, Bacmet & Mutations")
+                self.run_sample_centric_analysis(output_path)
+
+            if not skip_modules.get('summary', False) and not self.interrupted:
+                self.banner.display_module_header("Gene-Centric Reporter", "HTML summary reports (GENIUS Reporter)")
+                self.run_summary_analysis(output_path)
 
             if not skip_modules.get('lineage', False) and not self.interrupted:
                 self.banner.display_module_header("Lineage Reference", "E. coli lineage reference database")
                 self.run_lineage_analysis(output_path)
-
-            if not skip_modules.get('summary', False) and not self.interrupted:
-                self.banner.display_module_header("Summary Reports", "HTML summary reports (GENIUS Reporter)")
-                self.run_summary_analysis(output_path)
 
             if not skip_modules.get('visualization', False) and not self.interrupted:
                 self.banner.display_module_header("Visualizations", "Charts and visualizations")
@@ -642,6 +722,7 @@ def main():
   {Colors.BRIGHT_CYAN}ecolityper --update-amr-db{Colors.RESET}                # Update AMR database (incremental)
   {Colors.BRIGHT_CYAN}ecolityper --force-update-amr-db{Colors.RESET}          # Force full AMR database update
   {Colors.BRIGHT_CYAN}ecolityper -i "*.fna" -o results --amr-min-identity 0.95 --amr-min-coverage 0.9 --skip-amr-mutations{Colors.RESET}
+  {Colors.BRIGHT_CYAN}ecolityper -i "*.fna" -o results --abricate-minid 90 --abricate-mincov 85{Colors.RESET}
 
 {Colors.BOLD}{Colors.BRIGHT_GREEN}SUPPORTED FASTA FORMATS:{Colors.RESET} {Colors.YELLOW}.fna, .fasta, .fa, .fsa{Colors.RESET}
 
@@ -651,11 +732,11 @@ def main():
   {Colors.GREEN}• Serotyping (O and H antigen determination){Colors.RESET}
   {Colors.GREEN}• CH Typing (FumC and FimH typing){Colors.RESET}
   {Colors.GREEN}• Phylogrouping (ezClermont algorithm){Colors.RESET}
-  {Colors.GREEN}• ABRicate (Resistance/Virulence/Plasmid screening){Colors.RESET}
-  {Colors.GREEN}• Pathotype classification{Colors.RESET}
+  {Colors.GREEN}• ABRicate (Resistance/Virulence/Plasmid screening) – with configurable identity/coverage thresholds{Colors.RESET}
   {Colors.GREEN}• AMRfinderPlus (NCBI AMR gene detection) – with optional thresholds and mutation reporting{Colors.RESET}
+  {Colors.GREEN}• Sample-Centric Reporter (Interactive Isolate Boxes for AMR, Virulence, Plasmids, Bacmet & Mutations){Colors.RESET}
+  {Colors.GREEN}• Gene-Centric Reporter (Integrated summary reports){Colors.RESET}
   {Colors.GREEN}• Lineage reference database{Colors.RESET}
-  {Colors.GREEN}• Integrated Summary Reports (Gene-centric HTML summary reports){Colors.RESET}
   {Colors.GREEN}• Visualizations (Charts and visualizations){Colors.RESET}
 
 {Colors.BOLD}{Colors.BRIGHT_GREEN}PRIOR SETUP REQUIRED:{Colors.RESET}
@@ -686,6 +767,9 @@ def main():
     parser.add_argument('--skip-amr-mutations', action='store_true', help='Disable point mutation reporting in AMR (enabled by default)')
     parser.add_argument('--amr-force-update', action='store_true', help='Force update AMR database before analysis')
 
+    parser.add_argument('--abricate-minid', type=int, default=80, help='Minimum identity for ABRicate hits (0-100, default: 80)')
+    parser.add_argument('--abricate-mincov', type=int, default=80, help='Minimum coverage for ABRicate hits (0-100, default: 80)')
+
     skip_group = parser.add_argument_group(f'{Colors.BOLD}{Colors.BRIGHT_MAGENTA}Skip Options (disable specific analyses){Colors.RESET}')
     skip_group.add_argument('--skip-fasta-qc', action='store_true', help='Skip FASTA QC analysis')
     skip_group.add_argument('--skip-amrfinder', action='store_true', help='Skip AMRfinderPlus analysis')
@@ -695,10 +779,17 @@ def main():
     skip_group.add_argument('--skip-chtyper', action='store_true', help='Skip CH typing analysis')
     skip_group.add_argument('--skip-phylogrouping', action='store_true', help='Skip phylogrouping analysis')
     skip_group.add_argument('--skip-lineage', action='store_true', help='Skip lineage reference generation')
-    skip_group.add_argument('--skip-summary', action='store_true', help='Skip summary report generation')
+    skip_group.add_argument('--skip-summary', action='store_true', help='Skip gene-centric summary report generation')
+    skip_group.add_argument('--skip-samplecentric', action='store_true', help='Skip sample-centric hybrid reporter generation')
     skip_group.add_argument('--skip-visualization', action='store_true', help='Skip visualization generation')
 
     args = parser.parse_args()
+
+    # Validate thresholds
+    if args.abricate_minid < 0 or args.abricate_minid > 100:
+        parser.error("--abricate-minid must be between 0 and 100")
+    if args.abricate_mincov < 0 or args.abricate_mincov > 100:
+        parser.error("--abricate-mincov must be between 0 and 100")
 
     if args.update_amr_db or args.force_update_amr_db:
         orch = EcoliTyperOrchestrator()
@@ -721,6 +812,7 @@ def main():
         'phylogrouping': args.skip_phylogrouping,
         'lineage': args.skip_lineage,
         'summary': args.skip_summary,
+        'samplecentric': args.skip_samplecentric,
         'visualization': args.skip_visualization
     }
 
@@ -736,6 +828,8 @@ def main():
         amr_min_coverage=args.amr_min_coverage,
         amr_skip_mutations=args.skip_amr_mutations,
         amr_force_update=args.amr_force_update,
+        abricate_min_identity=args.abricate_minid,
+        abricate_min_coverage=args.abricate_mincov,
         keep_temp=args.keep_temp
     )
 

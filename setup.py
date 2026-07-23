@@ -15,7 +15,7 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="ecolityper",
-    version="1.2.1",
+    version="1.3.0",
     author="Brown Beckley",
     author_email="brownbeckley94@gmail.com",
     description="Comprehensive E. coli Typing Pipeline: MLST, Serotyping, CH Typing, Phylogrouping, AMR, and Virulence Analysis",

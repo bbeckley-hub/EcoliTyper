@@ -4,7 +4,7 @@ EcoliTyper Banner Module - FIXED VERSION
 Beautiful ASCII art and scientific quotes for terminal display - StaphScope Style
 Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School-Department of Medical Biochemistry
-Date: 2025/2026-05-15
+Date: 2025/2026-07-22
 Send a quick mail for any issues or further explanations.
 """
 
@@ -22,7 +22,7 @@ class EcoliTyperBanner:
     def __init__(self):
         self.banner_art = self._get_banner_art()
         self.quotes = self._get_scientific_quotes()
-        self.version = "v1.2.1"
+        self.version = "v1.3.0"
         self.author_info = self._get_author_info()
         self.terminal_width = self._get_terminal_width()
         self.analysis_times = {}  # For timing functions
