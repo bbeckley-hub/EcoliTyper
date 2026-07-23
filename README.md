@@ -71,6 +71,93 @@
 
 ---
 
+## 🆕 What's New in v1.3.0 (July 2026)
+
+> *"The 'Wait, You Can Do THAT?' Release"*
+
+We've been busy. Like, "forgot to eat lunch" busy. Here's what we've cooked up:
+
+### 🧬 1. Hybrid Sample‑Centric Reporter (NEW MODULE)
+
+**Before:** You had a gene‑centric view (one gene, all genomes). Great for epidemiology, but if you wanted to see everything *one single isolate* carries, you had to play hide‑and‑seek across multiple tables. Thanks our ESKAPE tools......... We ported so many ideas all around!!!!!
+
+**Now:** Each isolate gets its own **interactive box** with:
+- 🏷️ Typing badges (ST, Serotype, Phylogroup, CHtype)
+- 📊 Separate tables per database (AMRfinder, ResFinder, CARD, VFDB, PlasmidFinder, BacMet2, etc.) – *horizontally scrollable*
+- 🔍 Filters – search by sample name or filter by database
+- 📈 Full gene hit details (coverage, identity, contig, accession, etc.)
+
+**Why it's a game‑changer:** You can finally answer *"What the heck is in this one isolate?"* without opening a million files.
+
+### 🎯 2. Expanded Gene‑Centric Grouping
+
+Now you can group genome lists by **all** typing combinations:
+
+| Group Type | Example |
+|------------|---------|
+| Single | ST, Serotype, Phylogroup, CHtype |
+| Pairwise | ST+Serotype, ST+CHtype, Serotype+Phylogroup, Serotype+CHtype, Phylogroup+CHtype |
+| Triple | ST+Serotype+Phylogroup, ST+Serotype+CHtype, ST+Phylogroup+CHtype |
+| **Full Monty** | ST+Serotype+Phylogroup+CHtype |
+
+**Fixed:** Groups now stack *vertically* (not horizontally). No more squinting at a single line of 47 groups.
+
+### ⚙️ 3. Dynamic Threshold Flags
+
+You now have **full control** over hit stringency:
+
+| Tool | Flags | Default |
+|------|-------|---------|
+| **ABRicate** | `--abricate-minid`, `--abricate-mincov` | 80, 80 |
+| **AMRfinderPlus** | `--amr-min-identity`, `--amr-min-coverage` | 0.8, 0.8 |
+
+**Why:** Clinical investigations may need 95% identity and 90% coverage, while environmental surveys might use lower thresholds. You decide.
+
+### 🧩 4. New Modules Added
+
+| Module | What It Does |
+|--------|--------------|
+| `sample_centric_module` | The "Isolate Paparazzi" – interactive boxes, filters, badges |
+| `gene_centric_module` | Classic gene‑centric reporter with **all** grouping combinations |
+
+### 🐛 5. Bug Fixes
+
+| Issue | Fix |
+|-------|-----|
+| Genome tags grouping horizontally | Added `.genome-group` CSS with `width: 100%` |
+| Missing grouping combinations | Extended `getTypingValue()` JS function |
+| SerotypeFinder crash on "No hit found" | Added type checking in `_parse_sample_results` |
+| CHTyper `dictionary changed size during iteration` | Fixed `for hit_id in list(keys)` in `blaster.py` |
+| HTML parsing in sample‑centric module | Strictly uses TSV summaries |
+| AMR database >100 MB on GitHub | Excluded from repo; users download via `--update-amr-db` |
+
+### 🎛️ 6. New Orchestrator Flags
+
+| Flag | Description |
+|------|-------------|
+| `--skip-samplecentric` | Skip the new sample‑centric reporter |
+| `--abricate-minid` | Minimum identity for ABRicate (0-100) |
+| `--abricate-mincov` | Minimum coverage for ABRicate (0-100) |
+| `--amr-min-identity` | Minimum identity for AMR (0-1) |
+| `--amr-min-coverage` | Minimum coverage for AMR (0-1) |
+
+### 📊 7. Scientific Credit Bars
+
+All HTML reports now include **proper tool credit bars** with citations for:
+- Biopython, FastANI (QC)
+- PubMLST, Torsten Seemann (MLST)
+- CGE SerotypeFinder, Flemming Scheutz (Serotyping)
+- CGE CHTyper, Henrik Hasman (CH Typing)
+- EzClermont, Clermont et al. (Phylogrouping)
+- NCBI AMRFinderPlus, ABRicate, CARD, ResFinder, etc. (AMR)
+- VFDB (Virulence)
+- PlasmidFinder, EcoH (Plasmids)
+- BacMet2 (Bacmet)
+
+> **We stand on the shoulders of giants – and we want you to know it.**
+
+---
+
 ## 📋 Table of Contents
 
 - [🌟 Overview](#-overview)
@@ -116,6 +203,7 @@
 | Complex installation & dependencies | **Self-contained Conda package** |
 | No point mutation tracking | **AMRfinderPlus mutation reporting** |
 | No pathotype classification | **Automated pathotype prediction (STEC, EPEC, EHEC, EAEC, ETEC, DAEC, EIEC)** |
+| One‑size‑fits‑all thresholds | **Dynamic AMR/ABRicate thresholds** |
 
 **Key Achievement:** Processes 30 *E. coli* genomes in **~41 minutes** on 16 CPU cores with **perfect concordance** against reference tools.
 
@@ -134,6 +222,8 @@
 - **🔬 Point Mutation Detection** – AMRfinderPlus mutation reporting (gyrA, parC, rpoB, 23S, etc.)
 - **📈 Pathotype Classification** – Automatic STEC, EPEC, EHEC, EAEC, ETEC, DAEC, EIEC prediction
 - **🖼️ Visualisation** – Publication‑ready charts (distribution plots, stacked combinations, database statistics)
+- **🆕 Hybrid Sample‑Centric Reporter** – Interactive isolate boxes with typing badges and filters
+- **🎯 Expanded Gene‑Centric Grouping** – All pairwise/triple/full typing combinations
 
 ### 🧠 Intelligent Analytics Layer
 - **🔬 Cross‑genome pattern discovery** – Automated gene frequency analysis & distribution mapping
@@ -236,9 +326,20 @@ ecolityper -i "*.fna" -o results \
   --amr-min-identity 0.95 --amr-min-coverage 0.9 --skip-amr-mutations
 ```
 
+### ABRicate with Custom Thresholds (New in v1.3.0)
+```bash
+ecolityper -i "*.fna" -o results \
+  --abricate-minid 90 --abricate-mincov 85
+```
+
 ### Force AMR Database Update Before Analysis
 ```bash
 ecolityper -i "*.fna" -o results --amr-force-update
+```
+
+### Skip Sample‑Centric Reporter (New in v1.3.0)
+```bash
+ecolityper -i "*.fna" -o results --skip-samplecentric
 ```
 
 ### Standalone Database Update
@@ -255,45 +356,40 @@ ecolityper -i "*.fna" -o results --clean-output
 ### Complete Command Reference
 
 ```text
-usage: ecolityper [-h] -i INPUT -o OUTPUT [-t THREADS] [--keep-temp]
-                  [--update-amr-db] [--force-update-amr-db]
-                  [--amr-min-identity AMR_MIN_IDENTITY]
-                  [--amr-min-coverage AMR_MIN_COVERAGE]
-                  [--skip-amr-mutations] [--amr-force-update]
-                  [--skip-fasta-qc] [--skip-amrfinder] [--skip-abricate]
-                  [--skip-mlst] [--skip-serotyping] [--skip-chtyper]
-                  [--skip-phylogrouping] [--skip-lineage] [--skip-summary]
-                  [--skip-visualization]
+usage: ecolityper -i INPUT -o OUTPUT [options]
 
-options:
-  -h, --help            show this help message and exit
-  -i INPUT, --input INPUT
-                        Input FASTA file(s) - glob patterns like "*.fna"
-  -o OUTPUT, --output OUTPUT
-                        Output directory for all results
-  -t THREADS, --threads THREADS
-                        Number of threads (default: 2)
-  --keep-temp           Do not delete temporary directories (for debugging)
-  --update-amr-db       Update AMRfinderPlus database (incremental) and exit
-  --force-update-amr-db Force complete AMR database update and exit
-  --amr-min-identity AMR_MIN_IDENTITY
-                        Minimum identity for AMR hits (0..1)
-  --amr-min-coverage AMR_MIN_COVERAGE
-                        Minimum coverage for AMR hits (0..1)
-  --skip-amr-mutations  Disable point mutation reporting (enabled by default)
-  --amr-force-update    Force update AMR database before analysis
+Required:
+  -i INPUT               Input FASTA file(s) - glob patterns like "*.fna"
+  -o OUTPUT              Output directory for all results
+
+Options:
+  -t THREADS             Number of threads (default: 2)
+  --keep-temp            Do not delete temporary directories (for debugging)
+  --update-amr-db        Update AMRfinderPlus database (incremental) and exit
+  --force-update-amr-db  Force complete AMR database update and exit
+
+AMRfinderPlus Options:
+  --amr-min-identity FLOAT  Minimum identity for AMR hits (0..1)
+  --amr-min-coverage FLOAT  Minimum coverage for AMR hits (0..1)
+  --skip-amr-mutations      Disable point mutation reporting (enabled by default)
+  --amr-force-update        Force update AMR database before analysis
+
+ABRicate Options (New in v1.3.0):
+  --abricate-minid INT   Minimum identity for ABRicate hits (0-100, default: 80)
+  --abricate-mincov INT  Minimum coverage for ABRicate hits (0-100, default: 80)
 
 Skip Options:
-  --skip-fasta-qc       Skip FASTA QC analysis
-  --skip-amrfinder      Skip AMRfinderPlus analysis
-  --skip-abricate       Skip ABRicate analysis
-  --skip-mlst           Skip MLST analysis
-  --skip-serotyping     Skip serotyping analysis
-  --skip-chtyper        Skip CH typing analysis
-  --skip-phylogrouping  Skip phylogrouping analysis
-  --skip-lineage        Skip lineage reference generation
-  --skip-summary        Skip summary report generation
-  --skip-visualization  Skip visualization generation
+  --skip-fasta-qc        Skip FASTA QC analysis
+  --skip-amrfinder       Skip AMRfinderPlus analysis
+  --skip-abricate        Skip ABRicate analysis
+  --skip-mlst            Skip MLST analysis
+  --skip-serotyping      Skip serotyping analysis
+  --skip-chtyper         Skip CH typing analysis
+  --skip-phylogrouping   Skip phylogrouping analysis
+  --skip-lineage         Skip lineage reference generation
+  --skip-summary         Skip summary report generation
+  --skip-visualization   Skip visualization generation
+  --skip-samplecentric   Skip sample-centric hybrid reporter (New in v1.3.0)
 
 Supported FASTA formats: .fna, .fasta, .fa, .fsa
 
@@ -303,8 +399,9 @@ Analysis Modules:
   • Serotyping (O and H antigen determination)
   • CH Typing (FumC and FimH typing)
   • Phylogrouping (ezClermont algorithm)
-  • ABRicate (Resistance/Virulence/Plasmid screening)
+  • ABRicate (Resistance/Virulence/Plasmid screening) – with dynamic thresholds
   • AMRfinderPlus (NCBI AMR gene detection) – with optional thresholds and mutation reporting
+  • Sample-Centric Reporter (Interactive isolate boxes) – New in v1.3.0
   • Lineage reference database
   • Summary Reports (HTML summary reports)
   • Visualizations (Charts and visualizations)
@@ -323,11 +420,12 @@ results/
 ├── phylogrouping_results/         # Clermont phylogrouping
 ├── serotyping_results/            # O:H antigen determination
 ├── lineage_results/               # EcoliDB lineage reference
-├── summary_results/               # 🧠 MAIN REPORT: genius_ecoli_ultimate_report.html
+├── GENIUS_ECOLI_ULTIMATE_GENE_CENTRIC_REPORTS/               # 🧠 MAIN GENE‑CENTRIC REPORT: genius_ecoli_ultimate_gene_centric_report.html
+├── GENIUS_ECOLI_ULTIMATE_SAMPLE_CENTRIC_REPORTS/        # 🆕 SAMPLE‑CENTRIC REPORT:  genius_ecoli_ultimate_sample_centric_report.html interactive isolate boxes (v1.3.0)
 └── visualization_results/         # Publication‑ready charts (PNG, SVG, PDF)
 ```
 
-> The **only file you need** is `summary_results/genius_ecoli_ultimate_report.html` – a complete interactive dashboard.
+> **Two main reports:** `GENIUS_ECOLI_ULTIMATE_GENE_CENTRIC_REPORTS/genius_ecoli_ultimate_gene_centric_report.html` (gene‑centric) and `GENIUS_ECOLI_ULTIMATE_SAMPLE_CENTRIC_REPORTS/genius_ecoli_ultimate_sample_centric_report.html` (sample‑centric).
 
 ---
 
@@ -338,7 +436,8 @@ results/
 - **Mutation tab** – all point mutations with grouping by typing
 - **Pathotype Analysis** – prevalence and sample details with EHEC detection
 - **Plasmid & Bacmet2** – biocide/heavy metal resistance
-- **Dynamic grouping** – reorganise genome lists by MLST, serotype, phylogroup, CH type, or combinations
+- **Dynamic grouping** – reorganise genome lists by MLST, serotype, phylogroup, CH type, or combinations (now supports all pairwise/triple/full combinations in v1.3.0)
+- **🆕 Sample‑centric isolate boxes** – interactive per‑isolate boxes with full hit details, filters, and typing badges (v1.3.0)
 - **CSV/JSON export** – all data exportable for downstream analysis
 - **AI‑friendly HTML structure** – upload to ChatGPT, Claude, or Gemini for instant insights
 
@@ -357,6 +456,8 @@ EcoliTyper integrates several powerful open‑source tools and databases. They a
 | **CHTyper DB** | *fumC/fimH* typing | Free for research |
 | **ezClermont** | Phylogrouping | MIT |
 | **CARD, ResFinder, VFDB, etc.** | Databases (via ABRicate) | Free for research |
+| **PlasmidFinder** | Plasmid replicon typing | Free for research |
+| **BacMet2** | Biocide/heavy metal resistance | Free for research |
 
 ---
 
@@ -365,17 +466,19 @@ EcoliTyper integrates several powerful open‑source tools and databases. They a
 EcoliTyper reports are structured for easy AI analysis.
 
 ### Quick Start
-1. Open `genius_ecoli_ultimate_report.html` in your browser
+1. Open either `genius_ecoli_ultimate_gene_centric_report.html` (gene‑centric) or the new `genius_ecoli_ultimate_sample_centric_report.html` (sample‑centric) in your browser
 2. Select any text (table, paragraph, or entire section)
 3. Right‑click → “Ask AI” (or use your AI extension)
 4. Ask questions like:
    - “What is the clinical significance of ST95?”
    - “Which samples carry ESBL genes?”
    - “Summarise the resistance profile of sample XYZ”
+   - “Show me all isolates with both ESBL and colistin resistance”
 
 ### Upload the HTML file directly
 - ChatGPT Plus / Claude / Gemini accept file uploads
 - Ask: “From this report, create a summary table of pathotypes and their associated STs”
+- For v1.3.0: upload the sample‑centric report and ask “Show me which isolates carry stx2 and eae genes”
 
 ---
 
@@ -481,10 +584,13 @@ DOI: [10.1111/1758-2229.12019](https://doi.org/10.1111/1758-2229.12019)
 ## ❓ Frequently Asked Questions
 
 **Q: What makes EcoliTyper different?**  
-A: Single‑command integration of 9 analyses (MLST, serotyping, CH typing, phylogrouping, AMR, virulence, plasmids, mutations, pathotype) + cross‑genome patterns + dynamic grouping + curated lineage database.
+A: Single‑command integration of 9 analyses (MLST, serotyping, CH typing, phylogrouping, AMR, virulence, plasmids, mutations, pathotype) + cross‑genome patterns + dynamic grouping + curated lineage database + **new sample‑centric reporting** (v1.3.0).
+
+**Q: What's the difference between gene‑centric and sample‑centric reports?**  
+A: **Gene‑centric** shows each gene with all genomes that carry it – great for epidemiology and outbreak tracking. **Sample‑centric** (new in v1.3.0) shows each isolate as an interactive box with all its genes – perfect for clinical interpretation and individual isolate inspection.
 
 **Q: Can I use it for other bacteria?**  
-A: No – optimised for *E. coli* only.
+A: No – optimised for *E. coli* only. But we have StaphScope for *S. aureus* and other ESCAPE AMR modules coming soon.
 
 **Q: How much disk space is needed?**  
 A: ~5–10 GB for Conda + databases, plus ~10–50 MB per genome for results.
@@ -496,16 +602,17 @@ A: 100% concordance with standalone reference tools (mlst, SerotypeFinder, ezCle
 A: 1–6 min per genome (2 cores) or ~41 min for 30 genomes (16 cores).
 
 **Q: Can I run only some modules?**  
-A: Yes – use skip flags like `--skip-amrfinder`, `--skip-visualization`.
+A: Yes – use skip flags like `--skip-amrfinder`, `--skip-visualization`, `--skip-samplecentric`.
 
-**Q: How do I adjust AMR stringency?**  
-A: Use `--amr-min-identity` and `--amr-min-coverage` (e.g., 0.95 and 0.9 for high stringency).
+**Q: How do I adjust AMR/ABRicate stringency?**  
+A: Use `--amr-min-identity`, `--amr-min-coverage` (AMR) and `--abricate-minid`, `--abricate-mincov` (ABRicate) – new in v1.3.0.
 
-**Q: Where is the main report?**  
-A: `summary_results/genius_ecoli_ultimate_report.html` – open in any browser.
+**Q: Where are the main reports?**  
+A: Gene‑centric: `GENIUS_ECOLI_ULTIMATE_GENE_CENTRIC_REPORTS/genius_ecoli_ultimate_gene_centric_report.html`.  
+Sample‑centric (new): `GENIUS_ECOLI_ULTIMATE_SAMPLE_CENTRIC_REPORTS/genius_ecoli_ultimate_sample_centric_report.html`.
 
 **Q: Can I use the HTML report with ChatGPT/Claude?**  
-A: Yes – upload the HTML file and ask questions about your data.
+A: Yes – upload either HTML file and ask questions about your data.
 
 **Q: What if I find a novel ST or missing lineage?**  
 A: Report it via GitHub issues – we actively maintain the database.
@@ -542,7 +649,7 @@ EcoliTyper core code is **MIT licensed**. Third‑party tools (MLST, ABRicate, A
   University of Ghana Medical School & KNUST  
   📧 brownbeckley94@gmail.com
 
-- **Dr. Vincent Amarh** – Lead Advisor
+- **Dr. Vincent Amarh** – Lead Advisor  
   University of Ghana Medical School
 
 ---
