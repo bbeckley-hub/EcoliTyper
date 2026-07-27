@@ -16,6 +16,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/bbeckleyhub/ecolityper)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 [![Docker Image Size](https://img.shields.io/docker/image-size/bbeckleyhub/ecolityper/latest)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
 [![Docker Version](https://img.shields.io/docker/v/bbeckleyhub/ecolityper?sort=semver)](https://hub.docker.com/r/bbeckleyhub/ecolityper)
+[![Article](https://img.shields.io/badge/BMC%20Bioinformatics-10.1186%2Fs12859--026--06529--6-brightgreen)](https://doi.org/10.1186/s12859-026-06529-6)
 
 
 
