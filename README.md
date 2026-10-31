@@ -692,3 +692,4 @@ EcoliTyper core code is **MIT licensed**. Third‑party tools (MLST, ABRicate, A
 We invite researchers, clinicians, and public health professionals to collaborate – share regional epidemiological data, validate the database, and advance AMR surveillance together.
 
 </div>
+

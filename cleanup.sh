@@ -31,5 +31,6 @@ echo "🧪 Removing test files..."
 rm -f .coverage
 rm -rf htmlcov/
 rm -rf .pytest_cache/
+rm 
 
 echo "✅ Cleanup completed!"

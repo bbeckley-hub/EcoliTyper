@@ -56,3 +56,9 @@ ecoliTyper/modules/Amrfinder_module/data/
 
 ecoliTyper/modules/amrfinder_module/data/amrfinder_db/
 ecoliTyper/modules/amrfinder_module/data/
+ecoliTyper/modules/mlst_module/bin
+ecoliTyper/modules/mlst_module/db
+ecoliTyper/modules/mlst_module/scripts
+ecoliTyper/modules/mlst_module/perl5
+
+ecoliTyper/modules/mge_module/mobileOG-db/
