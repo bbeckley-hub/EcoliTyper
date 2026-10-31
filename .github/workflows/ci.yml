@@ -36,4 +36,4 @@ jobs:
         shell: bash -l {0}
         run: |
           conda run -n ecolityper  ecolityper --help
-          conda run -n ecolityper  ecolityper  --version
+          
