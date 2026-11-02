@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EcoliTyper – Sample Reports</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
@@ -21,7 +16,6 @@
             align-items: center;
             padding: 40px 20px;
         }
-
         .container {
             max-width: 1100px;
             width: 100%;
@@ -33,12 +27,7 @@
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
+        .header { text-align: center; margin-bottom: 40px; }
         .header h1 {
             font-size: 3.2em;
             font-weight: 700;
@@ -48,14 +37,12 @@
             background-clip: text;
             letter-spacing: -0.5px;
         }
-
         .header .subtitle {
             color: rgba(255, 255, 255, 0.7);
             font-size: 1.2em;
             margin-top: 6px;
             font-weight: 300;
         }
-
         .header .badge {
             display: inline-block;
             margin-top: 12px;
@@ -67,12 +54,8 @@
             border: 1px solid rgba(255, 255, 255, 0.12);
             backdrop-filter: blur(5px);
         }
+        .badge i { margin-right: 6px; }
 
-        .badge i {
-            margin-right: 6px;
-        }
-
-        /* Quote box */
         .quote-box {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
@@ -85,7 +68,6 @@
             flex-direction: column;
             justify-content: center;
         }
-
         .quote-text {
             font-size: 1.25em;
             color: rgba(255, 255, 255, 0.9);
@@ -93,7 +75,6 @@
             line-height: 1.6;
             transition: opacity 0.5s;
         }
-
         .quote-author {
             margin-top: 12px;
             font-size: 1em;
@@ -101,19 +82,14 @@
             font-weight: 300;
             text-align: right;
         }
+        .quote-author::before { content: "— "; }
 
-        .quote-author::before {
-            content: "— ";
-        }
-
-        /* Cards */
         .card-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 28px;
             margin-top: 10px;
         }
-
         .card {
             background: rgba(255, 255, 255, 0.06);
             backdrop-filter: blur(10px);
@@ -126,55 +102,40 @@
             display: flex;
             flex-direction: column;
         }
-
         .card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             height: 4px;
             background: linear-gradient(90deg, #6dd5ed, #2193b0);
             opacity: 0;
             transition: opacity 0.3s;
         }
-
-        .card:hover::before {
-            opacity: 1;
-        }
-
+        .card:hover::before { opacity: 1; }
         .card:hover {
             transform: translateY(-6px);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             border-color: rgba(255, 255, 255, 0.2);
         }
-
-        .card .icon {
-            font-size: 2.8em;
-            margin-bottom: 12px;
-        }
-
+        .card .icon { font-size: 2.8em; margin-bottom: 12px; }
         .card h2 {
-            font-size: 1.6em;
+            font-size: 1.4em;
             font-weight: 600;
             color: #fff;
             margin-bottom: 8px;
         }
-
         .card p {
             color: rgba(255, 255, 255, 0.75);
             line-height: 1.6;
             flex: 1;
-            font-size: 0.95em;
+            font-size: 0.93em;
         }
-
         .card .feature-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
             margin: 14px 0 8px 0;
         }
-
         .card .feature-tags span {
             background: rgba(255, 255, 255, 0.08);
             padding: 3px 12px;
@@ -183,51 +144,37 @@
             color: rgba(255, 255, 255, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.06);
         }
-
         .card .meta {
-            font-size: 0.85em;
+            font-size: 0.82em;
             color: rgba(255, 255, 255, 0.4);
             margin-top: 6px;
         }
-
         .card a {
             display: inline-block;
             margin-top: 18px;
-            padding: 10px 32px;
+            padding: 10px 28px;
             border-radius: 40px;
             background: linear-gradient(135deg, #6dd5ed, #2193b0);
             color: #fff;
             text-decoration: none;
             font-weight: 600;
-            font-size: 0.95em;
+            font-size: 0.92em;
             transition: transform 0.2s, box-shadow 0.2s;
             text-align: center;
             align-self: flex-start;
             border: none;
             cursor: pointer;
         }
-
         .card a:hover {
             transform: scale(1.04);
             box-shadow: 0 8px 24px rgba(33, 147, 176, 0.4);
         }
 
-        /* Sample-centric card accent */
-        .card.sample a {
-            background: linear-gradient(135deg, #f093fb, #f5576c);
-        }
-        .card.sample a:hover {
-            box-shadow: 0 8px 24px rgba(245, 87, 108, 0.4);
-        }
-        .card.sample::before {
-            background: linear-gradient(90deg, #f093fb, #f5576c);
-        }
+        /* Featured (gene-centric) card */
+        .card.featured a { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .card.featured a:hover { box-shadow: 0 8px 24px rgba(245, 87, 108, 0.4); }
+        .card.featured::before { background: linear-gradient(90deg, #f093fb, #f5576c); }
 
-        .card.gene::before {
-            background: linear-gradient(90deg, #6dd5ed, #2193b0);
-        }
-
-        /* Footer */
         .footer {
             margin-top: 48px;
             text-align: center;
@@ -239,39 +186,39 @@
             justify-content: space-between;
             flex-wrap: wrap;
             align-items: center;
+            gap: 12px;
         }
-
         .footer a {
             color: rgba(255, 255, 255, 0.6);
             text-decoration: none;
             transition: color 0.2s;
         }
+        .footer a:hover { color: #fff; }
+        .footer .author { color: rgba(255, 255, 255, 0.5); }
+        .footer .author strong { color: rgba(255, 255, 255, 0.8); }
 
-        .footer a:hover {
-            color: #fff;
+        .footer-note {
+            margin-top: 24px;
+            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            border: 1px dashed rgba(255, 255, 255, 0.12);
+            font-size: 0.88em;
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            line-height: 1.6;
         }
-
-        .footer .author {
-            color: rgba(255, 255, 255, 0.5);
+        .footer-note a {
+            color: #6dd5ed;
+            text-decoration: none;
+            font-weight: 600;
         }
-        .footer .author strong {
-            color: rgba(255, 255, 255, 0.8);
-        }
+        .footer-note a:hover { text-decoration: underline; }
 
         @media (max-width: 700px) {
-            .container {
-                padding: 30px 20px;
-            }
-            .header h1 {
-                font-size: 2.2em;
-            }
-            .card-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-            .quote-text {
-                font-size: 1em;
-            }
+            .container { padding: 30px 20px; }
+            .header h1 { font-size: 2.2em; }
+            .quote-text { font-size: 1em; }
             .footer {
                 flex-direction: column;
                 gap: 10px;
@@ -282,7 +229,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <div class="header">
             <h1>🧬 EcoliTyper</h1>
             <div class="subtitle">Interactive sample reports – <em>Escherichia coli</em></div>
@@ -291,33 +237,14 @@
             </div>
         </div>
 
-        <!-- Quote Box -->
         <div class="quote-box" id="quoteBox">
             <div class="quote-text" id="quoteText">Loading insight…</div>
             <div class="quote-author" id="quoteAuthor"></div>
         </div>
 
-        <!-- Cards -->
         <div class="card-grid">
-            <div class="card sample">
-                <div class="icon">📋</div>
-                <h2>Sample‑Centric Report</h2>
-                <p>
-                    Each isolate presented as an interactive box with typing badges, AMR, virulence, plasmids, biocides, heavy metals, and mutations. Perfect for clinical review.
-                </p>
-                <div class="feature-tags">
-                    <span>Phylogroup</span>
-                    <span>ST (Achtman)</span>
-                    <span>CH type</span>
-                    <span>Pathotype</span>
-                    <span>Serotype</span>
-                    <span>Wzi</span>
-                </div>
-                <div class="meta">Interactive isolate boxes • Horizontally scrollable tables • Filter by database</div>
-                <a href="genius_ecoli_ultimate_sample_centric_report.html">View Report →</a>
-            </div>
-
-            <div class="card gene">
+            <!-- Featured: Gene-centric report -->
+            <div class="card featured">
                 <div class="icon">🧬</div>
                 <h2>Gene‑Centric Report</h2>
                 <p>
@@ -334,9 +261,96 @@
                 <div class="meta">Groupable tables • Co‑occurrence analysis • Exportable CSV</div>
                 <a href="genius_ecoli_ultimate_gene_centric_report.html">View Report →</a>
             </div>
+
+            <!-- CH Typer -->
+            <div class="card">
+                <div class="icon">🔬</div>
+                <h2>CH Typer Results</h2>
+                <p>
+                    Two‑locus CH typing from <em>fumC</em> and <em>fimH</em> allele sequences. Each isolate receives a CH type (e.g. <strong>CH4‑25</strong>) built from its best‑matching FumC and FimH alleles, reported with per‑locus identity and coverage.
+                </p>
+                <div class="feature-tags">
+                    <span>fumC allele</span>
+                    <span>fimH allele</span>
+                    <span>CH type</span>
+                    <span>Identity %</span>
+                    <span>Coverage %</span>
+                    <span>Pass / Fail</span>
+                </div>
+                <div class="meta">FumC &amp; FimH type distributions • Per‑isolate CH calls with identity/coverage</div>
+                <a href="chtyper_results.html">View Report →</a>
+            </div>
+
+            <!-- MLST -->
+            <div class="card">
+                <div class="icon">🧫</div>
+                <h2>MLST Summary</h2>
+                <p>
+                    Multi‑locus sequence typing (Achtman scheme) results summarised with allele profiles and sequence type calls.
+                </p>
+                <div class="feature-tags">
+                    <span>ST</span>
+                    <span>Allele profile</span>
+                    <span>Achtman</span>
+                </div>
+                <div class="meta">Sequence type summary table</div>
+                <a href="mlst_summary.html">View Report →</a>
+            </div>
+
+            <!-- Phylogrouping -->
+            <div class="card">
+                <div class="icon">🌳</div>
+                <h2>Phylogrouping Results</h2>
+                <p>
+                    Phylogroup assignments (A, B1, B2, C, D, E, F) for every isolate — useful for population structure analysis.
+                </p>
+                <div class="feature-tags">
+                    <span>Phylogroup</span>
+                    <span>Clermont</span>
+                    <span>Population structure</span>
+                </div>
+                <div class="meta">Per‑isolate phylogroup calls</div>
+                <a href="phylogrouping_results.html">View Report →</a>
+            </div>
+
+            <!-- Serotype -->
+            <div class="card">
+                <div class="icon">🏷️</div>
+                <h2>Serotype Analysis</h2>
+                <p>
+                    Predicted O and H antigen serotypes, with the underlying gene hits that drive each serotype call.
+                </p>
+                <div class="feature-tags">
+                    <span>O‑antigen</span>
+                    <span>H‑antigen</span>
+                    <span>Serotype</span>
+                </div>
+                <div class="meta">Serotype predictions per isolate</div>
+                <a href="serotype_analysis_report.html">View Report →</a>
+            </div>
+
+            <!-- MGE -->
+            <div class="card">
+                <div class="icon">🧪</div>
+                <h2>MGE Summary</h2>
+                <p>
+                    Mobile genetic elements detected across genomes — plasmids, insertion sequences, transposons and integrons.
+                </p>
+                <div class="feature-tags">
+                    <span>Plasmids</span>
+                    <span>IS elements</span>
+                    <span>Integrons</span>
+                </div>
+                <div class="meta">Mobile element inventory</div>
+                <a href="ecolityper_mge_summary.html">View Report →</a>
+            </div>
         </div>
 
-        <!-- Footer -->
+        <div class="footer-note">
+            📦 The full <strong>Sample‑Centric Report</strong> (311 MB) is too large to render inline on GitHub Pages.
+            <a href="genius_ecoli_ultimate_sample_centric_report.zip" download>Download the compressed archive (.zip)</a> to view locally.
+        </div>
+
         <div class="footer">
             <span class="author">
                 <strong>Brown Beckley</strong> &bull; University of Ghana Medical School
@@ -346,15 +360,13 @@
                 &nbsp;&bull;&nbsp;
                 <a href="mailto:brownbeckley94@gmail.com">Email</a>
             </span>
-            <span style="color: rgba(255,255,255,0.25);">v1.3.0 &bull; MIT License</span>
+            <span style="color: rgba(255,255,255,0.25);">v1.4.0 &bull; MIT License</span>
         </div>
     </div>
 
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
     <script>
-        // Classic science quotes
         const quotes = [
             { text: "Science is organized knowledge.", author: "Herbert Spencer" },
             { text: "The science of today is the technology of tomorrow.", author: "Edward Teller" },

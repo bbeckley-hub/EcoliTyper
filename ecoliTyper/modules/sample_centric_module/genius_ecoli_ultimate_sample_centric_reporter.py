@@ -3246,7 +3246,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   onclick="exportTableToCSV('patho-samples','pathotype_samples.csv')">
             <i class="fas fa-virus"></i> Pathotype Samples CSV</button>
           <button class="action-btn btn-success"
-                  onclick="location.href='genius_ecoli_ultimate_gene_centric_report.json'">
+                  onclick="location.href='genius_ecoli_ultimate_sample_centric_report.json'">
             <i class="fas fa-file-code"></i> Complete JSON</button>
         </div>
         <p style="color:#666;font-size:.92em;">
@@ -3426,7 +3426,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </body>
 </html>'''
 
-        output_file = output_dir / "genius_ecoli_ultimate_gene_centric_report.html"
+        output_file = output_dir / "genius_ecoli_ultimate_sample_centric_report.html"
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(html)
         print(f"    HTML report saved: {output_file}")
@@ -3441,7 +3441,7 @@ class EcoliReporter:
 
     def __init__(self, input_dir: Path):
         self.input_dir = Path(input_dir)
-        self.output_dir = self.input_dir / "GENIUS_ECOLI_ULTIMATE_GENE_CENTRIC_REPORTS"
+        self.output_dir = self.input_dir / "genius_ecoli_ultimate_sample_centric_reportS"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.parser = EcoliHTMLParser()
         self.analyzer = EcoliDataAnalyzer()
@@ -3579,7 +3579,7 @@ class EcoliReporter:
     def write_json(self, data: Dict[str, Any]) -> Path:
         """Write the full integrated dataset as JSON."""
         print("\nWriting JSON report...")
-        out = self.output_dir / "genius_ecoli_ultimate_gene_centric_report.json"
+        out = self.output_dir / "genius_ecoli_ultimate_sample_centric_report.json"
 
         def serialise(obj):
             if obj is None or isinstance(obj, (str, int, float, bool)):
