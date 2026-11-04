@@ -7,7 +7,7 @@ Author: Brown Beckley <brownbeckley94@gmail.com>
 Affiliation: University of Ghana Medical School - Department of Medical Biochemistry
 MIT License
 Version: 1.4.0
-Date: 2026-10-24
+Date: 2026-10-24 / 2026-11-04
 """
 
 import os
@@ -242,6 +242,15 @@ class EcoliTyperOrchestrator:
                 return share_path
         return self.base_dir / "modules" / module_name
 
+    def get_shared_data_root(self) -> Path:
+        """Writable user-local data root for read-only module installs."""
+        root = Path(os.environ.get(
+            "ECOLITYPER_SHARED_DATA",
+            Path.home() / ".local" / "share" / "ecolityper",
+        ))
+        root.mkdir(parents=True, exist_ok=True)
+        return root
+
     def get_mlst_db_dir(self, for_update: bool = False) -> Path:
         """Return the MLST database directory.
 
@@ -292,6 +301,148 @@ class EcoliTyperOrchestrator:
             if (db_dir / "pubmlst" / scheme).exists():
                 return True
         return False
+
+    # ------------------------------------------------------------------
+    # MGE database resolution + management
+    # ------------------------------------------------------------------
+
+    def get_mge_data_dir(self, for_update: bool = False) -> Optional[Path]:
+        """Return the mobileOG-db data directory.
+
+        Resolution order:
+          1. $ECOLITYPER_MGE_DATA_DIR env override
+          2. User-local ~/.local/share/ecolityper/mge_module/mobileOG-db/
+             (populated by `ecolityper --pull-mge-db`)
+          3. Packaged <module>/mobileOG-db/ (Docker / Singularity)
+        """
+        env_dir = os.environ.get("ECOLITYPER_MGE_DATA_DIR")
+        if env_dir:
+            env_path = Path(env_dir)
+            if for_update:
+                env_path.mkdir(parents=True, exist_ok=True)
+                return env_path
+            if self._mge_db_has_data(env_path):
+                return env_path
+
+        user_dir = self.get_shared_data_root() / "mge_module" / "mobileOG-db"
+        if for_update:
+            user_dir.mkdir(parents=True, exist_ok=True)
+            return user_dir
+        if self._mge_db_has_data(user_dir):
+            self._log_info(f"Using user-local mobileOG-db: {user_dir}")
+            return user_dir
+
+        module_db = self.get_module_path("mge_module") / "mobileOG-db"
+        if self._mge_db_has_data(module_db):
+            return module_db
+
+        return None
+
+    @staticmethod
+    def _mge_db_has_data(db_dir: Optional[Path]) -> bool:
+        """Return True if the directory contains the beatrix DIAMOND index."""
+        if db_dir is None or not db_dir.exists():
+            return False
+        candidates = [
+            db_dir / "beatrix-1-6_v1_all" / "mobileOG-db-beatrix-1.6.dmnd",
+            db_dir / "mobileOG-db-beatrix-1.6.dmnd",
+            db_dir / "beatrix-1-6_v1_all.dmnd",
+        ]
+        return any(c.exists() for c in candidates)
+
+    def pull_mge_database(self) -> bool:
+        """Download the mobileOG-db payload from the GitHub release.
+
+        Docker and Singularity users do not need this — the data is baked
+        into the image and get_mge_data_dir() finds it there automatically.
+        Conda users run `ecolityper --pull-mge-db` once after install.
+        """
+        module_path = self.get_module_path("mge_module")
+
+        if module_path.exists() and os.access(module_path, os.W_OK):
+            target_root = module_path
+            self.banner.display_info(f"Using writable module directory: {target_root}")
+        else:
+            target_root = self.get_shared_data_root() / "mge_module"
+            target_root.mkdir(parents=True, exist_ok=True)
+            self.banner.display_info(
+                f"Module dir is read-only; using user-local path: {target_root}"
+            )
+
+        repo_url = os.environ.get(
+            "ECOLITYPER_MGE_PULL_URL",
+            "https://github.com/bbeckley-hub/EcoliTyper/releases/download/"
+            "v1.4.0/ecolityper-mge-data-v1.4.0.zip",
+        )
+        temp_zip = Path(tempfile.mktemp(suffix=".zip"))
+        extract_dir = None
+
+        try:
+            self.banner.display_info(f"Downloading mobileOG-db from {repo_url}")
+            self.banner.display_info(
+                "Payload is approximately 300 MB, this may take a few minutes..."
+            )
+            urllib.request.urlretrieve(repo_url, temp_zip)
+            self.banner.display_success("Download complete")
+
+            extract_dir = Path(tempfile.mkdtemp(prefix="ecolityper_mge_extract_"))
+            with zipfile.ZipFile(temp_zip, "r") as zip_ref:
+                zip_ref.extractall(extract_dir)
+            self._log_info(f"Extracted to {extract_dir}")
+
+            beatrix_dir = None
+            for root, dirs, _ in os.walk(extract_dir):
+                if "beatrix-1-6_v1_all" in dirs:
+                    beatrix_dir = Path(root) / "beatrix-1-6_v1_all"
+                    break
+
+            if beatrix_dir is None:
+                self.banner.display_error(
+                    "Could not find 'beatrix-1-6_v1_all' directory "
+                    "in downloaded zip"
+                )
+                return False
+
+            dmnd = beatrix_dir / "mobileOG-db-beatrix-1.6.dmnd"
+            if not dmnd.exists():
+                self.banner.display_error(
+                    f"DIAMOND index missing from archive: {dmnd.name}"
+                )
+                return False
+
+            target_beatrix = target_root / "mobileOG-db" / "beatrix-1-6_v1_all"
+            if target_beatrix.exists():
+                shutil.rmtree(target_beatrix)
+            target_beatrix.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(beatrix_dir, target_beatrix)
+
+            dmnd_target = target_beatrix / "mobileOG-db-beatrix-1.6.dmnd"
+            if not dmnd_target.exists():
+                self.banner.display_error(
+                    f"Install verification failed: {dmnd_target} not present"
+                )
+                return False
+
+            size_mb = dmnd_target.stat().st_size / (1024 * 1024)
+            self.banner.display_success(
+                f"mobileOG-db installed to {target_root / 'mobileOG-db'} "
+                f"(DIAMOND index: {size_mb:.0f} MB)"
+            )
+
+            os.environ["ECOLITYPER_MGE_DATA_DIR"] = str(target_root / "mobileOG-db")
+            os.environ["ECOLITYPER_MGE_MODULE_PATH"] = str(target_root)
+            return True
+
+        except Exception as e:
+            self.banner.display_error(
+                f"Failed to download/extract mobileOG-db: {e}"
+            )
+            return False
+        finally:
+            if temp_zip.exists():
+                temp_zip.unlink()
+            if extract_dir and extract_dir.exists():
+                shutil.rmtree(extract_dir, ignore_errors=True)
 
     # ------------------------------------------------------------------
     # AMR database management
@@ -769,21 +920,75 @@ class EcoliTyperOrchestrator:
 
     def run_mge_analysis(self, fasta_files: List[Path], output_dir: Path,
                          threads: int) -> bool:
-        """Run the mobileOG-based MGE profiler."""
-        module_orig = self.base_dir / "modules" / "mge_module"
+        """Run the mobileOG-based MGE profiler.
+
+        Resolves the mobileOG-db payload via get_mge_data_dir():
+          - Docker/Singularity: found inside the packaged mge_module/
+          - Conda + `--pull-mge-db`: found at ~/.local/share/ecolityper/
+        Either way, the beatrix directory is symlinked (or copied as a
+        fallback) into the temp working directory so MGEFinder.py sees the
+        layout it expects:
+            mobileOG-db/beatrix-1-6_v1_all/mobileOG-db-beatrix-1.6.dmnd
+        """
+        module_orig = self.get_module_path("mge_module")
         if not module_orig.exists():
             self.banner.display_error(f"mge_module not found: {module_orig}")
             return False
+
+        mge_data = self.get_mge_data_dir()
+        if mge_data is None:
+            self.banner.display_error(
+                "mobileOG-db not found. Run `ecolityper --pull-mge-db` once, "
+                "or use the Docker/Singularity image (which has it bundled)."
+            )
+            return False
+        self._log_info(f"Resolved mobileOG-db: {mge_data}")
 
         temp_dir = Path(tempfile.mkdtemp(prefix="ecolityper_mge_"))
         self._register_temp_dir(temp_dir)
         self._log_info(f"Temporary directory for mge: {temp_dir}")
 
         try:
-            shutil.copytree(module_orig, temp_dir, dirs_exist_ok=True,
-                            ignore=shutil.ignore_patterns(
-                                'mge_results', 'annotations', '*.fna',
-                                '__pycache__', '*.pyc'))
+            # Copy the module tree, excluding any existing mobileOG-db —
+            # the resolved copy below is authoritative.
+            shutil.copytree(
+                module_orig, temp_dir, dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns(
+                    "mge_results", "annotations", "*.fna", "*.fasta",
+                    "mobileOG-db", "__pycache__", "*.pyc",
+                ),
+            )
+
+            # Link or copy the resolved mobileOG-db into the temp tree
+            temp_mge = temp_dir / "mobileOG-db"
+            temp_mge.mkdir(parents=True, exist_ok=True)
+
+            beatrix_src = mge_data / "beatrix-1-6_v1_all"
+            if not beatrix_src.exists() and mge_data.name == "beatrix-1-6_v1_all":
+                beatrix_src = mge_data
+            if not beatrix_src.exists():
+                self.banner.display_error(
+                    f"beatrix-1-6_v1_all not found under {mge_data}"
+                )
+                return False
+
+            beatrix_dst = temp_mge / "beatrix-1-6_v1_all"
+            if beatrix_dst.exists() or beatrix_dst.is_symlink():
+                if beatrix_dst.is_symlink() or beatrix_dst.is_file():
+                    beatrix_dst.unlink()
+                else:
+                    shutil.rmtree(beatrix_dst)
+
+            try:
+                os.symlink(beatrix_src.resolve(), beatrix_dst)
+                self._log_info(f"Symlinked {beatrix_src} -> {beatrix_dst}")
+            except OSError as exc:
+                self._log_warning(
+                    f"Symlink failed ({exc}); falling back to copy"
+                )
+                shutil.copytree(beatrix_src, beatrix_dst)
+                self._log_info(f"Copied {beatrix_src} -> {beatrix_dst}")
+
             for f in fasta_files:
                 shutil.copy2(f, temp_dir / f.name)
 
@@ -800,7 +1005,13 @@ class EcoliTyperOrchestrator:
                 "-d", "mge_results",
                 "-db_dir", "mobileOG-db/beatrix-1-6_v1_all",
             ]
-            self._log_info(f"Command: {' '.join(cmd)}")
+            # Log the extension pattern rather than the full filename list.
+            # MGEFinder still receives `cmd` with every filename.
+            display_pattern = self.get_file_pattern(fasta_files)
+            self._log_info(
+                f"Command: MGEFinder.py -i {display_pattern} "
+                f"-d mge_results -db_dir mobileOG-db/beatrix-1-6_v1_all"
+            )
 
             result = subprocess.run(cmd, cwd=temp_dir, capture_output=True,
                                     text=True)
@@ -1583,6 +1794,14 @@ class EcoliTyperOrchestrator:
                 f"File formats detected: {', '.join(extensions)}"
             )
 
+            # Warn early if MGE is enabled but the DB is missing
+            if (not skip_modules.get('mge', False)
+                    and self.get_mge_data_dir() is None):
+                self.banner.display_warning(
+                    "MGE profiling is enabled but mobileOG-db is not installed. "
+                    "Run `ecolityper --pull-mge-db` first, or add --skip-mge."
+                )
+
             self.banner.display_module_header(
                 "Analysis Plan", "Modules to be executed"
             )
@@ -1734,12 +1953,44 @@ def main():
      Requires one-time API key setup (see instructions below).
      Download may take 10-20 minutes depending on internet speed.
 
+{Colors.BOLD}{Colors.BRIGHT_GREEN}MGE DATABASE MANAGEMENT:{Colors.RESET}
+  {Colors.BRIGHT_CYAN}ecolityper --pull-mge-db{Colors.RESET}
+     Download the mobileOG-db payload (~300 MB) from GitHub.
+     Required once after conda install if you want MGE profiling.
+     Docker and Singularity users do NOT need this —
+     the data is already baked into the image.
+
+     Location: ~/.local/share/ecolityper/mge_module/mobileOG-db/
+     Env override: ECOLIITYPER_MGE_DATA_DIR
+     Override URL: ECOLIITYPER_MGE_PULL_URL
+
 {Colors.BOLD}{Colors.BRIGHT_GREEN}PubMLST API Key Setup (for --update-mlst-db):{Colors.RESET}
   1. Register/login at https://pubmlst.org/site-accounts
   2. Generate an API key from your profile (under "API keys").
   3. Run: mlstdb connect --db pubmlst --api-key
   4. Paste your API key when prompted.
   5. After setup, run ecolityper --update-mlst-db whenever you want to refresh the database.
+
+{Colors.BOLD}{Colors.BRIGHT_GREEN}HPC / Docker Environment Variables:{Colors.RESET}
+  All overrides are optional. Useful when the module directory is read-only
+  (Docker images, system-wide conda, shared HPC installs) or when databases
+  live on a shared filesystem (Lustre, NFS, BeeGFS).
+
+  ECOLIITYPER_SHARED_DATA         Writable root for user-local data
+                                   (default: ~/.local/share/ecolityper/)
+
+  ECOLIITYPER_MLST_DB             MLST database directory
+  ECOLIITYPER_MLST_MODULE_PATH    MLST module root (bin/, db/, perl5/, scripts/)
+  ECOLIITYPER_MLST_PULL_URL       Override default GitHub pull URL
+
+  ECOLIITYPER_MGE_DATA_DIR        mobileOG-db data directory
+  ECOLIITYPER_MGE_MODULE_PATH     MGE module root
+  ECOLIITYPER_MGE_PULL_URL        Override default GitHub pull URL
+
+  Example (HPC with shared DBs on Lustre):
+    export ECOLIITYPER_MLST_DB=/lustre/scratch/dbs/mlst/pubmlst
+    export ECOLIITYPER_MGE_DATA_DIR=/lustre/scratch/dbs/mge/mobileOG-db
+    ecolityper -i "*.fna" -o results --report-level final
 
 {Colors.BOLD}{Colors.BRIGHT_GREEN}REPORT LEVELS:{Colors.RESET}
   {Colors.YELLOW}final{Colors.RESET}   - Only {DIR_FINAL}/ is kept. All module dirs are deleted.
@@ -1768,6 +2019,7 @@ def main():
 {Colors.BOLD}{Colors.BRIGHT_GREEN}PRIOR SETUP REQUIRED:{Colors.RESET}
   {Colors.YELLOW}* abricate --setupdb{Colors.RESET}
   {Colors.YELLOW}* ecolityper --update-amr-db{Colors.RESET}
+  {Colors.YELLOW}* ecolityper --pull-mge-db{Colors.RESET}   (conda users only)
 
 {Colors.BOLD}{Colors.BRIGHT_GREEN}CONTACT:{Colors.RESET}
   Brown Beckley <brownbeckley94@gmail.com>
@@ -1796,6 +2048,10 @@ def main():
     parser.add_argument('--update-mlst-db', action='store_true',
                         help='Update E. coli MLST database from PubMLST '
                              '(API key required)')
+
+    parser.add_argument('--pull-mge-db', action='store_true',
+                        help='Pull the mobileOG-db payload (MGE profiling data) '
+                             'from GitHub (~300 MB, no API key)')
 
     parser.add_argument('--amr-min-identity', type=float,
                         help='Minimum identity for AMR hits (0..1)')
@@ -1879,11 +2135,20 @@ def main():
             shutil.rmtree(temp_log_dir, ignore_errors=True)
         sys.exit(0 if success else 1)
 
+    if args.pull_mge_db:
+        orch = EcoliTyperOrchestrator()
+        temp_log_dir = Path(tempfile.mkdtemp(prefix="ecolityper_mge_db_"))
+        orch.setup_logging(temp_log_dir)
+        success = orch.pull_mge_database()
+        if not orch.keep_temp:
+            shutil.rmtree(temp_log_dir, ignore_errors=True)
+        sys.exit(0 if success else 1)
+
     if not args.input or not args.output:
         parser.error(
             "Both -i/--input and -o/--output are required for analysis "
             "(or use --update-amr-db / --force-update-amr-db / "
-            "--pull-mlst-db / --update-mlst-db)"
+            "--pull-mlst-db / --update-mlst-db / --pull-mge-db)"
         )
 
     if (args.report_level == 'final'
